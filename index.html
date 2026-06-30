@@ -178,7 +178,7 @@
               <h3>速用流程</h3>
               <ol class="flow-list">
                 <li>自己设备上编辑，数据先存在浏览器本地。</li>
-                <li>Cloudflare 配好后点同步，写入你的云端 KV。</li>
+                <li>Cloudflare 配好后点同步，写入你的云端 D1 数据库。</li>
                 <li>客户电脑用无痕窗口打开网页版，登录 token 后拉取。</li>
                 <li>离开时退出同步并关闭窗口。</li>
               </ol>
@@ -207,7 +207,7 @@
           <button class="icon-button" value="cancel" type="submit" aria-label="关闭">×</button>
         </div>
         <p class="modal-copy">
-          第一版已预留 Cloudflare Pages Functions + KV 同步接口。部署后配置环境变量即可启用云同步。
+          第一版已预留 Cloudflare Pages Functions + D1 同步接口。部署后配置 D1 绑定和环境变量即可启用云同步。
         </p>
         <label class="field">
           <span>同步 Token</span>

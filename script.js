@@ -734,7 +734,7 @@ function showSyncMessage(message) {
 function cloudErrorText(error) {
   const text = String(error?.message || error || "未知错误");
   if (text.includes("Failed to fetch")) return "接口不可用。Cloudflare Pages Functions 配好后才能使用。";
-  if (text.includes("Missing KV")) return "Cloudflare KV 还没有绑定 NANSTAR_NOTES。";
+  if (text.includes("Missing D1")) return "Cloudflare D1 还没有绑定 NANSTAR_NOTES_DB。";
   if (text.includes("Unauthorized")) return "Token 不正确。";
   return text.slice(0, 160);
 }
