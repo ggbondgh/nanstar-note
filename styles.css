@@ -28,6 +28,8 @@ body {
   background: linear-gradient(180deg, #f7f9fc 0%, #eef2f7 100%);
   font-family: var(--font-ui);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body[data-note-mode="txt"] { background: linear-gradient(180deg, #fafbfd 0%, #eef2f7 100%); }
@@ -242,7 +244,9 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   display: grid; gap: 5px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius);
   background: rgba(255,255,255,0.82); text-align: left;
 }
-.note-item:hover, .note-item.active { border-color: rgba(47, 91, 234, 0.32); background: #fff; box-shadow: 0 10px 26px rgba(31, 41, 55, 0.06); }
+.note-item { transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
+.note-item:hover { border-color: rgba(47, 91, 234, 0.32); background: #fff; box-shadow: 0 10px 26px rgba(31, 41, 55, 0.06); transform: translateY(-1px); }
+.note-item.active { border-color: rgba(47, 91, 234, 0.44); background: #fff; box-shadow: 0 8px 22px rgba(47, 91, 234, 0.1); }
 .note-item-head { justify-content: space-between; gap: 8px; }
 .note-item h3 { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .note-flags-text { font-size: 11px; flex-shrink: 0; }
@@ -429,24 +433,54 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 
 @media (max-width: 1020px) {
   .app-shell { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; overflow: visible; }
-  .main { padding: 12px; }
+  .sidebar { position: static; height: auto; overflow: visible; max-height: 50vh; }
+  .main { padding: 10px; }
   .topbar, .topbar-actions { align-items: stretch; flex-direction: column; }
   .topbar-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .editor-card { height: auto; min-height: 0; }
+  .editor-card { height: auto; min-height: 400px; }
   .meta-row { flex-wrap: wrap; }
   .folder-input { flex: 1 1 220px; }
   .find-bar { grid-template-columns: minmax(0, 1fr) auto auto auto auto; }
+  .sidebar-toggle-button { display: none; }
+  .floating-outline { display: none !important; }
+  .split-editor { --split-ratio: 100%; }
+  .split-editor .splitter { display: none; }
+  .preview-pane { display: none !important; }
+  .note-list-panel { max-height: 30vh; }
 }
 
 @media (max-width: 560px) {
-  .sidebar, .main { padding: 10px; }
-  .title-input { font-size: 20px; }
+  .sidebar, .main { padding: 8px; }
+  .brand-mark { width: 28px; height: 28px; font-size: 11px; }
+  .brand h1 { font-size: 14px; }
+  .title-input { font-size: 18px; }
   .topbar-actions, .sync-grid { grid-template-columns: 1fr; }
-  .toolbar { padding: 8px 12px; }
+  .toolbar { padding: 6px 10px; overflow-x: auto; flex-wrap: nowrap; }
+  .toolbar button { min-width: 32px; padding: 0 8px; font-size: 12px; }
+  .toolbar-separator { margin: 4px 0; }
   .note-meta { align-items: flex-start; flex-direction: column; }
-  .find-bar { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .meta-row { gap: 6px; }
+  .folder-input { flex: 1 1 100%; }
+  .find-bar { grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px; }
   .find-count { grid-column: 1 / -1; text-align: left; }
+  .note-list-panel { gap: 4px; }
+  .note-item { padding: 8px; gap: 4px; }
+  .pane-head { padding: 0 8px; min-height: 34px; }
+  .pane-head h3 { font-size: 12px; }
+  .editor-status-bar { padding: 6px 10px; font-size: 11px; gap: 6px; }
+  .floating-outline { display: none !important; }
+  .sidebar-toggle-button { width: 22px; height: 38px; right: -12px; font-size: 16px; }
+  body.sidebar-collapsed .sidebar-toggle-button { right: -12px; }
+  .split-editor { --split-ratio: 100%; }
+  .split-editor .splitter { display: none; }
+  .preview-pane { display: none !important; }
+  .preview-focus .write-pane { display: flex !important; }
+  .quick-strip { gap: 4px; }
+  .quick-chip { padding: 0 8px; font-size: 12px; }
+  .topbar { min-height: 44px; padding: 4px 2px 2px; }
+  .topbar h2 { font-size: 15px; }
+  .modal { width: calc(100vw - 24px); }
+  .utility-drawer > summary { padding: 8px 10px; font-size: 12px; }
 }
 
 /* ===== Floating Outline Panel ===== */

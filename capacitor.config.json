@@ -1,0 +1,9 @@
+{
+  "appId": "com.nanstar.note",
+  "appName": "NanStar Note",
+  "webDir": ".",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}
