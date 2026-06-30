@@ -521,22 +521,24 @@ function bindEvents() {
     renderLists();
   });
 
-  elements.folderAddButton.addEventListener("click", createFolder);
-  elements.folderSection.addEventListener("toggle", () => {
+  if (elements.folderAddButton) elements.folderAddButton.addEventListener("click", createFolder);
+  if (elements.folderSection) elements.folderSection.addEventListener("toggle", () => {
     if (elements.folderSection.open) renderFolderDatalist();
   });
 
   // Folder context menu
-  elements.folderContextMenu.querySelectorAll(".context-menu-item").forEach(item => {
-    item.addEventListener("click", () => {
-      const action = item.dataset.action;
-      const folder = state.contextMenuFolder;
-      hideFolderContextMenu();
-      if (!folder) return;
-      if (action === "rename") renameFolder(folder);
-      else if (action === "delete") deleteFolder(folder);
+  if (elements.folderContextMenu) {
+    elements.folderContextMenu.querySelectorAll(".context-menu-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const action = item.dataset.action;
+        const folder = state.contextMenuFolder;
+        hideFolderContextMenu();
+        if (!folder) return;
+        if (action === "rename") renameFolder(folder);
+        else if (action === "delete") deleteFolder(folder);
+      });
     });
-  });
+  }
   document.addEventListener("click", (event) => {
     if (!event.target.closest("#folderContextMenu")) hideFolderContextMenu();
   });
@@ -600,9 +602,9 @@ function bindEvents() {
   elements.previewContent.addEventListener("scroll", syncEditorScroll);
 
   // Floating outline scroll tracking
-  elements.previewContent.addEventListener("scroll", updateOutlineActiveHeading);
-  elements.bodyInput.addEventListener("scroll", updateOutlineActiveHeading);
-  elements.outlineRail.addEventListener("click", (event) => {
+  if (elements.previewContent) elements.previewContent.addEventListener("scroll", updateOutlineActiveHeading);
+  if (elements.bodyInput) elements.bodyInput.addEventListener("scroll", updateOutlineActiveHeading);
+  if (elements.outlineRail) elements.outlineRail.addEventListener("click", (event) => {
     if (event.target.closest(".outline-dot")) return;
     elements.floatingOutline.classList.toggle("expanded");
   });
@@ -852,6 +854,7 @@ function renderPreview() {
 }
 
 function renderFloatingOutline() {
+  if (!elements.floatingOutline || !elements.outlineDots || !elements.outlinePanelBody) return;
   const note = activeNote();
   if (!note || note.mode !== "md") {
     elements.floatingOutline.hidden = true;
@@ -893,6 +896,7 @@ function renderFloatingOutline() {
 }
 
 function updateOutlineActiveHeading() {
+  if (!elements.floatingOutline || !elements.outlineDots || !elements.outlinePanelBody) return;
   const note = activeNote();
   if (!note || note.mode !== "md" || elements.floatingOutline.hidden) return;
 
@@ -936,6 +940,7 @@ function getFolderNames() {
 }
 
 function renderFolderDatalist() {
+  if (!elements.folderDatalist) return;
   elements.folderDatalist.innerHTML = getFolderNames()
     .map(name => `<option value="${escapeAttribute(name)}"></option>`)
     .join("");
@@ -994,6 +999,7 @@ function deleteFolder(name) {
 
 function showFolderContextMenu(x, y) {
   const menu = elements.folderContextMenu;
+  if (!menu) return;
   menu.hidden = false;
   menu.style.left = `${Math.min(x, window.innerWidth - 160)}px`;
   menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`;
@@ -1006,6 +1012,7 @@ function showFolderContextMenu(x, y) {
 }
 
 function hideFolderContextMenu() {
+  if (!elements.folderContextMenu) return;
   elements.folderContextMenu.hidden = true;
   state.contextMenuFolder = null;
 }

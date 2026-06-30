@@ -154,7 +154,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   border-radius: var(--radius);
   overflow: hidden;
 }
-.nav-section[open] { background: rgba(255,255,255,0.5); }
+.nav-section[open] { border-color: var(--line); background: rgba(255,255,255,0.5); }
 .nav-section > * + * { padding: 0 0 8px; }
 .panel-summary {
   justify-content: space-between; gap: 10px; min-height: 30px; padding: 0 8px;
