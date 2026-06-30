@@ -84,6 +84,13 @@ const i18n = {
     folderExists: "文件夹已存在",
     outlineTitle: "目录",
     outlineEmpty: "暂无标题",
+    newNoteDialogTitle: "新建笔记",
+    newNoteFolderLabel: "文件夹",
+    create: "创建",
+    searchPlaceholderShort: "搜索笔记...",
+    backup: "备份全部 JSON",
+    allNotesTab: "全部",
+    favoritesTab: "★ 收藏",
   },
   en: {
     workspaceTitle: "Content Desk",
@@ -159,6 +166,13 @@ const i18n = {
     folderExists: "Folder already exists",
     outlineTitle: "Outline",
     outlineEmpty: "No headings",
+    newNoteDialogTitle: "New Note",
+    newNoteFolderLabel: "Folder",
+    create: "Create",
+    searchPlaceholderShort: "Search notes...",
+    backup: "Backup JSON",
+    allNotesTab: "All",
+    favoritesTab: "★ Favorites",
   }
 };
 
@@ -1679,7 +1693,16 @@ function applyLanguage(language, initial = false) {
     elements.languageToggleButton.title = next === "en" ? "切换到中文" : "Switch to English";
     elements.languageToggleButton.setAttribute("aria-label", next === "en" ? "切换到中文" : "Switch to English");
   }
-  if (elements.searchInput) elements.searchInput.placeholder = t("searchPlaceholder");
+  if (elements.searchInput) elements.searchInput.placeholder = t("searchPlaceholderShort");
+  const newNoteTitle = document.getElementById("newNoteDialogTitle");
+  if (newNoteTitle) newNoteTitle.textContent = t("newNoteDialogTitle");
+  const newNoteFolderLabel = document.getElementById("newNoteFolderLabel");
+  if (newNoteFolderLabel) newNoteFolderLabel.textContent = t("newNoteFolderLabel");
+  if (elements.newNoteConfirmBtn) elements.newNoteConfirmBtn.textContent = t("create");
+  if (elements.downloadNoteButton) elements.downloadNoteButton.textContent = t("backup");
+  // Update filter tabs
+  document.querySelectorAll('.filter-tab[data-filter="all"]').forEach(b => { b.childNodes[0].textContent = t("allNotesTab"); });
+  document.querySelectorAll('.filter-tab[data-filter="favorite"]').forEach(b => { b.childNodes[0].textContent = t("favoritesTab"); });
   if (elements.editorSearchInput) elements.editorSearchInput.placeholder = t("editorSearchPlaceholder");
   if (elements.newNoteButton) elements.newNoteButton.querySelector("span:last-child").textContent = t("newNote");
   if (elements.titleInput) elements.titleInput.placeholder = t("titlePlaceholder");
@@ -1694,7 +1717,6 @@ function applyLanguage(language, initial = false) {
   if (elements.shareButton) elements.shareButton.textContent = t("share");
   if (elements.deleteButton) elements.deleteButton.textContent = t("delete");
   if (elements.copyMarkdownButton) elements.copyMarkdownButton.textContent = t("copyCurrent");
-  if (elements.downloadNoteButton) elements.downloadNoteButton.textContent = t("backupAll");
   if (elements.duplicateButton) elements.duplicateButton.textContent = t("duplicate");
   if (elements.listStatus) elements.listStatus.textContent = `${sortedNotes().length} ${t("items")}`;
   const folderTitle = document.getElementById("folderSectionTitle");

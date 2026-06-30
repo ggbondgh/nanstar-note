@@ -211,19 +211,12 @@
     <dialog class="modal" id="newNoteDialog">
       <form method="dialog" class="modal-card">
         <div class="modal-head">
-          <h2>新建笔记</h2>
+          <h2 id="newNoteDialogTitle">新建笔记</h2>
           <button class="icon-button" value="cancel" type="submit" aria-label="关闭">×</button>
         </div>
         <div class="field">
-          <span>文件夹</span>
+          <span id="newNoteFolderLabel">文件夹</span>
           <select id="newNoteFolderSelect"></select>
-        </div>
-        <div class="field">
-          <span>模板</span>
-          <div class="segmented">
-            <button class="mode-button active" id="newNoteTxtBtn" type="button" data-tpl="txt">TXT</button>
-            <button class="mode-button" id="newNoteMDBtn" type="button" data-tpl="md">MD</button>
-          </div>
         </div>
         <div class="sync-grid">
           <button class="primary-button" id="newNoteConfirmBtn" type="button" value="confirm">创建</button>
