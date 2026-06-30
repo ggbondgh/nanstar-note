@@ -50,6 +50,10 @@ const i18n = {
     hidePreview: "隐藏预览",
     focusPreview: "专注预览",
     exitFocus: "退出专注",
+    collapseSection: "收起",
+    expandSection: "展开",
+    expanded: "展开",
+    collapsed: "折叠",
     noNotes: "没有匹配的笔记",
     txtOutlineEmpty: "TXT 模式不显示目录",
     noHeadings: "暂无标题",
@@ -111,6 +115,10 @@ const i18n = {
     hidePreview: "Hide preview",
     focusPreview: "Focus preview",
     exitFocus: "Exit focus",
+    collapseSection: "Collapse",
+    expandSection: "Expand",
+    expanded: "Open",
+    collapsed: "Collapsed",
     noNotes: "No matching notes",
     txtOutlineEmpty: "No outline in TXT mode",
     noHeadings: "No headings",
@@ -497,6 +505,7 @@ function bindEvents() {
   elements.bodyInput.addEventListener("keyup", handleEditorCursorChange);
   elements.bodyInput.addEventListener("click", handleEditorCursorChange);
   elements.bodyInput.addEventListener("select", handleEditorCursorChange);
+  elements.editorSection.addEventListener("toggle", handleEditorSectionToggle);
   elements.editorSearchInput.addEventListener("input", handleEditorSearchInput);
   elements.editorSearchInput.addEventListener("keydown", handleEditorSearchKeydown);
   elements.editorSearchPrevButton.addEventListener("click", () => moveEditorSearch(-1));
@@ -622,6 +631,7 @@ function normalizeNote(note) {
     body,
     pinned: Boolean(note.pinned),
     favorite: Boolean(note.favorite),
+    editorSectionOpen: typeof note.editorSectionOpen === "boolean" ? note.editorSectionOpen : normalizeMode(note.mode, body) === "md",
     previewVisible: note.previewVisible !== false,
     createdAt: Number(note.createdAt) || Date.now(),
     updatedAt: Number(note.updatedAt) || Date.now()
@@ -712,11 +722,14 @@ function renderEditor() {
   elements.folderInput.value = note.folder;
   elements.bodyInput.value = note.body;
 
-  elements.pinButton.textContent = note.pinned ? "⌃" : "⌄";
   elements.pinButton.classList.toggle("active", note.pinned);
+  elements.pinButton.textContent = "置顶";
   elements.pinButton.title = note.pinned ? "取消置顶" : "置顶";
-  elements.favoriteButton.textContent = note.favorite ? "★" : "☆";
+  elements.pinButton.setAttribute("aria-pressed", String(note.pinned));
+  elements.favoriteButton.textContent = "星标";
+  elements.favoriteButton.title = note.favorite ? "取消星标" : "星标";
   elements.favoriteButton.classList.toggle("active", note.favorite);
+  elements.favoriteButton.setAttribute("aria-pressed", String(note.favorite));
 
   elements.modeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === note.mode);
@@ -734,6 +747,7 @@ function renderModeState() {
   const previewVisible = isMarkdown && note.previewVisible !== false;
   const focused = isMarkdown && state.previewFocus;
   if (!isMarkdown) state.previewFocus = false;
+  if (typeof note.editorSectionOpen !== "boolean") note.editorSectionOpen = isMarkdown;
 
   elements.editorCard.dataset.mode = note.mode;
   elements.editorCard.classList.toggle("preview-hidden", !previewVisible && !focused);
@@ -755,10 +769,10 @@ function renderModeState() {
   elements.previewFocusButton.textContent = focused ? "⤡" : "⤢";
   elements.previewFocusButton.title = focused ? t("exitFocus") : t("focusPreview");
   elements.previewPane.hidden = !previewVisible && !focused;
-  elements.editorSectionState.textContent = isMarkdown ? t("modeMd") : t("modeTxt");
-  if (elements.editorSection.open !== isMarkdown) {
-    elements.editorSection.open = isMarkdown;
-  }
+  elements.editorSection.open = Boolean(note.editorSectionOpen);
+  elements.editorSectionState.textContent = isMarkdown
+    ? `${t("modeMd")} · ${elements.editorSection.open ? t("collapseSection") : t("expandSection")}`
+    : `${t("modeTxt")} · ${elements.editorSection.open ? t("collapseSection") : t("expandSection")}`;
   elements.splitEditor.style.setProperty("--split-ratio", `${Number(localStorage.getItem(storageKeys.splitRatio)) || 58}%`);
   syncScrollState();
   syncEditorSearchState();
@@ -962,6 +976,7 @@ function changeMode(mode) {
   if (!note || !["txt", "md"].includes(mode) || note.mode === mode) return;
   note.mode = mode;
   note.previewVisible = mode === "md";
+  note.editorSectionOpen = mode === "md";
   state.previewFocus = false;
   note.updatedAt = Date.now();
   persistAndRender(mode === "md" ? "已切换到 Markdown" : "已切换到 TXT");
@@ -990,6 +1005,15 @@ function togglePreviewFocus() {
   renderPreview();
 }
 
+function handleEditorSectionToggle() {
+  const note = activeNote();
+  if (!note) return;
+  note.editorSectionOpen = elements.editorSection.open;
+  note.updatedAt = Date.now();
+  saveNotes();
+  renderModeState();
+}
+
 function toggleSidebar() {
   state.sidebarCollapsed = !state.sidebarCollapsed;
   applySidebarCollapsed(state.sidebarCollapsed);
@@ -1000,11 +1024,10 @@ function applySidebarCollapsed(collapsed) {
   state.sidebarCollapsed = isCollapsed;
   document.body.classList.toggle("sidebar-collapsed", isCollapsed);
   localStorage.setItem(storageKeys.sidebarCollapsed, isCollapsed ? "1" : "0");
-  elements.sidebarToggleButton.textContent = isCollapsed ? "▶" : "◀";
+  const toggleIcon = elements.sidebarToggleButton.querySelector(".toggle-icon");
+  if (toggleIcon) toggleIcon.textContent = isCollapsed ? "▶" : "◀";
   elements.sidebarToggleButton.title = isCollapsed ? "展开侧栏" : "收起侧栏";
   elements.sidebarToggleButton.setAttribute("aria-label", isCollapsed ? "展开侧栏" : "收起侧栏");
-  const label = elements.sidebarToggleButton.querySelector(".sidebar-toggle-label");
-  if (label) label.textContent = isCollapsed ? "展开" : "收起";
 }
 
 function deleteActiveNote() {
@@ -1279,7 +1302,9 @@ function applyLanguage(language, initial = false) {
   document.documentElement.lang = next === "en" ? "en" : "zh-CN";
 
   if (elements.languageToggleButton) {
-    elements.languageToggleButton.textContent = next === "en" ? "EN / 中" : "中 / EN";
+    elements.languageToggleButton.textContent = next === "en" ? "中" : "EN";
+    elements.languageToggleButton.title = next === "en" ? "切换到中文" : "Switch to English";
+    elements.languageToggleButton.setAttribute("aria-label", next === "en" ? "切换到中文" : "Switch to English");
   }
   if (elements.searchInput) elements.searchInput.placeholder = t("searchPlaceholder");
   if (elements.editorSearchInput) elements.editorSearchInput.placeholder = t("editorSearchPlaceholder");

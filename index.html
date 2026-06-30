@@ -93,12 +93,11 @@
             <h2>内容工作台</h2>
           </div>
           <div class="topbar-actions">
-            <button class="sidebar-toggle-button" id="sidebarToggleButton" type="button" title="收起侧栏" aria-label="收起侧栏">
-              <span aria-hidden="true">◀</span>
-              <span class="sidebar-toggle-label">收起</span>
+            <button class="icon-button icon-toggle-button" id="sidebarToggleButton" type="button" title="收起侧栏" aria-label="收起侧栏">
+              <span class="toggle-icon" aria-hidden="true">◀</span>
             </button>
-            <button class="ghost-button" id="languageToggleButton" type="button" title="切换语言" aria-label="切换语言">中 / EN</button>
-            <button class="icon-button topbar-new-button" id="sidebarQuickNewButton" type="button" title="新建笔记" aria-label="新建笔记">+</button>
+            <button class="icon-button" id="languageToggleButton" type="button" title="切换语言" aria-label="切换语言">中</button>
+            <button class="icon-button topbar-new-button" id="sidebarQuickNewButton" type="button" title="新建笔记" aria-label="新建笔记">＋</button>
             <button class="primary-button" id="topSyncButton" type="button">同步</button>
             <button class="ghost-button" id="importButton" type="button">导入</button>
             <button class="ghost-button" id="exportButton" type="button">导出当前</button>
@@ -108,70 +107,75 @@
         </header>
 
         <article class="editor-card" id="editorCard" aria-labelledby="editorTitle">
-          <div class="note-meta">
-            <input
-              id="titleInput"
-              class="title-input"
-              type="text"
-              placeholder="写一个清晰的标题"
-              autocomplete="off"
-            />
-            <div class="note-flags">
-              <button class="flag-button" id="pinButton" type="button" aria-label="置顶" title="置顶">⌃</button>
-              <button class="flag-button" id="favoriteButton" type="button" aria-label="星标" title="星标">☆</button>
+          <section class="editor-header">
+            <div class="note-meta">
+              <input
+                id="titleInput"
+                class="title-input"
+                type="text"
+                placeholder="写一个清晰的标题"
+                autocomplete="off"
+              />
+              <div class="note-flags">
+                <button class="flag-button" id="pinButton" type="button" aria-label="置顶" title="置顶">置顶</button>
+                <button class="flag-button" id="favoriteButton" type="button" aria-label="星标" title="星标">星标</button>
+              </div>
             </div>
-          </div>
 
-          <details class="editor-section" id="editorSection">
-            <summary class="panel-summary editor-summary">
-              <span id="editorToolsTitle">编辑工具</span>
-              <span id="editorSectionState">TXT</span>
-            </summary>
-            <div class="editor-section-body">
-              <div class="meta-row">
-                <div class="segmented" aria-label="编辑模式">
-                  <button class="mode-button active" type="button" data-mode="txt">TXT</button>
-                  <button class="mode-button" type="button" data-mode="md">MD</button>
+            <details class="editor-section" id="editorSection">
+              <summary class="panel-summary editor-summary">
+                <span class="summary-title">
+                  <span class="summary-mark" aria-hidden="true">▸</span>
+                  <span id="editorToolsTitle">编辑工具</span>
+                </span>
+                <span class="summary-meta" id="editorSectionState">TXT</span>
+              </summary>
+              <div class="editor-section-body">
+                <div class="meta-row">
+                  <div class="segmented segmented-tight" aria-label="编辑模式">
+                    <button class="mode-button active" type="button" data-mode="txt">TXT</button>
+                    <button class="mode-button" type="button" data-mode="md">MD</button>
+                  </div>
+                  <input id="folderInput" class="folder-input" type="text" placeholder="文件夹，例如：WK / 客户现场" />
                 </div>
-                <input id="folderInput" class="folder-input" type="text" placeholder="文件夹，例如：WK / 客户现场" />
-              </div>
 
-              <div class="find-bar" id="editorFindBar" hidden>
-                <label class="find-field" for="editorSearchInput">
-                  <span aria-hidden="true">⌕</span>
-                  <input id="editorSearchInput" type="search" placeholder="查找当前笔记内容" autocomplete="off" />
-                </label>
-                <span class="find-count" id="editorSearchCount">0 / 0</span>
-                <button class="icon-button" id="editorSearchPrevButton" type="button" title="上一个匹配" aria-label="上一个匹配">↑</button>
-                <button class="icon-button" id="editorSearchNextButton" type="button" title="下一个匹配" aria-label="下一个匹配">↓</button>
-                <button class="icon-button" id="editorSearchCloseButton" type="button" title="关闭搜索" aria-label="关闭搜索">×</button>
-              </div>
+                <div class="find-bar" id="editorFindBar" hidden>
+                  <label class="find-field" for="editorSearchInput">
+                    <span aria-hidden="true">⌕</span>
+                    <input id="editorSearchInput" type="search" placeholder="查找当前笔记内容" autocomplete="off" />
+                  </label>
+                  <span class="find-count" id="editorSearchCount">0 / 0</span>
+                  <button class="icon-button" id="editorSearchPrevButton" type="button" title="上一个匹配" aria-label="上一个匹配">↑</button>
+                  <button class="icon-button" id="editorSearchNextButton" type="button" title="下一个匹配" aria-label="下一个匹配">↓</button>
+                  <button class="icon-button" id="editorSearchCloseButton" type="button" title="关闭搜索" aria-label="关闭搜索">×</button>
+                </div>
 
-              <div class="toolbar" aria-label="编辑工具">
-                <button type="button" data-command="undo" title="撤回 Ctrl+Z">↶</button>
-                <button type="button" data-command="redo" title="重做 Ctrl+Y">↷</button>
-                <span class="toolbar-separator" aria-hidden="true"></span>
-                <button class="md-tool" type="button" data-wrap="**" title="加粗">B</button>
-                <button class="md-tool" type="button" data-wrap="`" title="行内代码">{ }</button>
-                <button class="md-tool" type="button" data-prefix="- " title="无序列表">•</button>
-                <button class="md-tool" type="button" data-prefix="1. " title="有序列表">1.</button>
-                <button class="md-tool" type="button" data-prefix="- [ ] " title="任务清单">☐</button>
-                <button class="md-tool" type="button" data-prefix="> " title="引用">❝</button>
-                <button class="md-tool" type="button" data-block="code" title="代码块">&lt;/&gt;</button>
-                <span class="toolbar-separator" aria-hidden="true"></span>
-                <button type="button" data-insert="path" title="插入路径片段">路径</button>
-                <button type="button" data-insert="command" title="插入命令片段">命令</button>
-                <button type="button" data-insert="checklist" title="插入检查清单">清单</button>
-                <button class="md-only" id="togglePreviewButton" type="button" title="显示或隐藏预览">预览</button>
-              </div>
+                <div class="toolbar" aria-label="编辑工具">
+                  <button type="button" data-command="undo" title="撤回 Ctrl+Z">↶</button>
+                  <button type="button" data-command="redo" title="重做 Ctrl+Y">↷</button>
+                  <span class="toolbar-separator" aria-hidden="true"></span>
+                  <button class="md-tool" type="button" data-wrap="**" title="加粗">B</button>
+                  <button class="md-tool" type="button" data-wrap="`" title="行内代码">{ }</button>
+                  <button class="md-tool" type="button" data-prefix="- " title="无序列表">•</button>
+                  <button class="md-tool" type="button" data-prefix="1. " title="有序列表">1.</button>
+                  <button class="md-tool" type="button" data-prefix="- [ ] " title="任务清单">☐</button>
+                  <button class="md-tool" type="button" data-prefix="> " title="引用">❝</button>
+                  <button class="md-tool" type="button" data-block="code" title="代码块">&lt;/&gt;</button>
+                  <span class="toolbar-separator" aria-hidden="true"></span>
+                  <button type="button" data-insert="path" title="插入路径片段">路径</button>
+                  <button type="button" data-insert="command" title="插入命令片段">命令</button>
+                  <button type="button" data-insert="checklist" title="插入检查清单">清单</button>
+                  <button class="md-only" id="togglePreviewButton" type="button" title="显示或隐藏预览">预览</button>
+                </div>
 
-              <div class="editor-status-bar">
-                <span id="saveStatus">已保存本地</span>
-                <span id="syncState">本地</span>
-                <span id="wordCount">0 字</span>
+                <div class="editor-status-bar">
+                  <span id="saveStatus">已保存本地</span>
+                  <span id="syncState">本地</span>
+                  <span id="wordCount">0 字</span>
+                </div>
               </div>
-            </div>
-          </details>
+            </details>
+          </section>
 
           <div class="split-editor" id="splitEditor">
             <section class="write-pane" aria-labelledby="editorTitle">
@@ -196,7 +200,6 @@
               <div class="pane-head">
                 <h3 id="previewTitle">预览</h3>
                 <div class="pane-actions">
-                  <span>代码块可复制</span>
                   <button class="icon-button" id="previewFocusButton" type="button" title="专注预览" aria-label="专注预览">⤢</button>
                 </div>
               </div>
