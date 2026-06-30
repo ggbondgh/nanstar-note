@@ -12,7 +12,7 @@ NanStar Note is a lightweight personal note platform for technical notes, client
 - Import `.json`, `.md`, and `.txt`.
 - Export all notes as JSON and download a single note as Markdown.
 - Share-link import for one note.
-- Cloudflare Pages Functions + KV sync scaffold.
+- Cloudflare Pages Functions + D1 sync scaffold.
 
 ## Local preview
 
@@ -39,11 +39,11 @@ Build command: none
 Build output directory: /
 ```
 
-Add a KV namespace binding:
+Add a D1 database binding:
 
 ```txt
-Variable name: NANSTAR_NOTES
-Type: KV namespace
+Variable name: NANSTAR_NOTES_DB
+D1 database id: a636c1f4-d4db-4122-91a8-167be59a3e82
 ```
 
 Add an environment variable:
@@ -56,7 +56,17 @@ After deployment, open the sync dialog in NanStar Note and enter the same token.
 
 ## Data model
 
-Cloud sync stores one JSON document in KV:
+Cloud sync stores one JSON document in D1. The API creates this table automatically:
+
+```sql
+CREATE TABLE IF NOT EXISTS note_documents (
+  key TEXT PRIMARY KEY,
+  data TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+```
+
+The stored document shape is:
 
 ```json
 {

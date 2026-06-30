@@ -1,4 +1,11 @@
 const DATA_KEY = "nanstar-note/default";
+const TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS note_documents (
+    key TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  )
+`;
 
 export async function onRequestOptions() {
   return new Response(null, { headers: corsHeaders() });
@@ -8,20 +15,23 @@ export async function onRequestGet({ env, request }) {
   const auth = authorize(env, request);
   if (auth) return auth;
 
-  if (!env.NANSTAR_NOTES) {
-    return json({ error: "Missing KV binding NANSTAR_NOTES" }, 500);
+  const db = env.NANSTAR_NOTES_DB;
+  if (!db) {
+    return json({ error: "Missing D1 binding NANSTAR_NOTES_DB" }, 500);
   }
 
-  const raw = await env.NANSTAR_NOTES.get(DATA_KEY);
-  return json(raw ? JSON.parse(raw) : { notes: [], updatedAt: 0 });
+  await ensureTable(db);
+  const row = await db.prepare("SELECT data FROM note_documents WHERE key = ?").bind(DATA_KEY).first();
+  return json(row?.data ? JSON.parse(row.data) : { notes: [], updatedAt: 0 });
 }
 
 export async function onRequestPut({ env, request }) {
   const auth = authorize(env, request);
   if (auth) return auth;
 
-  if (!env.NANSTAR_NOTES) {
-    return json({ error: "Missing KV binding NANSTAR_NOTES" }, 500);
+  const db = env.NANSTAR_NOTES_DB;
+  if (!db) {
+    return json({ error: "Missing D1 binding NANSTAR_NOTES_DB" }, 500);
   }
 
   const payload = await request.json();
@@ -34,8 +44,21 @@ export async function onRequestPut({ env, request }) {
     updatedAt: Date.now()
   };
 
-  await env.NANSTAR_NOTES.put(DATA_KEY, JSON.stringify(body));
+  await ensureTable(db);
+  await db
+    .prepare(
+      `INSERT INTO note_documents (key, data, updated_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`
+    )
+    .bind(DATA_KEY, JSON.stringify(body), body.updatedAt)
+    .run();
+
   return json({ ok: true, updatedAt: body.updatedAt });
+}
+
+async function ensureTable(db) {
+  await db.prepare(TABLE_SQL).run();
 }
 
 function authorize(env, request) {
