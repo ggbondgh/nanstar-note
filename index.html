@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f7fb" />
+    <meta
+      name="description"
+      content="NanStar Note 是一个面向个人技术笔记、客户现场速查和多端同步的清爽笔记平台。"
+    />
+    <meta property="og:title" content="NanStar Note" />
+    <meta property="og:description" content="个人技术笔记、速查手册、云同步入口。" />
+    <meta property="og:type" content="website" />
+    <title>NanStar Note</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231d4ed8'/><path d='M18 17h22a6 6 0 0 1 6 6v24H24a6 6 0 0 1-6-6V17Z' fill='%23ffffff'/><path d='M25 27h14M25 35h11' stroke='%231d4ed8' stroke-width='4' stroke-linecap='round'/></svg>"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="笔记导航">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">NN</div>
+          <div>
+            <h1>NanStar Note</h1>
+            <p>Personal Knowledge Desk</p>
+          </div>
+        </div>
+
+        <div class="sidebar-actions">
+          <button class="primary-button" id="newNoteButton" type="button">
+            <span aria-hidden="true">+</span>
+            <span>新建笔记</span>
+          </button>
+          <button class="icon-button" id="syncButton" type="button" title="同步设置" aria-label="同步设置">
+            <span aria-hidden="true">↻</span>
+          </button>
+        </div>
+
+        <label class="search-box" for="searchInput">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="搜索标题、正文、标签" autocomplete="off" />
+        </label>
+
+        <nav class="filter-list" aria-label="笔记筛选">
+          <button class="filter-item active" type="button" data-filter="all">
+            <span>全部笔记</span>
+            <strong id="allCount">0</strong>
+          </button>
+          <button class="filter-item" type="button" data-filter="favorite">
+            <span>星标</span>
+            <strong id="favoriteCount">0</strong>
+          </button>
+          <button class="filter-item" type="button" data-filter="recent">
+            <span>最近编辑</span>
+            <strong id="recentCount">0</strong>
+          </button>
+        </nav>
+
+        <section class="tag-panel" aria-labelledby="tagTitle">
+          <div class="panel-title">
+            <h2 id="tagTitle">标签</h2>
+            <button class="text-button" id="clearTagButton" type="button">清除</button>
+          </div>
+          <div class="tag-list" id="tagList"></div>
+        </section>
+
+        <section class="note-list-panel" aria-labelledby="noteListTitle">
+          <div class="panel-title">
+            <h2 id="noteListTitle">笔记列表</h2>
+            <span id="listStatus">0 条</span>
+          </div>
+          <div class="note-list" id="noteList" aria-live="polite"></div>
+        </section>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">NanStar Note / Workspace</p>
+            <h2 id="workspaceTitle">个人技术笔记台</h2>
+          </div>
+          <div class="topbar-actions">
+            <button class="ghost-button" id="importButton" type="button">导入</button>
+            <button class="ghost-button" id="exportButton" type="button">导出</button>
+            <button class="ghost-button" id="shareButton" type="button">分享链接</button>
+            <button class="danger-button" id="deleteButton" type="button">删除</button>
+          </div>
+        </header>
+
+        <section class="quick-strip" aria-label="快速入口">
+          <button class="quick-chip active" type="button" data-template="blank">空白</button>
+          <button class="quick-chip" type="button" data-template="command">命令速查</button>
+          <button class="quick-chip" type="button" data-template="client">客户现场</button>
+          <button class="quick-chip" type="button" data-template="debug">问题排查</button>
+          <button class="quick-chip" type="button" data-template="daily">日常记录</button>
+        </section>
+
+        <section class="editor-layout">
+          <article class="editor-card" aria-labelledby="editorTitle">
+            <div class="note-meta">
+              <input
+                id="titleInput"
+                class="title-input"
+                type="text"
+                placeholder="写一个清晰的标题"
+                autocomplete="off"
+              />
+              <button class="star-button" id="favoriteButton" type="button" aria-label="星标笔记" title="星标">
+                ☆
+              </button>
+            </div>
+
+            <input
+              id="tagsInput"
+              class="tags-input"
+              type="text"
+              placeholder="标签，用逗号分隔，例如：wk, 编译, ssh"
+              autocomplete="off"
+            />
+
+            <div class="toolbar" aria-label="编辑工具">
+              <button type="button" data-wrap="**" title="加粗">B</button>
+              <button type="button" data-wrap="`" title="行内代码">{ }</button>
+              <button type="button" data-prefix="- " title="无序列表">•</button>
+              <button type="button" data-prefix="1. " title="有序列表">1.</button>
+              <button type="button" data-prefix="- [ ] " title="任务清单">☐</button>
+              <button type="button" data-prefix="> " title="引用">❝</button>
+              <button type="button" data-block="code" title="代码块">&lt;/&gt;</button>
+              <button type="button" data-block="callout" title="提示块">!</button>
+            </div>
+
+            <div class="split-editor">
+              <div class="write-pane">
+                <div class="pane-head">
+                  <h3 id="editorTitle">编辑</h3>
+                  <span id="saveStatus">已保存本地</span>
+                </div>
+                <textarea
+                  id="bodyInput"
+                  spellcheck="false"
+                  placeholder="把命令、路径、排查步骤、客户现场注意事项写在这里。支持 Markdown、代码块、任务清单。"
+                ></textarea>
+              </div>
+              <div class="preview-pane">
+                <div class="pane-head">
+                  <h3>预览</h3>
+                  <span id="wordCount">0 字</span>
+                </div>
+                <div class="preview-content" id="previewContent"></div>
+              </div>
+            </div>
+          </article>
+
+          <aside class="inspector" aria-label="笔记信息">
+            <section class="inspector-card">
+              <h3>当前笔记</h3>
+              <dl>
+                <div>
+                  <dt>创建</dt>
+                  <dd id="createdAt">-</dd>
+                </div>
+                <div>
+                  <dt>更新</dt>
+                  <dd id="updatedAt">-</dd>
+                </div>
+                <div>
+                  <dt>状态</dt>
+                  <dd id="syncState">本地</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="inspector-card">
+              <h3>速用流程</h3>
+              <ol class="flow-list">
+                <li>自己设备上编辑，数据先存在浏览器本地。</li>
+                <li>Cloudflare 配好后点同步，写入你的云端 KV。</li>
+                <li>客户电脑用无痕窗口打开网页版，登录 token 后拉取。</li>
+                <li>离开时退出同步并关闭窗口。</li>
+              </ol>
+            </section>
+
+            <section class="inspector-card">
+              <h3>快捷操作</h3>
+              <div class="stack-actions">
+                <button class="ghost-button full" id="copyMarkdownButton" type="button">复制 Markdown</button>
+                <button class="ghost-button full" id="downloadNoteButton" type="button">下载当前笔记</button>
+                <button class="ghost-button full" id="duplicateButton" type="button">复制为新笔记</button>
+              </div>
+            </section>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="modal" id="syncDialog">
+      <form method="dialog" class="modal-card" id="syncForm">
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">Cloudflare Sync</p>
+            <h2>同步设置</h2>
+          </div>
+          <button class="icon-button" value="cancel" type="submit" aria-label="关闭">×</button>
+        </div>
+        <p class="modal-copy">
+          第一版已预留 Cloudflare Pages Functions + KV 同步接口。部署后配置环境变量即可启用云同步。
+        </p>
+        <label class="field">
+          <span>同步 Token</span>
+          <input id="syncTokenInput" type="password" placeholder="部署后填写 NOTE_SYNC_TOKEN" autocomplete="current-password" />
+        </label>
+        <div class="sync-grid">
+          <button class="primary-button" id="pushCloudButton" type="button">推送到云端</button>
+          <button class="ghost-button" id="pullCloudButton" type="button">从云端拉取</button>
+          <button class="ghost-button" id="logoutCloudButton" type="button">清除 Token</button>
+        </div>
+        <div class="sync-message" id="syncMessage">未连接云同步，本地功能可正常使用。</div>
+      </form>
+    </dialog>
+
+    <input id="importFileInput" type="file" accept=".json,.md,.txt" hidden />
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
