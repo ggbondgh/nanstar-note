@@ -723,7 +723,7 @@ function renderEditor() {
   elements.bodyInput.value = note.body;
 
   elements.pinButton.classList.toggle("active", note.pinned);
-  elements.pinButton.textContent = "置顶";
+  elements.pinButton.textContent = "📌 置顶";
   elements.pinButton.title = note.pinned ? "取消置顶" : "置顶";
   elements.pinButton.setAttribute("aria-pressed", String(note.pinned));
   elements.favoriteButton.textContent = "星标";
@@ -875,7 +875,7 @@ function renderNoteList() {
   elements.noteList.innerHTML = notes
     .map((note) => {
       const mode = note.mode === "md" ? "MD" : "TXT";
-      const flags = `${note.pinned ? "⌃" : ""}${note.favorite ? "★" : ""}`;
+      const flags = `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
       return `
         <button class="note-item ${note.id === state.activeId ? "active" : ""}" type="button" data-id="${note.id}">
           <span class="note-item-head">
@@ -1628,7 +1628,13 @@ function updateLineNumbers() {
 }
 
 function syncLineNumberScroll() {
-  elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
+  const lineNumScrollable = elements.lineNumbers.scrollHeight - elements.lineNumbers.clientHeight;
+  const bodyScrollable = elements.bodyInput.scrollHeight - elements.bodyInput.clientHeight;
+  if (bodyScrollable > 0 && lineNumScrollable > 0) {
+    elements.lineNumbers.scrollTop = (elements.bodyInput.scrollTop / bodyScrollable) * lineNumScrollable;
+  } else {
+    elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
+  }
   updateCurrentLineIndicator();
 }
 

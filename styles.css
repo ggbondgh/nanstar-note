@@ -292,10 +292,10 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 }
 .line-numbers {
   position: relative; z-index: 1; overflow: hidden; padding: 14px 10px 14px 0; border-right: 1px solid var(--line); color: #8a95a5; background: rgba(244,247,250,0.96);
-  font-family: var(--font-mono); font-size: 12px; line-height: 1.68; text-align: right; white-space: nowrap; user-select: none;
+  font-family: var(--font-mono); font-size: 14px; line-height: 1.7; text-align: right; white-space: nowrap; user-select: none;
 }
 .line-number {
-  height: 21px; padding-right: 4px; border-right: 3px solid transparent; color: #94a0b0;
+  padding-right: 4px; border-right: 3px solid transparent; color: #94a0b0;
 }
 .line-number.current {
   color: var(--accent-strong);
