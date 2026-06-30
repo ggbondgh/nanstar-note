@@ -4,7 +4,8 @@ const storageKeys = {
   syncToken: "nanstar-note-sync-token",
   lastSyncAt: "nanstar-note-last-sync-at",
   autoSync: "nanstar-note-auto-sync",
-  splitRatio: "nanstar-note-split-ratio"
+  splitRatio: "nanstar-note-split-ratio",
+  sidebarCollapsed: "nanstar-note-sidebar-collapsed"
 };
 
 const templates = {
@@ -12,14 +13,12 @@ const templates = {
     title: "未命名 TXT",
     mode: "txt",
     folder: "Inbox",
-    tags: ["txt"],
     body: ""
   },
   md: {
     title: "未命名 Markdown",
     mode: "md",
     folder: "Docs",
-    tags: ["markdown"],
     body: `# 标题
 
 这里写正文。
@@ -34,7 +33,6 @@ const templates = {
     title: "命令速查",
     mode: "md",
     folder: "技术速查",
-    tags: ["命令", "速查"],
     body: `# 命令速查
 
 ## 场景
@@ -58,7 +56,6 @@ const templates = {
     title: "客户现场记录",
     mode: "md",
     folder: "客户现场",
-    tags: ["客户现场", "流程"],
     body: `# 客户现场记录
 
 ## 现场目标
@@ -90,7 +87,6 @@ const templates = {
     title: "问题排查记录",
     mode: "md",
     folder: "问题排查",
-    tags: ["排查", "debug"],
     body: `# 问题排查记录
 
 ## 现象
@@ -120,7 +116,6 @@ const templates = {
     title: "日常记录",
     mode: "md",
     folder: "Daily",
-    tags: ["daily"],
     body: `# 日常记录
 
 ## 今日处理
@@ -146,7 +141,6 @@ const defaultNotes = [
     title: "wk_note 速查",
     mode: "md",
     folder: "技术速查",
-    tags: ["wk", "编译", "客户现场"],
     body: `# wk_note 速查
 
 ## 拉取代码
@@ -204,7 +198,6 @@ vim ~/.codex/auth.json
     title: "客户电脑离场检查",
     mode: "txt",
     folder: "客户现场",
-    tags: ["安全", "客户现场"],
     body: `退出时记得
 
 [ ] 退出微软账号、OneDrive、微信、钉钉、飞书
@@ -228,10 +221,10 @@ const state = {
   notes: [],
   activeId: null,
   filter: "all",
-  selectedTag: "",
   selectedFolder: "",
   query: "",
   previewFocus: false,
+  sidebarCollapsed: localStorage.getItem(storageKeys.sidebarCollapsed) === "1",
   saveTimer: null,
   autoSyncTimer: null,
   syncInFlight: false
@@ -242,7 +235,10 @@ const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
 const elements = {
   appShell: $(".app-shell"),
+  sidebar: $(".sidebar"),
   cloudStatus: $("#cloudStatus"),
+  sidebarToggleButton: $("#sidebarToggleButton"),
+  sidebarQuickNewButton: $("#sidebarQuickNewButton"),
   newNoteButton: $("#newNoteButton"),
   syncButton: $("#syncButton"),
   topSyncButton: $("#topSyncButton"),
@@ -250,8 +246,6 @@ const elements = {
   filterItems: $$(".filter-item"),
   folderList: $("#folderList"),
   clearFolderButton: $("#clearFolderButton"),
-  tagList: $("#tagList"),
-  clearTagButton: $("#clearTagButton"),
   outlineList: $("#outlineList"),
   outlineStatus: $("#outlineStatus"),
   noteList: $("#noteList"),
@@ -261,12 +255,13 @@ const elements = {
   favoriteCount: $("#favoriteCount"),
   recentCount: $("#recentCount"),
   editorCard: $("#editorCard"),
+  editorSection: $("#editorSection"),
+  editorSectionState: $("#editorSectionState"),
   titleInput: $("#titleInput"),
   pinButton: $("#pinButton"),
   favoriteButton: $("#favoriteButton"),
   modeButtons: $$(".mode-button"),
   folderInput: $("#folderInput"),
-  tagsInput: $("#tagsInput"),
   toolbar: $(".toolbar"),
   togglePreviewButton: $("#togglePreviewButton"),
   splitEditor: $("#splitEditor"),
@@ -309,6 +304,7 @@ function init() {
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
   elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) === "1";
   applySplitRatio(Number(localStorage.getItem(storageKeys.splitRatio)) || 58);
+  applySidebarCollapsed(state.sidebarCollapsed);
 
   decodeSharedNote();
   bindEvents();
@@ -319,6 +315,8 @@ function init() {
 
 function bindEvents() {
   elements.newNoteButton.addEventListener("click", () => createNote("txt"));
+  elements.sidebarToggleButton.addEventListener("click", toggleSidebar);
+  elements.sidebarQuickNewButton?.addEventListener("click", () => createNote("txt"));
   elements.searchInput.addEventListener("input", (event) => {
     state.query = event.target.value.trim().toLowerCase();
     renderLists();
@@ -344,18 +342,12 @@ function bindEvents() {
     renderLists();
   });
 
-  elements.clearTagButton.addEventListener("click", () => {
-    state.selectedTag = "";
-    renderLists();
-  });
-
   document.querySelectorAll(".nav-section").forEach((section) => {
     section.open = false;
   });
 
   elements.titleInput.addEventListener("input", updateActiveFromInputs);
   elements.folderInput.addEventListener("input", updateActiveFromInputs);
-  elements.tagsInput.addEventListener("input", updateActiveFromInputs);
   elements.bodyInput.addEventListener("input", updateActiveFromInputs);
   elements.bodyInput.addEventListener("scroll", syncLineNumberScroll);
 
@@ -380,8 +372,8 @@ function bindEvents() {
   elements.deleteButton.addEventListener("click", deleteActiveNote);
   elements.duplicateButton.addEventListener("click", duplicateActiveNote);
   elements.copyMarkdownButton.addEventListener("click", copyActiveContent);
-  elements.downloadNoteButton.addEventListener("click", downloadActiveNote);
-  elements.exportButton.addEventListener("click", exportAllNotes);
+  elements.downloadNoteButton.addEventListener("click", exportBackupJson);
+  elements.exportButton.addEventListener("click", exportCurrentNote);
   elements.importButton.addEventListener("click", () => elements.importFileInput.click());
   elements.importFileInput.addEventListener("change", importFile);
   elements.shareButton.addEventListener("click", createShareLink);
@@ -421,6 +413,11 @@ function bindEvents() {
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
+    if (key === "escape" && state.previewFocus) {
+      event.preventDefault();
+      togglePreviewFocus();
+      return;
+    }
     if ((event.ctrlKey || event.metaKey) && key === "s") {
       event.preventDefault();
       saveNotes();
@@ -455,7 +452,6 @@ function normalizeNote(note) {
     title: note.title || "未命名笔记",
     mode: normalizeMode(note.mode, body),
     folder: String(note.folder || "Inbox").trim() || "Inbox",
-    tags: parseTags(note.tags || ""),
     body,
     pinned: Boolean(note.pinned),
     favorite: Boolean(note.favorite),
@@ -506,7 +502,6 @@ function updateActiveFromInputs() {
   if (!note) return;
   note.title = elements.titleInput.value.trimStart() || "未命名笔记";
   note.folder = elements.folderInput.value.trim() || "Inbox";
-  note.tags = parseTags(elements.tagsInput.value);
   note.body = elements.bodyInput.value;
   note.updatedAt = Date.now();
 
@@ -516,15 +511,6 @@ function updateActiveFromInputs() {
   renderOutline();
   renderLists();
   renderSyncMeta();
-}
-
-function parseTags(value) {
-  const source = Array.isArray(value) ? value.join(",") : String(value);
-  return source
-    .split(/[,，\s]+/)
-    .map((tag) => tag.trim())
-    .filter(Boolean)
-    .filter((tag, index, all) => all.indexOf(tag) === index);
 }
 
 function activeNote() {
@@ -556,7 +542,6 @@ function renderEditor() {
 
   elements.titleInput.value = note.title;
   elements.folderInput.value = note.folder;
-  elements.tagsInput.value = note.tags.join(", ");
   elements.bodyInput.value = note.body;
 
   elements.pinButton.textContent = note.pinned ? "⌃" : "⌄";
@@ -598,9 +583,13 @@ function renderModeState() {
   });
   elements.togglePreviewButton.hidden = !isMarkdown;
   elements.previewFocusButton.hidden = !isMarkdown;
-  elements.previewFocusButton.textContent = focused ? "退出专注" : "⤢";
+  elements.previewFocusButton.textContent = focused ? "⤡" : "⤢";
   elements.previewFocusButton.title = focused ? "退出专注" : "专注预览";
   elements.previewPane.hidden = !previewVisible && !focused;
+  elements.editorSectionState.textContent = isMarkdown ? "MD" : "TXT";
+  if (elements.editorSection.open !== isMarkdown) {
+    elements.editorSection.open = isMarkdown;
+  }
   elements.splitEditor.style.setProperty("--split-ratio", `${Number(localStorage.getItem(storageKeys.splitRatio)) || 58}%`);
   syncScrollState();
 }
@@ -647,7 +636,6 @@ function renderOutline() {
 function renderLists() {
   renderCounts();
   renderFolders();
-  renderTags();
   renderNoteList();
 }
 
@@ -691,31 +679,6 @@ function renderFolders() {
   });
 }
 
-function renderTags() {
-  const counts = new Map();
-  state.notes.forEach((note) => {
-    note.tags.forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1));
-  });
-
-  const tags = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN"));
-  elements.tagList.innerHTML = tags.length
-    ? tags
-      .map(([tag, count]) => `
-        <button class="tag-pill ${tag === state.selectedTag ? "active" : ""}" type="button" data-tag="${escapeAttribute(tag)}">
-          ${escapeHtml(tag)} ${count}
-        </button>
-      `)
-      .join("")
-    : `<div class="empty-state compact">还没有标签</div>`;
-
-  elements.tagList.querySelectorAll(".tag-pill").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.selectedTag = button.dataset.tag || "";
-      renderLists();
-    });
-  });
-}
-
 function renderNoteList() {
   const notes = filteredNotes();
   elements.listStatus.textContent = `${notes.length} 条`;
@@ -727,7 +690,6 @@ function renderNoteList() {
 
   elements.noteList.innerHTML = notes
     .map((note) => {
-      const tags = note.tags.slice(0, 3).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
       const mode = note.mode === "md" ? "MD" : "TXT";
       const flags = `${note.pinned ? "⌃" : ""}${note.favorite ? "★" : ""}`;
       return `
@@ -738,7 +700,7 @@ function renderNoteList() {
           </span>
           <p>${escapeHtml(excerpt(note.body))}</p>
           <span class="note-item-meta">
-            <span class="note-item-tags"><em>${mode}</em>${tags}</span>
+            <span class="note-item-mode">${mode}</span>
             <time>${formatShortDate(note.updatedAt)}</time>
           </span>
         </button>
@@ -764,9 +726,8 @@ function filteredNotes() {
       if (state.filter === "favorite" && !note.favorite) return false;
       if (state.filter === "recent" && now - note.updatedAt > 1000 * 60 * 60 * 24 * 7) return false;
       if (state.selectedFolder && note.folder !== state.selectedFolder) return false;
-      if (state.selectedTag && !note.tags.includes(state.selectedTag)) return false;
       if (!state.query) return true;
-      const haystack = `${note.title}\n${note.folder}\n${note.tags.join(" ")}\n${note.body}`.toLowerCase();
+      const haystack = `${note.title}\n${note.folder}\n${note.body}`.toLowerCase();
       return haystack.includes(state.query);
     })
     .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt);
@@ -802,7 +763,6 @@ function createNoteObject(templateName) {
     title: template.title,
     mode: template.mode,
     folder: template.folder,
-    tags: [...template.tags],
     body: template.body,
     pinned: false,
     favorite: false,
@@ -860,6 +820,23 @@ function togglePreviewFocus() {
   renderPreview();
 }
 
+function toggleSidebar() {
+  state.sidebarCollapsed = !state.sidebarCollapsed;
+  applySidebarCollapsed(state.sidebarCollapsed);
+}
+
+function applySidebarCollapsed(collapsed) {
+  const isCollapsed = Boolean(collapsed);
+  state.sidebarCollapsed = isCollapsed;
+  document.body.classList.toggle("sidebar-collapsed", isCollapsed);
+  localStorage.setItem(storageKeys.sidebarCollapsed, isCollapsed ? "1" : "0");
+  elements.sidebarToggleButton.textContent = isCollapsed ? "▶" : "◀";
+  elements.sidebarToggleButton.title = isCollapsed ? "展开侧栏" : "收起侧栏";
+  elements.sidebarToggleButton.setAttribute("aria-label", isCollapsed ? "展开侧栏" : "收起侧栏");
+  const label = elements.sidebarToggleButton.querySelector(".sidebar-toggle-label");
+  if (label) label.textContent = isCollapsed ? "展开" : "收起";
+}
+
 function deleteActiveNote() {
   const note = activeNote();
   if (!note) return;
@@ -899,12 +876,7 @@ function copyActiveContent() {
 }
 
 function downloadActiveNote() {
-  const note = activeNote();
-  if (!note) return;
-  const extension = note.mode === "md" ? "md" : "txt";
-  const type = note.mode === "md" ? "text/markdown" : "text/plain";
-  const content = note.mode === "md" ? formatMarkdownExport(note) : note.body;
-  downloadText(`${safeFileName(note.title)}.${extension}`, content, type);
+  exportCurrentNote();
 }
 
 function exportAllNotes() {
@@ -915,6 +887,20 @@ function exportAllNotes() {
     notes: state.notes
   };
   downloadText(`nanstar-note-${formatFileDate(Date.now())}.json`, JSON.stringify(payload, null, 2), "application/json");
+}
+
+function exportBackupJson() {
+  exportAllNotes();
+}
+
+function exportCurrentNote() {
+  const note = activeNote();
+  if (!note) return;
+  const isMarkdown = note.mode === "md";
+  const extension = isMarkdown ? "md" : "txt";
+  const type = isMarkdown ? "text/markdown" : "text/plain";
+  const content = isMarkdown ? formatMarkdownExport(note) : note.body;
+  downloadText(`${safeFileName(note.title)}.${extension}`, content, type);
 }
 
 function importFile(event) {
@@ -939,7 +925,6 @@ function importFile(event) {
           title: file.name.replace(/\.(md|txt)$/i, "") || "导入笔记",
           mode,
           folder: "Import",
-          tags: ["import"],
           body: text,
           createdAt: now,
           updatedAt: now
@@ -1482,7 +1467,6 @@ function formatMarkdownExport(note) {
   const parts = [];
   parts.push(`# ${note.title}`);
   if (note.folder) parts.push(`> 文件夹：${note.folder}`);
-  if (note.tags.length) parts.push(`> 标签：${note.tags.map((tag) => `#${tag}`).join(" ")}`);
   parts.push("");
   parts.push(note.body.trimEnd());
   return parts.join("\n").trim() + "\n";

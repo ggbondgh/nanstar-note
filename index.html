@@ -71,14 +71,6 @@
 
         <details class="nav-section">
           <summary class="panel-summary">
-            <span>标签</span>
-            <button class="text-button" id="clearTagButton" type="button">清除</button>
-          </summary>
-          <div class="tag-list" id="tagList"></div>
-        </details>
-
-        <details class="nav-section">
-          <summary class="panel-summary">
             <span>目录</span>
             <span id="outlineStatus">MD</span>
           </summary>
@@ -101,22 +93,18 @@
             <h2>内容工作台</h2>
           </div>
           <div class="topbar-actions">
+            <button class="sidebar-toggle-button" id="sidebarToggleButton" type="button" title="收起侧栏" aria-label="收起侧栏">
+              <span aria-hidden="true">◀</span>
+              <span class="sidebar-toggle-label">收起</span>
+            </button>
+            <button class="icon-button topbar-new-button" id="sidebarQuickNewButton" type="button" title="新建 TXT" aria-label="新建 TXT">+</button>
             <button class="primary-button" id="topSyncButton" type="button">同步</button>
             <button class="ghost-button" id="importButton" type="button">导入</button>
-            <button class="ghost-button" id="exportButton" type="button">导出</button>
+            <button class="ghost-button" id="exportButton" type="button">导出当前</button>
             <button class="ghost-button" id="shareButton" type="button">分享</button>
             <button class="danger-button" id="deleteButton" type="button">删除</button>
           </div>
         </header>
-
-        <section class="quick-strip" aria-label="新建模板">
-          <button class="quick-chip active" type="button" data-template="txt">TXT 空白</button>
-          <button class="quick-chip" type="button" data-template="md">Markdown</button>
-          <button class="quick-chip" type="button" data-template="command">命令速查</button>
-          <button class="quick-chip" type="button" data-template="client">客户现场</button>
-          <button class="quick-chip" type="button" data-template="debug">问题排查</button>
-          <button class="quick-chip" type="button" data-template="daily">日常记录</button>
-        </section>
 
         <article class="editor-card" id="editorCard" aria-labelledby="editorTitle">
           <div class="note-meta">
@@ -133,38 +121,45 @@
             </div>
           </div>
 
-          <div class="meta-row">
-            <div class="segmented" aria-label="编辑模式">
-              <button class="mode-button active" type="button" data-mode="txt">TXT</button>
-              <button class="mode-button" type="button" data-mode="md">MD</button>
+          <details class="editor-section" id="editorSection">
+            <summary class="panel-summary editor-summary">
+              <span>编辑工具</span>
+              <span id="editorSectionState">TXT</span>
+            </summary>
+            <div class="editor-section-body">
+              <div class="meta-row">
+                <div class="segmented" aria-label="编辑模式">
+                  <button class="mode-button active" type="button" data-mode="txt">TXT</button>
+                  <button class="mode-button" type="button" data-mode="md">MD</button>
+                </div>
+                <input id="folderInput" class="folder-input" type="text" placeholder="文件夹，例如：WK / 客户现场" />
+              </div>
+
+              <div class="toolbar" aria-label="编辑工具">
+                <button type="button" data-command="undo" title="撤回 Ctrl+Z">↶</button>
+                <button type="button" data-command="redo" title="重做 Ctrl+Y">↷</button>
+                <span class="toolbar-separator" aria-hidden="true"></span>
+                <button class="md-tool" type="button" data-wrap="**" title="加粗">B</button>
+                <button class="md-tool" type="button" data-wrap="`" title="行内代码">{ }</button>
+                <button class="md-tool" type="button" data-prefix="- " title="无序列表">•</button>
+                <button class="md-tool" type="button" data-prefix="1. " title="有序列表">1.</button>
+                <button class="md-tool" type="button" data-prefix="- [ ] " title="任务清单">☐</button>
+                <button class="md-tool" type="button" data-prefix="> " title="引用">❝</button>
+                <button class="md-tool" type="button" data-block="code" title="代码块">&lt;/&gt;</button>
+                <span class="toolbar-separator" aria-hidden="true"></span>
+                <button type="button" data-insert="path" title="插入路径片段">路径</button>
+                <button type="button" data-insert="command" title="插入命令片段">命令</button>
+                <button type="button" data-insert="checklist" title="插入检查清单">清单</button>
+                <button class="md-only" id="togglePreviewButton" type="button" title="显示或隐藏预览">预览</button>
+              </div>
+
+              <div class="editor-status-bar">
+                <span id="saveStatus">已保存本地</span>
+                <span id="syncState">本地</span>
+                <span id="wordCount">0 字</span>
+              </div>
             </div>
-            <input id="folderInput" class="folder-input" type="text" placeholder="文件夹，例如：WK / 客户现场" />
-            <input id="tagsInput" class="tags-input" type="text" placeholder="标签，用逗号分隔，例如：wk, 编译, ssh" />
-          </div>
-
-          <div class="toolbar" aria-label="编辑工具">
-            <button type="button" data-command="undo" title="撤回 Ctrl+Z">↶</button>
-            <button type="button" data-command="redo" title="重做 Ctrl+Y">↷</button>
-            <span class="toolbar-separator" aria-hidden="true"></span>
-            <button class="md-tool" type="button" data-wrap="**" title="加粗">B</button>
-            <button class="md-tool" type="button" data-wrap="`" title="行内代码">{ }</button>
-            <button class="md-tool" type="button" data-prefix="- " title="无序列表">•</button>
-            <button class="md-tool" type="button" data-prefix="1. " title="有序列表">1.</button>
-            <button class="md-tool" type="button" data-prefix="- [ ] " title="任务清单">☐</button>
-            <button class="md-tool" type="button" data-prefix="> " title="引用">❝</button>
-            <button class="md-tool" type="button" data-block="code" title="代码块">&lt;/&gt;</button>
-            <span class="toolbar-separator" aria-hidden="true"></span>
-            <button type="button" data-insert="path" title="插入路径片段">路径</button>
-            <button type="button" data-insert="command" title="插入命令片段">命令</button>
-            <button type="button" data-insert="checklist" title="插入检查清单">清单</button>
-            <button class="md-only" id="togglePreviewButton" type="button" title="显示或隐藏预览">预览</button>
-          </div>
-
-          <div class="editor-status-bar">
-            <span id="saveStatus">已保存本地</span>
-            <span id="syncState">本地</span>
-            <span id="wordCount">0 字</span>
-          </div>
+          </details>
 
           <div class="split-editor" id="splitEditor">
             <section class="write-pane" aria-labelledby="editorTitle">
@@ -201,7 +196,7 @@
           <summary>更多操作与状态</summary>
           <div class="utility-grid">
             <button class="ghost-button" id="copyMarkdownButton" type="button">复制当前内容</button>
-            <button class="ghost-button" id="downloadNoteButton" type="button">导出 TXT/MD</button>
+            <button class="ghost-button" id="downloadNoteButton" type="button">备份全部 JSON</button>
             <button class="ghost-button" id="duplicateButton" type="button">复制为新笔记</button>
             <span id="createdAt">创建 -</span>
             <span id="updatedAt">更新 -</span>

@@ -7,8 +7,8 @@ NanStar Note is a lightweight personal note platform for technical notes, client
 - Clean three-column workspace: note list, Markdown editor/preview, note inspector.
 - Local-first storage through browser `localStorage`.
 - Markdown preview with headings, lists, tasks, links, tables, blockquotes, and code blocks.
-- Search by title, body, and tags.
-- Tags, favorites, recent notes, templates, duplicate, delete.
+- Search by title and body.
+- Favorites, recent notes, templates, duplicate, delete.
 - Import `.json`, `.md`, and `.txt`.
 - Export all notes as JSON and download a single note as Markdown.
 - Share-link import for one note.
