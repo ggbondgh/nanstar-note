@@ -54,7 +54,7 @@ const i18n = {
     expandSection: "展开",
     expanded: "展开",
     collapsed: "折叠",
-    noNotes: "没有匹配的笔记",
+    noNotes: "没有匹配的笔记，试试其他关键词或",
     txtOutlineEmpty: "TXT 模式不显示目录",
     noHeadings: "暂无标题",
     cloudAuto: "云同步 / 自动",
@@ -1247,7 +1247,10 @@ function renderNoteList() {
   if (elements.listStatus) elements.listStatus.textContent = `${notes.length} ${t("items")}`;
 
   if (!notes.length) {
-    elements.noteList.innerHTML = `<div class="empty-state">${t("noNotes")}</div>`;
+    elements.noteList.innerHTML = `<div class="empty-state">
+      <p>${t("noNotes")}</p>
+      <button class="ghost-button" onclick="document.getElementById('newNoteButton').click()" style="margin-top:8px;">＋ ${t("newNote")}</button>
+    </div>`;
     return;
   }
 
