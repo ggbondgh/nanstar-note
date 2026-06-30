@@ -70,17 +70,17 @@ body.sidebar-collapsed .brand { justify-content: center; }
   z-index: 20;
   display: inline-grid; place-items: center;
   width: 26px; height: 48px;
-  border: 1px solid var(--line);
-  border-left: 0;
+  border: 0;
   border-radius: 0 var(--radius) var(--radius) 0;
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(10px);
+  background: var(--accent);
+  box-shadow: 0 4px 16px rgba(47,91,234,0.3);
   cursor: pointer;
-  font-size: 18px;
-  color: var(--muted);
-  transition: background 150ms ease, border-color 150ms ease;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  transition: background 150ms ease, box-shadow 150ms ease;
 }
-.sidebar-toggle-button:hover { background: #fff; border-color: var(--line-strong); color: var(--soft); }
+.sidebar-toggle-button:hover { background: var(--accent-strong); box-shadow: 0 6px 20px rgba(47,91,234,0.4); }
 body.sidebar-collapsed .sidebar-toggle-button { right: -16px; }
 body.is-dragging-split, body.is-dragging-split * { cursor: col-resize !important; user-select: none; }
 
