@@ -194,6 +194,7 @@ const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 const elements = {
   newNoteButton: $("#newNoteButton"),
   syncButton: $("#syncButton"),
+  topSyncButton: $("#topSyncButton"),
   searchInput: $("#searchInput"),
   noteList: $("#noteList"),
   tagList: $("#tagList"),
@@ -290,10 +291,10 @@ function bindEvents() {
   elements.importFileInput.addEventListener("change", importFile);
   elements.shareButton.addEventListener("click", createShareLink);
 
-  elements.syncButton.addEventListener("click", () => {
+  [elements.syncButton, elements.topSyncButton].forEach((button) => button.addEventListener("click", () => {
     elements.syncDialog.showModal();
     elements.syncTokenInput.focus();
-  });
+  }));
   elements.pushCloudButton.addEventListener("click", pushCloud);
   elements.pullCloudButton.addEventListener("click", pullCloud);
   elements.logoutCloudButton.addEventListener("click", clearSyncToken);
