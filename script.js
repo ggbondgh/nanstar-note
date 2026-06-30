@@ -1628,13 +1628,7 @@ function updateLineNumbers() {
 }
 
 function syncLineNumberScroll() {
-  const lineNumScrollable = elements.lineNumbers.scrollHeight - elements.lineNumbers.clientHeight;
-  const bodyScrollable = elements.bodyInput.scrollHeight - elements.bodyInput.clientHeight;
-  if (bodyScrollable > 0 && lineNumScrollable > 0) {
-    elements.lineNumbers.scrollTop = (elements.bodyInput.scrollTop / bodyScrollable) * lineNumScrollable;
-  } else {
-    elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
-  }
+  elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
   updateCurrentLineIndicator();
 }
 
