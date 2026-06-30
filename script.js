@@ -3,7 +3,8 @@ const storageKeys = {
   activeNote: "nanstar-note-active",
   syncToken: "nanstar-note-sync-token",
   lastSyncAt: "nanstar-note-last-sync-at",
-  autoSync: "nanstar-note-auto-sync"
+  autoSync: "nanstar-note-auto-sync",
+  splitRatio: "nanstar-note-split-ratio"
 };
 
 const templates = {
@@ -230,6 +231,7 @@ const state = {
   selectedTag: "",
   selectedFolder: "",
   query: "",
+  previewFocus: false,
   saveTimer: null,
   autoSyncTimer: null,
   syncInFlight: false
@@ -268,11 +270,13 @@ const elements = {
   toolbar: $(".toolbar"),
   togglePreviewButton: $("#togglePreviewButton"),
   splitEditor: $("#splitEditor"),
+  splitter: $("#splitter"),
   lineNumbers: $("#lineNumbers"),
   textShell: $("#textShell"),
   bodyInput: $("#bodyInput"),
   previewPane: $("#previewPane"),
   previewContent: $("#previewContent"),
+  previewFocusButton: $("#previewFocusButton"),
   modeHint: $("#modeHint"),
   saveStatus: $("#saveStatus"),
   syncState: $("#syncState"),
@@ -304,6 +308,7 @@ function init() {
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
   elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) === "1";
+  applySplitRatio(Number(localStorage.getItem(storageKeys.splitRatio)) || 58);
 
   decodeSharedNote();
   bindEvents();
@@ -344,6 +349,10 @@ function bindEvents() {
     renderLists();
   });
 
+  document.querySelectorAll(".nav-section").forEach((section) => {
+    section.open = false;
+  });
+
   elements.titleInput.addEventListener("input", updateActiveFromInputs);
   elements.folderInput.addEventListener("input", updateActiveFromInputs);
   elements.tagsInput.addEventListener("input", updateActiveFromInputs);
@@ -358,6 +367,7 @@ function bindEvents() {
   });
 
   elements.togglePreviewButton.addEventListener("click", togglePreview);
+  elements.previewFocusButton.addEventListener("click", togglePreviewFocus);
   elements.toolbar.addEventListener("mousedown", (event) => {
     if (event.target.closest("button")) event.preventDefault();
   });
@@ -365,6 +375,7 @@ function bindEvents() {
     const button = event.target.closest("button");
     if (button) applyToolbarAction(button);
   });
+  bindSplitter();
 
   elements.deleteButton.addEventListener("click", deleteActiveNote);
   elements.duplicateButton.addEventListener("click", duplicateActiveNote);
@@ -384,6 +395,8 @@ function bindEvents() {
       () => showToast("当前浏览器不允许复制")
     );
   });
+  elements.bodyInput.addEventListener("scroll", syncPreviewScroll);
+  elements.previewContent.addEventListener("scroll", syncEditorScroll);
 
   [elements.syncButton, elements.topSyncButton].forEach((button) => {
     button.addEventListener("click", () => {
@@ -539,6 +552,7 @@ function renderAll() {
 function renderEditor() {
   const note = activeNote();
   if (!note) return;
+  if (note.mode !== "md") state.previewFocus = false;
 
   elements.titleInput.value = note.title;
   elements.folderInput.value = note.folder;
@@ -564,21 +578,31 @@ function renderModeState() {
   if (!note) return;
   const isMarkdown = note.mode === "md";
   const previewVisible = isMarkdown && note.previewVisible !== false;
+  const focused = isMarkdown && state.previewFocus;
+  if (!isMarkdown) state.previewFocus = false;
 
   elements.editorCard.dataset.mode = note.mode;
-  elements.editorCard.classList.toggle("preview-hidden", !previewVisible);
-  elements.splitEditor.classList.toggle("preview-hidden", !previewVisible);
+  elements.editorCard.classList.toggle("preview-hidden", !previewVisible && !focused);
+  elements.splitEditor.classList.toggle("preview-hidden", !previewVisible && !focused);
+  elements.splitEditor.classList.toggle("preview-focus", focused);
   document.body.dataset.noteMode = note.mode;
+  document.body.classList.toggle("preview-focus-mode", focused);
 
   elements.modeHint.textContent = isMarkdown ? "Markdown 结构化模式" : "TXT 纯文本模式";
   elements.outlineStatus.textContent = isMarkdown ? "MD" : "TXT";
-  elements.togglePreviewButton.textContent = previewVisible ? "隐藏预览" : "显示预览";
-  elements.togglePreviewButton.classList.toggle("active", previewVisible);
+  elements.togglePreviewButton.textContent = previewVisible && !focused ? "隐藏预览" : "显示预览";
+  elements.togglePreviewButton.classList.toggle("active", previewVisible && !focused);
   elements.togglePreviewButton.disabled = !isMarkdown;
   elements.toolbar.querySelectorAll(".md-tool, [data-insert]").forEach((button) => {
     button.hidden = !isMarkdown;
   });
   elements.togglePreviewButton.hidden = !isMarkdown;
+  elements.previewFocusButton.hidden = !isMarkdown;
+  elements.previewFocusButton.textContent = focused ? "退出专注" : "⤢";
+  elements.previewFocusButton.title = focused ? "退出专注" : "专注预览";
+  elements.previewPane.hidden = !previewVisible && !focused;
+  elements.splitEditor.style.setProperty("--split-ratio", `${Number(localStorage.getItem(storageKeys.splitRatio)) || 58}%`);
+  syncScrollState();
 }
 
 function renderPreview() {
@@ -808,6 +832,7 @@ function changeMode(mode) {
   if (!note || !["txt", "md"].includes(mode) || note.mode === mode) return;
   note.mode = mode;
   note.previewVisible = mode === "md";
+  state.previewFocus = false;
   note.updatedAt = Date.now();
   persistAndRender(mode === "md" ? "已切换到 Markdown" : "已切换到 TXT");
   elements.bodyInput.focus();
@@ -817,6 +842,18 @@ function togglePreview() {
   const note = activeNote();
   if (!note || note.mode !== "md") return;
   note.previewVisible = note.previewVisible === false;
+  state.previewFocus = false;
+  note.updatedAt = Date.now();
+  saveNotes();
+  renderModeState();
+  renderPreview();
+}
+
+function togglePreviewFocus() {
+  const note = activeNote();
+  if (!note || note.mode !== "md") return;
+  state.previewFocus = !state.previewFocus;
+  if (state.previewFocus) note.previewVisible = true;
   note.updatedAt = Date.now();
   saveNotes();
   renderModeState();
@@ -1178,6 +1215,64 @@ function updateLineNumbers() {
 
 function syncLineNumberScroll() {
   elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
+}
+
+function syncScrollState() {
+  const note = activeNote();
+  if (!note || note.mode !== "md" || state.previewFocus) return;
+  syncPreviewScroll();
+}
+
+function syncPreviewScroll() {
+  const note = activeNote();
+  if (!note || note.mode !== "md" || state.previewFocus) return;
+  const editorScrollable = elements.bodyInput.scrollHeight - elements.bodyInput.clientHeight;
+  const previewScrollable = elements.previewContent.scrollHeight - elements.previewContent.clientHeight;
+  if (editorScrollable <= 0 || previewScrollable <= 0) return;
+  elements.previewContent.scrollTop = (elements.bodyInput.scrollTop / editorScrollable) * previewScrollable;
+}
+
+function syncEditorScroll() {
+  const note = activeNote();
+  if (!note || note.mode !== "md" || state.previewFocus) return;
+  const editorScrollable = elements.bodyInput.scrollHeight - elements.bodyInput.clientHeight;
+  const previewScrollable = elements.previewContent.scrollHeight - elements.previewContent.clientHeight;
+  if (editorScrollable <= 0 || previewScrollable <= 0) return;
+  elements.bodyInput.scrollTop = (elements.previewContent.scrollTop / previewScrollable) * editorScrollable;
+  syncLineNumberScroll();
+}
+
+function bindSplitter() {
+  let dragging = false;
+
+  const move = (event) => {
+    if (!dragging) return;
+    const rect = elements.splitEditor.getBoundingClientRect();
+    const percent = ((event.clientX - rect.left) / rect.width) * 100;
+    applySplitRatio(percent);
+  };
+
+  const stop = () => {
+    dragging = false;
+    document.body.classList.remove("is-dragging-split");
+  };
+
+  elements.splitter.addEventListener("mousedown", (event) => {
+    const note = activeNote();
+    if (!note || note.mode !== "md" || state.previewFocus) return;
+    dragging = true;
+    document.body.classList.add("is-dragging-split");
+    event.preventDefault();
+  });
+
+  window.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", stop);
+}
+
+function applySplitRatio(value) {
+  const ratio = Math.max(32, Math.min(68, Number(value) || 58));
+  elements.splitEditor.style.setProperty("--split-ratio", `${ratio}%`);
+  localStorage.setItem(storageKeys.splitRatio, String(ratio));
 }
 
 function jumpToLine(lineIndex, targetId) {

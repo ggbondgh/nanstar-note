@@ -61,29 +61,29 @@
           </button>
         </nav>
 
-        <section class="folder-panel" aria-labelledby="folderTitle">
-          <div class="panel-title">
-            <h2 id="folderTitle">文件夹</h2>
+        <details class="nav-section">
+          <summary class="panel-summary">
+            <span>文件夹</span>
             <button class="text-button" id="clearFolderButton" type="button">全部</button>
-          </div>
+          </summary>
           <div class="folder-list" id="folderList"></div>
-        </section>
+        </details>
 
-        <section class="tag-panel" aria-labelledby="tagTitle">
-          <div class="panel-title">
-            <h2 id="tagTitle">标签</h2>
+        <details class="nav-section">
+          <summary class="panel-summary">
+            <span>标签</span>
             <button class="text-button" id="clearTagButton" type="button">清除</button>
-          </div>
+          </summary>
           <div class="tag-list" id="tagList"></div>
-        </section>
+        </details>
 
-        <section class="outline-panel" aria-labelledby="outlineTitle">
-          <div class="panel-title">
-            <h2 id="outlineTitle">目录</h2>
+        <details class="nav-section">
+          <summary class="panel-summary">
+            <span>目录</span>
             <span id="outlineStatus">MD</span>
-          </div>
+          </summary>
           <div class="outline-list" id="outlineList"></div>
-        </section>
+        </details>
 
         <section class="note-list-panel" aria-labelledby="noteListTitle">
           <div class="panel-title">
@@ -182,10 +182,15 @@
               </div>
             </section>
 
+            <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" aria-label="调整编辑和预览宽度"></div>
+
             <section class="preview-pane" id="previewPane" aria-labelledby="previewTitle">
               <div class="pane-head">
                 <h3 id="previewTitle">预览</h3>
-                <span>代码块可复制</span>
+                <div class="pane-actions">
+                  <span>代码块可复制</span>
+                  <button class="icon-button" id="previewFocusButton" type="button" title="专注预览" aria-label="专注预览">⤢</button>
+                </div>
               </div>
               <div class="preview-content" id="previewContent"></div>
             </section>
