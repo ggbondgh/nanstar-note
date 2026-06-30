@@ -1238,10 +1238,12 @@ function applySidebarCollapsed(collapsed) {
   state.sidebarCollapsed = isCollapsed;
   document.body.classList.toggle("sidebar-collapsed", isCollapsed);
   localStorage.setItem(storageKeys.sidebarCollapsed, isCollapsed ? "1" : "0");
-  const toggleIcon = elements.sidebarToggleButton.querySelector(".toggle-icon");
-  if (toggleIcon) toggleIcon.textContent = isCollapsed ? "▶" : "◀";
-  elements.sidebarToggleButton.title = isCollapsed ? "展开侧栏" : "收起侧栏";
-  elements.sidebarToggleButton.setAttribute("aria-label", isCollapsed ? "展开侧栏" : "收起侧栏");
+  const toggleIcon = elements.sidebarToggleButton?.querySelector(".toggle-icon");
+  if (toggleIcon) toggleIcon.textContent = isCollapsed ? "›" : "‹";
+  if (elements.sidebarToggleButton) {
+    elements.sidebarToggleButton.title = isCollapsed ? "展开侧栏" : "收起侧栏";
+    elements.sidebarToggleButton.setAttribute("aria-label", isCollapsed ? "展开侧栏" : "收起侧栏");
+  }
 }
 
 function deleteActiveNote() {
