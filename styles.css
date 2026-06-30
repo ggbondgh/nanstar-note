@@ -292,7 +292,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 }
 .line-numbers {
   position: relative; z-index: 1; overflow: hidden; padding: 14px 10px 14px 0; border-right: 1px solid var(--line); color: #8a95a5; background: rgba(244,247,250,0.96);
-  font-family: var(--font-mono); font-size: 14px; line-height: 1.7; text-align: right; white-space: nowrap; user-select: none;
+  font-family: var(--font-mono); font-size: 14px; line-height: 24px; text-align: right; white-space: nowrap; user-select: none;
 }
 .line-number {
   padding-right: 4px; border-right: 3px solid transparent; color: #94a0b0;
@@ -306,7 +306,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   color: #9d5d00;
   background: rgba(255, 205, 84, 0.16);
 }
-#bodyInput { width: 100%; min-height: 0; resize: none; padding: 14px 16px 18px; background: transparent; font-size: 14px; line-height: 1.7; font-family: var(--font-mono); }
+#bodyInput { width: 100%; min-height: 0; resize: none; padding: 14px 16px 18px; background: transparent; font-size: 14px; line-height: 24px; font-family: var(--font-mono); white-space: pre; overflow: auto; }
 #bodyInput { position: relative; z-index: 1; }
 .preview-pane { background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%); }
 .preview-content {
