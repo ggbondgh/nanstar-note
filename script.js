@@ -1692,7 +1692,7 @@ function handleEditorCursorChange() {
 }
 
 function updateCurrentLineIndicator() {
-  const text = elements.bodyInput.value.replace(/\r\n/g, "\n");
+  const text = elements.bodyInput.value;
   const position = elements.bodyInput.selectionStart || 0;
   state.currentLine = getLineFromIndex(text, position);
   const lineHeight = parseFloat(getComputedStyle(elements.bodyInput).lineHeight) || 22;
@@ -1929,9 +1929,15 @@ function updateLineNumbers() {
   renderEditorSearchCount();
 }
 
+let _scrollSyncPending = false;
 function syncLineNumberScroll() {
-  elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
-  updateCurrentLineIndicator();
+  if (_scrollSyncPending) return;
+  _scrollSyncPending = true;
+  requestAnimationFrame(() => {
+    elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
+    updateCurrentLineIndicator();
+    _scrollSyncPending = false;
+  });
 }
 
 function syncScrollState() {
