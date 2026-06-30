@@ -52,39 +52,33 @@ body.preview-focus-mode .editor-card {
   box-shadow: none;
 }
 body.sidebar-collapsed .app-shell { grid-template-columns: 60px minmax(0, 1fr); }
-body.sidebar-collapsed .sidebar { padding-left: 8px; padding-right: 8px; }
+body.sidebar-collapsed .sidebar { padding-left: 8px; padding-right: 8px; align-items: center; }
 body.sidebar-collapsed .brand div,
 body.sidebar-collapsed .search-box,
 body.sidebar-collapsed .filter-list,
 body.sidebar-collapsed .nav-section,
-body.sidebar-collapsed .note-list-panel {
-  display: none;
-}
-body.sidebar-collapsed .brand { justify-content: center; }
+body.sidebar-collapsed .note-list-panel,
 body.sidebar-collapsed .sidebar-actions { display: none; }
-body.sidebar-collapsed .sidebar-toggle-label { display: none; }
+body.sidebar-collapsed .brand { justify-content: center; }
 body.sidebar-collapsed .toggle-icon { transform: rotate(180deg); }
-body.sidebar-collapsed .sidebar-toggle-button {
-  min-width: 36px;
-  width: 36px;
-  padding: 0;
-  justify-content: center;
-}
-body.sidebar-collapsed .sidebar { align-items: center; }
-.sidebar-collapse-button {
-  align-self: center;
-  margin-top: auto;
-  width: 36px; min-width: 36px; height: 36px;
-  font-size: 14px;
+
+.sidebar-toggle-button {
+  display: inline-grid;
+  place-items: center;
+  width: 38px; min-width: 38px; height: 38px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: rgba(255,255,255,0.82);
-  display: inline-grid; place-items: center;
+  background: rgba(255,255,255,0.92);
   cursor: pointer;
-  transition: all 180ms ease;
+  font-size: 14px;
+  color: var(--muted);
+  transition: transform 180ms ease, border-color 150ms ease, background 150ms ease;
+  align-self: center;
 }
-.sidebar-collapse-button:hover { border-color: var(--line-strong); background: #fff; }
-body.sidebar-collapsed .sidebar-collapse-button { width: 36px; min-width: 36px; }
+.sidebar-toggle-button:hover { border-color: var(--line-strong); background: #fff; }
+body.sidebar-collapsed .sidebar-toggle-button {
+  min-width: 36px; width: 36px;
+}
 body.is-dragging-split, body.is-dragging-split * { cursor: col-resize !important; user-select: none; }
 
 button, input, textarea { font: inherit; }
