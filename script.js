@@ -415,6 +415,10 @@ const elements = {
   noteContextMenu: $("#noteContextMenu"),
   folderDatalist: $("#folderDatalist"),
   filterTabs: $$(".filter-tab"),
+  searchClearButton: $("#searchClearButton"),
+  newNoteDialog: $("#newNoteDialog"),
+  newNoteFolderSelect: $("#newNoteFolderSelect"),
+  newNoteConfirmBtn: $("#newNoteConfirmBtn"),
   floatingOutline: $("#floatingOutline"),
   outlinePanel: $("#outlinePanel"),
   outlineDots: $("#outlineDots"),
@@ -487,14 +491,24 @@ function init() {
 }
 
 function bindEvents() {
-  elements.newNoteButton.addEventListener("click", () => createNote("txt"));
+  elements.newNoteButton.addEventListener("click", () => openNewNoteDialog());
   elements.sidebarToggleButton.addEventListener("click", toggleSidebar);
-  elements.sidebarQuickNewButton?.addEventListener("click", () => createNote("txt"));
+  elements.sidebarQuickNewButton?.addEventListener("click", () => openNewNoteDialog());
   elements.languageToggleButton?.addEventListener("click", toggleLanguage);
   elements.searchInput.addEventListener("input", (event) => {
     state.query = event.target.value.trim().toLowerCase();
+    if (elements.searchClearButton) elements.searchClearButton.hidden = !state.query;
     renderLists();
   });
+  if (elements.searchClearButton) {
+    elements.searchClearButton.addEventListener("click", () => {
+      elements.searchInput.value = "";
+      state.query = "";
+      elements.searchClearButton.hidden = true;
+      renderLists();
+      elements.searchInput.focus();
+    });
+  }
 
   elements.filterTabs.forEach((button) => {
     button.addEventListener("click", () => {
@@ -592,9 +606,26 @@ function bindEvents() {
   });
   bindSplitter();
 
+  // New note dialog
+  if (elements.newNoteConfirmBtn) {
+    elements.newNoteConfirmBtn.addEventListener("click", () => {
+      const folder = elements.newNoteFolderSelect?.value || "收件箱";
+      const tpl = document.querySelector('#newNoteTxtBtn.active, #newNoteMDBtn.active')?.dataset?.tpl || "txt";
+      elements.newNoteDialog.close();
+      createNote(tpl, folder);
+    });
+    document.querySelectorAll('#newNoteTxtBtn, #newNoteMDBtn').forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        document.querySelectorAll('#newNoteTxtBtn, #newNoteMDBtn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  }
+
   elements.deleteButton.addEventListener("click", deleteActiveNote);
-  elements.duplicateButton.addEventListener("click", duplicateActiveNote);
-  elements.copyMarkdownButton.addEventListener("click", copyActiveContent);
+  if (elements.duplicateButton) elements.duplicateButton.addEventListener("click", duplicateActiveNote);
+  if (elements.copyMarkdownButton) elements.copyMarkdownButton.addEventListener("click", copyActiveContent);
   elements.downloadNoteButton.addEventListener("click", exportBackupJson);
   elements.exportButton.addEventListener("click", exportCurrentNote);
   elements.importButton.addEventListener("click", () => elements.importFileInput.click());
@@ -1046,16 +1077,24 @@ function showNoteContextMenu(x, y) {
   }
   // Populate move submenu
   const moveList = document.getElementById('noteMoveList');
-  if (moveList) {
+  const moveTrigger = document.querySelector('.move-trigger');
+  if (moveList && moveTrigger) {
     const folders = getFolderNames().filter(f => note && f !== note.folder);
     moveList.innerHTML = folders.length
-      ? folders.map(f => `<button class="context-menu-item" data-action="move-to" data-folder="${escapeAttribute(f)}" type="button">${escapeHtml(f)}</button>`).join("")
+      ? folders.map(f => `<button class="context-menu-item" data-action="move-to" data-folder="${escapeAttribute(f)}" type="button">📁 ${escapeHtml(f)}</button>`).join("")
       : '<span style="padding:6px 12px;color:var(--muted);font-size:12px;">无其他文件夹</span>';
+    // Click trigger to toggle submenu
+    moveTrigger.onclick = (e) => {
+      e.stopPropagation();
+      moveList.classList.toggle('open');
+    };
     moveList.querySelectorAll('[data-action="move-to"]').forEach(btn => {
-      btn.addEventListener("click", () => {
-        const targetFolder = btn.dataset.folder;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const tf = btn.dataset.folder;
+        moveList.classList.remove('open');
         hideNoteContextMenu();
-        moveNoteToFolder(state.contextMenuNoteId, targetFolder);
+        moveNoteToFolder(state.contextMenuNoteId, tf);
       });
     });
   }
@@ -1246,18 +1285,20 @@ function renderSyncMeta() {
     : t("local");
 }
 
-function createNote(templateName) {
-  const note = createNoteObject(templateName);
+function openNewNoteDialog() {
+  if (!elements.newNoteFolderSelect || !elements.newNoteDialog) return;
   const folders = getFolderNames();
-  if (folders.length > 0) {
-    const defaultFolder = (state.selectedFolder && state.selectedFolder !== "所有笔记") ? state.selectedFolder : "收件箱";
-    const folderList = folders.map((f, i) => `${i + 1}. ${f}`).join("\n");
-    const choice = window.prompt(`选择文件夹（输入序号，默认 ${defaultFolder}）：\n\n${folderList}`, folders.indexOf(defaultFolder) >= 0 ? String(folders.indexOf(defaultFolder) + 1) : "1");
-    if (choice) {
-      const idx = parseInt(choice) - 1;
-      if (idx >= 0 && idx < folders.length) note.folder = folders[idx];
-    }
-  }
+  const defaultFolder = (state.selectedFolder && state.selectedFolder !== "所有笔记") ? state.selectedFolder : "收件箱";
+  elements.newNoteFolderSelect.innerHTML = folders.length
+    ? folders.map(f => `<option value="${escapeAttribute(f)}" ${f === defaultFolder ? "selected" : ""}>${escapeHtml(f)}</option>`).join("")
+    : `<option value="收件箱">收件箱</option>`;
+  elements.newNoteDialog.showModal();
+}
+
+function createNote(templateName, folder) {
+  const note = createNoteObject(templateName);
+  if (folder) note.folder = folder;
+  else if (state.selectedFolder && state.selectedFolder !== "所有笔记") note.folder = state.selectedFolder;
   state.notes.unshift(note);
   state.activeId = note.id;
   persistAndRender("已创建笔记");
@@ -1266,13 +1307,7 @@ function createNote(templateName) {
 }
 
 function createNoteInFolder(folder) {
-  const note = createNoteObject("txt");
-  note.folder = folder;
-  state.notes.unshift(note);
-  state.activeId = note.id;
-  persistAndRender(`已在「${folder}」创建笔记`);
-  elements.titleInput.focus();
-  elements.titleInput.select();
+  createNote("txt", folder);
 }
 
 function createNoteObject(templateName) {
