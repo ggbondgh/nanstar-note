@@ -57,27 +57,17 @@ body.sidebar-collapsed .brand div,
 body.sidebar-collapsed .search-box,
 body.sidebar-collapsed .filter-list,
 body.sidebar-collapsed .nav-section,
-body.sidebar-collapsed .note-list-panel,
-body.sidebar-collapsed .sidebar-actions { display: none; }
+body.sidebar-collapsed .note-list-panel { display: none; }
+body.sidebar-collapsed .sidebar-actions { gap: 0; }
+body.sidebar-collapsed .sidebar-actions > :not(#sidebarToggleButton) { display: none; }
 body.sidebar-collapsed .brand { justify-content: center; }
+body.sidebar-collapsed .sidebar-actions { justify-content: center; }
 body.sidebar-collapsed .toggle-icon { transform: rotate(180deg); }
 
-.sidebar-toggle-button {
-  display: inline-grid;
-  place-items: center;
-  width: 38px; min-width: 38px; height: 38px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(255,255,255,0.92);
-  cursor: pointer;
+#sidebarToggleButton {
+  display: inline-grid; place-items: center;
+  min-width: 38px; width: 38px; height: 38px;
   font-size: 14px;
-  color: var(--muted);
-  transition: transform 180ms ease, border-color 150ms ease, background 150ms ease;
-  align-self: center;
-}
-.sidebar-toggle-button:hover { border-color: var(--line-strong); background: #fff; }
-body.sidebar-collapsed .sidebar-toggle-button {
-  min-width: 36px; width: 36px;
 }
 body.is-dragging-split, body.is-dragging-split * { cursor: col-resize !important; user-select: none; }
 
