@@ -376,7 +376,7 @@ const state = {
   activeId: null,
   selectedFolder: "",
   query: "",
-  sortBy: localStorage.getItem("nanstar-note-sort") || "updated",
+  viewFilter: localStorage.getItem("nanstar-note-view") || "all",
   language: localStorage.getItem(storageKeys.language) === "en" ? "en" : "zh",
   previewFocus: false,
   editorSearch: {
@@ -410,12 +410,11 @@ const elements = {
   languageToggleButton: $("#languageToggleButton"),
   folderSection: $("#folderSection"),
   folderList: $("#folderList"),
-  clearFolderButton: $("#clearFolderButton"),
   folderAddButton: $("#folderAddButton"),
   folderContextMenu: $("#folderContextMenu"),
   noteContextMenu: $("#noteContextMenu"),
   folderDatalist: $("#folderDatalist"),
-  sortButtons: $$(".sort-button"),
+  filterTabs: $$(".filter-tab"),
   floatingOutline: $("#floatingOutline"),
   outlinePanel: $("#outlinePanel"),
   outlineDots: $("#outlineDots"),
@@ -426,8 +425,6 @@ const elements = {
   editorSection: $("#editorSection"),
   editorSectionState: $("#editorSectionState"),
   titleInput: $("#titleInput"),
-  pinButton: $("#pinButton"),
-  favoriteButton: $("#favoriteButton"),
   modeButtons: $$(".mode-button"),
   folderInput: $("#folderInput"),
   editorFindBar: $("#editorFindBar"),
@@ -499,10 +496,11 @@ function bindEvents() {
     renderLists();
   });
 
-  elements.sortButtons.forEach((button) => {
+  elements.filterTabs.forEach((button) => {
     button.addEventListener("click", () => {
-      state.sortBy = button.dataset.sort || "updated";
-      localStorage.setItem("nanstar-note-sort", state.sortBy);
+      state.viewFilter = button.dataset.filter || "all";
+      localStorage.setItem("nanstar-note-view", state.viewFilter);
+      renderFilterState();
       renderLists();
     });
   });
@@ -512,11 +510,6 @@ function bindEvents() {
       $$(".quick-chip").forEach((item) => item.classList.toggle("active", item === button));
       createNote(button.dataset.template || "txt");
     });
-  });
-
-  elements.clearFolderButton.addEventListener("click", () => {
-    state.selectedFolder = "";
-    renderLists();
   });
 
   if (elements.folderAddButton) elements.folderAddButton.addEventListener("click", createFolder);
@@ -581,8 +574,8 @@ function bindEvents() {
   elements.editorSearchNextButton.addEventListener("click", () => moveEditorSearch(1));
   elements.editorSearchCloseButton.addEventListener("click", closeEditorSearch);
 
-  elements.pinButton.addEventListener("click", togglePinned);
-  elements.favoriteButton.addEventListener("click", toggleFavorite);
+  if (elements.pinButton) elements.pinButton.addEventListener("click", togglePinned);
+  if (elements.favoriteButton) elements.favoriteButton.addEventListener("click", toggleFavorite);
 
   elements.modeButtons.forEach((button) => {
     button.addEventListener("click", () => changeMode(button.dataset.mode));
@@ -801,14 +794,16 @@ function renderEditor() {
   elements.folderInput.value = note.folder;
   elements.bodyInput.value = note.body;
 
-  elements.pinButton.classList.toggle("active", note.pinned);
-  if (elements.pinButton) elements.pinButton.textContent = "📌 置顶";
-  elements.pinButton.title = note.pinned ? "取消置顶" : "置顶";
-  elements.pinButton.setAttribute("aria-pressed", String(note.pinned));
-  if (elements.favoriteButton) elements.favoriteButton.textContent = "星标";
-  elements.favoriteButton.title = note.favorite ? "取消星标" : "星标";
-  elements.favoriteButton.classList.toggle("active", note.favorite);
-  elements.favoriteButton.setAttribute("aria-pressed", String(note.favorite));
+  if (elements.pinButton) {
+    elements.pinButton.classList.toggle("active", note.pinned);
+    elements.pinButton.textContent = note.pinned ? "📌 已置顶" : "📌 置顶";
+    elements.pinButton.title = note.pinned ? "取消置顶" : "置顶";
+  }
+  if (elements.favoriteButton) {
+    elements.favoriteButton.classList.toggle("active", note.favorite);
+    elements.favoriteButton.textContent = note.favorite ? "★ 已收藏" : "★ 收藏";
+    elements.favoriteButton.title = note.favorite ? "取消星标" : "星标";
+  }
 
   elements.modeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === note.mode);
@@ -1119,28 +1114,29 @@ function renderLists() {
 }
 
 function renderFilterState() {
-  // No-op: filter bar removed
+  elements.filterTabs.forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.filter === state.viewFilter);
+  });
 }
 
 function renderCounts() {
   if (elements.listStatus) elements.listStatus.textContent = `${state.notes.length} ${t("items")}`;
-  elements.sortButtons.forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.sort === state.sortBy);
-  });
 }
 
 function sortedNotes() {
   return state.notes
     .filter((note) => {
+      if (state.viewFilter === "favorite" && !note.favorite) return false;
       if (state.selectedFolder && note.folder !== state.selectedFolder) return false;
       if (!state.query) return true;
       const haystack = `${note.title}\n${note.folder}\n${note.body}`.toLowerCase();
       return haystack.includes(state.query);
     })
     .sort((a, b) => {
-      if (state.sortBy === "title") return a.title.localeCompare(b.title, "zh-CN");
-      if (state.sortBy === "created") return b.createdAt - a.createdAt;
-      return b.updatedAt - a.updatedAt; // default: updated
+      // Pinned always first
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return b.updatedAt - a.updatedAt;
     });
 }
 
@@ -1252,8 +1248,15 @@ function renderSyncMeta() {
 
 function createNote(templateName) {
   const note = createNoteObject(templateName);
-  if (state.selectedFolder && state.selectedFolder !== "所有笔记") {
-    note.folder = state.selectedFolder;
+  const folders = getFolderNames();
+  if (folders.length > 0) {
+    const defaultFolder = (state.selectedFolder && state.selectedFolder !== "所有笔记") ? state.selectedFolder : "收件箱";
+    const folderList = folders.map((f, i) => `${i + 1}. ${f}`).join("\n");
+    const choice = window.prompt(`选择文件夹（输入序号，默认 ${defaultFolder}）：\n\n${folderList}`, folders.indexOf(defaultFolder) >= 0 ? String(folders.indexOf(defaultFolder) + 1) : "1");
+    if (choice) {
+      const idx = parseInt(choice) - 1;
+      if (idx >= 0 && idx < folders.length) note.folder = folders[idx];
+    }
   }
   state.notes.unshift(note);
   state.activeId = note.id;
@@ -1658,7 +1661,6 @@ function applyLanguage(language, initial = false) {
   if (elements.copyMarkdownButton) elements.copyMarkdownButton.textContent = t("copyCurrent");
   if (elements.downloadNoteButton) elements.downloadNoteButton.textContent = t("backupAll");
   if (elements.duplicateButton) elements.duplicateButton.textContent = t("duplicate");
-  if (elements.clearFolderButton) elements.clearFolderButton.textContent = t("clearAll");
   if (elements.listStatus) elements.listStatus.textContent = `${sortedNotes().length} ${t("items")}`;
   const folderTitle = document.getElementById("folderSectionTitle");
   if (folderTitle) folderTitle.textContent = t("files");

@@ -48,23 +48,19 @@
         <details class="nav-section" id="folderSection">
           <summary class="panel-summary">
             <span id="folderSectionTitle">文件夹</span>
-            <div class="folder-summary-actions">
-              <button class="icon-button folder-add-button" id="folderAddButton" type="button"
-                      title="新建文件夹" aria-label="新建文件夹">+</button>
-              <button class="text-button" id="clearFolderButton" type="button">全部</button>
-            </div>
+            <button class="icon-button folder-add-button" id="folderAddButton" type="button"
+                    title="新建文件夹" aria-label="新建文件夹">+</button>
           </summary>
           <div class="folder-list" id="folderList"></div>
         </details>
 
         <section class="note-list-panel" aria-labelledby="noteListTitle">
           <div class="note-list-header">
-            <span class="note-list-count" id="listStatus">0 条</span>
-            <div class="note-list-sort">
-              <button class="sort-button active" data-sort="updated" type="button">最近</button>
-              <button class="sort-button" data-sort="title" type="button">标题</button>
-              <button class="sort-button" data-sort="created" type="button">创建</button>
+            <div class="note-list-tabs">
+              <button class="filter-tab active" data-filter="all" type="button">全部</button>
+              <button class="filter-tab" data-filter="favorite" type="button">★ 收藏</button>
             </div>
+            <span class="note-list-count" id="listStatus">0 条</span>
           </div>
           <div class="note-list" id="noteList" aria-live="polite"></div>
         </section>
@@ -97,10 +93,6 @@
                 placeholder="写一个清晰的标题"
                 autocomplete="off"
               />
-              <div class="note-flags">
-                <button class="flag-button" id="pinButton" type="button" aria-label="置顶" title="置顶">📌 置顶</button>
-                <button class="flag-button" id="favoriteButton" type="button" aria-label="星标" title="星标">星标</button>
-              </div>
             </div>
 
             <details class="editor-section" id="editorSection">
