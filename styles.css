@@ -154,8 +154,8 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   border-radius: var(--radius);
   overflow: hidden;
 }
-.nav-section[open] { border-color: var(--line); background: rgba(255,255,255,0.5); }
-.nav-section > * + * { padding: 0 0 10px; }
+.nav-section[open] { background: rgba(255,255,255,0.5); }
+.nav-section > * + * { padding: 0 0 8px; }
 .panel-summary {
   justify-content: space-between; gap: 10px; min-height: 30px; padding: 0 8px;
   list-style: none; cursor: pointer; user-select: none; font-size: 12px; font-weight: 700; color: var(--soft);
@@ -279,6 +279,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .pane-head {
   justify-content: space-between; gap: 10px; min-height: 40px; padding: 0 14px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.72);
 }
+#modeHint { display: none; }
 .pane-head h3 { color: var(--soft); font-size: 13px; }
 .pane-actions { gap: 8px; color: var(--muted); font-size: 12px; }
 .pane-actions .icon-button { width: 32px; min-width: 32px; height: 32px; }
