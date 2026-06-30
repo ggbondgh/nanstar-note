@@ -42,6 +42,19 @@
           <input id="searchInput" type="search" placeholder="搜索标题、正文、文件夹" autocomplete="off" />
         </label>
 
+        <!-- 文件夹：放在筛选栏上方 -->
+        <details class="nav-section" id="folderSection" open>
+          <summary class="panel-summary">
+            <span id="folderSectionTitle">文件夹</span>
+            <div class="folder-summary-actions">
+              <button class="icon-button folder-add-button" id="folderAddButton" type="button"
+                      title="新建文件夹" aria-label="新建文件夹">+</button>
+              <button class="text-button" id="clearFolderButton" type="button">全部</button>
+            </div>
+          </summary>
+          <div class="folder-list" id="folderList"></div>
+        </details>
+
         <nav class="filter-list" aria-label="笔记筛选">
           <button class="filter-item active" type="button" data-filter="all">
             <span>全部笔记</span>
@@ -60,22 +73,6 @@
             <strong id="recentCount">0</strong>
           </button>
         </nav>
-
-        <details class="nav-section">
-          <summary class="panel-summary">
-            <span id="folderSectionTitle">文件夹</span>
-            <button class="text-button" id="clearFolderButton" type="button">全部</button>
-          </summary>
-          <div class="folder-list" id="folderList"></div>
-        </details>
-
-        <details class="nav-section">
-          <summary class="panel-summary">
-            <span id="outlineSectionTitle">目录</span>
-            <span id="outlineStatus">MD</span>
-          </summary>
-          <div class="outline-list" id="outlineList"></div>
-        </details>
 
         <section class="note-list-panel" aria-labelledby="noteListTitle">
           <div class="panel-title">
@@ -136,7 +133,10 @@
                     <button class="mode-button active" type="button" data-mode="txt">TXT</button>
                     <button class="mode-button" type="button" data-mode="md">MD</button>
                   </div>
-                  <input id="folderInput" class="folder-input" type="text" placeholder="文件夹，例如：WK / 客户现场" />
+                  <input id="folderInput" class="folder-input" type="text"
+                         placeholder="文件夹，例如：WK / 客户现场"
+                         list="folderDatalist" autocomplete="off" />
+                  <datalist id="folderDatalist"></datalist>
                 </div>
 
                 <div class="find-bar" id="editorFindBar" hidden>
@@ -205,6 +205,19 @@
               </div>
               <div class="preview-content" id="previewContent"></div>
             </section>
+
+            <!-- 浮动大纲面板 -->
+            <aside class="floating-outline" id="floatingOutline" aria-label="文档目录" hidden>
+              <div class="outline-rail" id="outlineRail" title="文档目录">
+                <div class="outline-dots" id="outlineDots"></div>
+              </div>
+              <div class="outline-panel" id="outlinePanel">
+                <div class="outline-panel-head">
+                  <span>目录</span>
+                </div>
+                <div class="outline-panel-body" id="outlinePanelBody"></div>
+              </div>
+            </aside>
           </div>
         </article>
 
@@ -219,6 +232,12 @@
           </div>
         </details>
       </main>
+    </div>
+
+    <!-- 文件夹右键菜单 -->
+    <div class="context-menu" id="folderContextMenu" hidden>
+      <button class="context-menu-item" data-action="rename" type="button">重命名</button>
+      <button class="context-menu-item danger" data-action="delete" type="button">删除</button>
     </div>
 
     <dialog class="modal" id="syncDialog">

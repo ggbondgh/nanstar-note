@@ -73,7 +73,17 @@ const i18n = {
     editorSearchLabel: "查找",
     modeTxt: "TXT",
     modeMd: "MD",
-    items: "条"
+    items: "条",
+    inbox: "收件箱",
+    newFolder: "新建文件夹",
+    renameFolder: "重命名文件夹",
+    deleteFolder: "删除",
+    folderNamePrompt: "输入文件夹名称",
+    folderRenamePrompt: "输入新名称",
+    confirmDeleteFolder: "确定要删除文件夹「{name}」吗？其中的笔记将移回收件箱。",
+    folderExists: "文件夹已存在",
+    outlineTitle: "目录",
+    outlineEmpty: "暂无标题",
   },
   en: {
     workspaceTitle: "Content Desk",
@@ -138,7 +148,17 @@ const i18n = {
     editorSearchLabel: "Find",
     modeTxt: "TXT",
     modeMd: "MD",
-    items: "items"
+    items: "items",
+    inbox: "Inbox",
+    newFolder: "New Folder",
+    renameFolder: "Rename Folder",
+    deleteFolder: "Delete",
+    folderNamePrompt: "Enter folder name",
+    folderRenamePrompt: "Enter new name",
+    confirmDeleteFolder: 'Delete folder "{name}"? Notes will move to Inbox.',
+    folderExists: "Folder already exists",
+    outlineTitle: "Outline",
+    outlineEmpty: "No headings",
   }
 };
 
@@ -146,7 +166,7 @@ const templates = {
   txt: {
     title: "未命名 TXT",
     mode: "txt",
-    folder: "Inbox",
+    folder: "收件箱",
     body: ""
   },
   md: {
@@ -369,7 +389,8 @@ const state = {
   sidebarCollapsed: localStorage.getItem(storageKeys.sidebarCollapsed) === "1",
   saveTimer: null,
   autoSyncTimer: null,
-  syncInFlight: false
+  syncInFlight: false,
+  contextMenuFolder: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -387,10 +408,16 @@ const elements = {
   searchInput: $("#searchInput"),
   languageToggleButton: $("#languageToggleButton"),
   filterItems: $$(".filter-item"),
+  folderSection: $("#folderSection"),
   folderList: $("#folderList"),
   clearFolderButton: $("#clearFolderButton"),
-  outlineList: $("#outlineList"),
-  outlineStatus: $("#outlineStatus"),
+  folderAddButton: $("#folderAddButton"),
+  folderContextMenu: $("#folderContextMenu"),
+  folderDatalist: $("#folderDatalist"),
+  floatingOutline: $("#floatingOutline"),
+  outlinePanel: $("#outlinePanel"),
+  outlineDots: $("#outlineDots"),
+  outlinePanelBody: $("#outlinePanelBody"),
   noteList: $("#noteList"),
   listStatus: $("#listStatus"),
   allCount: $("#allCount"),
@@ -494,6 +521,27 @@ function bindEvents() {
     renderLists();
   });
 
+  elements.folderAddButton.addEventListener("click", createFolder);
+  elements.folderSection.addEventListener("toggle", () => {
+    if (elements.folderSection.open) renderFolderDatalist();
+  });
+
+  // Folder context menu
+  elements.folderContextMenu.querySelectorAll(".context-menu-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const action = item.dataset.action;
+      const folder = state.contextMenuFolder;
+      hideFolderContextMenu();
+      if (!folder) return;
+      if (action === "rename") renameFolder(folder);
+      else if (action === "delete") deleteFolder(folder);
+    });
+  });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("#folderContextMenu")) hideFolderContextMenu();
+  });
+  window.addEventListener("scroll", hideFolderContextMenu, { capture: true });
+
   document.querySelectorAll(".nav-section").forEach((section) => {
     section.open = false;
   });
@@ -550,6 +598,14 @@ function bindEvents() {
   });
   elements.bodyInput.addEventListener("scroll", syncPreviewScroll);
   elements.previewContent.addEventListener("scroll", syncEditorScroll);
+
+  // Floating outline scroll tracking
+  elements.previewContent.addEventListener("scroll", updateOutlineActiveHeading);
+  elements.bodyInput.addEventListener("scroll", updateOutlineActiveHeading);
+  elements.outlineRail.addEventListener("click", (event) => {
+    if (event.target.closest(".outline-dot")) return;
+    elements.floatingOutline.classList.toggle("expanded");
+  });
 
   [elements.syncButton, elements.topSyncButton].forEach((button) => {
     button.addEventListener("click", () => {
@@ -627,7 +683,7 @@ function normalizeNote(note) {
     id: note.id || createId(),
     title: note.title || "未命名笔记",
     mode: normalizeMode(note.mode, body),
-    folder: String(note.folder || "Inbox").trim() || "Inbox",
+    folder: String(note.folder || "收件箱").trim() || "收件箱",
     body,
     pinned: Boolean(note.pinned),
     favorite: Boolean(note.favorite),
@@ -678,14 +734,15 @@ function updateActiveFromInputs() {
   const note = activeNote();
   if (!note) return;
   note.title = elements.titleInput.value.trimStart() || "未命名笔记";
-  note.folder = elements.folderInput.value.trim() || "Inbox";
+  note.folder = elements.folderInput.value.trim() || "收件箱";
   note.body = elements.bodyInput.value;
   note.updatedAt = Date.now();
 
   scheduleSave();
   updateLineNumbers();
   renderPreview();
-  renderOutline();
+  renderFloatingOutline();
+  renderFolderDatalist();
   renderLists();
   renderSyncMeta();
   syncEditorSearchState();
@@ -708,8 +765,9 @@ function renderAll() {
   renderFilterState();
   renderEditor();
   renderPreview();
-  renderOutline();
+  renderFloatingOutline();
   renderLists();
+  renderFolderDatalist();
   renderSyncMeta();
 }
 
@@ -757,7 +815,6 @@ function renderModeState() {
   document.body.classList.toggle("preview-focus-mode", focused);
 
   elements.modeHint.textContent = isMarkdown ? t("markdownMode") : t("txtMode");
-  elements.outlineStatus.textContent = isMarkdown ? t("modeMd") : t("modeTxt");
   elements.togglePreviewButton.textContent = previewVisible && !focused ? t("hidePreview") : t("showPreview");
   elements.togglePreviewButton.classList.toggle("active", previewVisible && !focused);
   elements.togglePreviewButton.disabled = !isMarkdown;
@@ -789,32 +846,168 @@ function renderPreview() {
   }
 
   elements.previewContent.innerHTML = renderMarkdown(body);
+  if (note && note.mode === "md") {
+    window.setTimeout(updateOutlineActiveHeading, 100);
+  }
 }
 
-function renderOutline() {
+function renderFloatingOutline() {
   const note = activeNote();
   if (!note || note.mode !== "md") {
-    elements.outlineList.innerHTML = `<div class="empty-state compact">${t("txtOutlineEmpty")}</div>`;
+    elements.floatingOutline.hidden = true;
     return;
   }
 
   const headings = extractHeadings(note.body);
-  if (!headings.length) {
-    elements.outlineList.innerHTML = `<div class="empty-state compact">${t("noHeadings")}</div>`;
-    return;
+  elements.floatingOutline.hidden = false;
+
+  if (headings.length) {
+    elements.outlineDots.innerHTML = headings
+      .map(h => `<span class="outline-dot level-${h.level}" data-line="${h.line}" data-target="${h.id}" title="${escapeAttribute(h.text)}"></span>`)
+      .join("");
+  } else {
+    elements.outlineDots.innerHTML = '<span class="outline-dot" style="opacity:0.3"></span>';
   }
 
-  elements.outlineList.innerHTML = headings
-    .map((heading) => `
-      <button class="outline-item level-${heading.level}" type="button" data-line="${heading.line}" data-target="${heading.id}">
-        ${escapeHtml(heading.text)}
-      </button>
-    `)
-    .join("");
+  if (headings.length) {
+    elements.outlinePanelBody.innerHTML = headings
+      .map(h => `
+        <button class="outline-heading-item level-${h.level}" type="button"
+                data-line="${h.line}" data-target="${h.id}">
+          ${escapeHtml(h.text)}
+        </button>
+      `)
+      .join("");
+  } else {
+    elements.outlinePanelBody.innerHTML = `<div class="empty-state compact" style="margin:8px;">${t("outlineEmpty")}</div>`;
+  }
 
-  elements.outlineList.querySelectorAll(".outline-item").forEach((button) => {
-    button.addEventListener("click", () => jumpToLine(Number(button.dataset.line || 0), button.dataset.target));
+  elements.outlineDots.querySelectorAll(".outline-dot").forEach(dot => {
+    dot.addEventListener("click", () => jumpToLine(Number(dot.dataset.line || 0), dot.dataset.target));
   });
+  elements.outlinePanelBody.querySelectorAll(".outline-heading-item").forEach(btn => {
+    btn.addEventListener("click", () => jumpToLine(Number(btn.dataset.line || 0), btn.dataset.target));
+  });
+
+  updateOutlineActiveHeading();
+}
+
+function updateOutlineActiveHeading() {
+  const note = activeNote();
+  if (!note || note.mode !== "md" || elements.floatingOutline.hidden) return;
+
+  const headings = extractHeadings(note.body);
+  if (!headings.length) return;
+
+  let activeIdx = -1;
+  for (let i = headings.length - 1; i >= 0; i--) {
+    const el = document.getElementById(headings[i].id);
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight * 0.35) {
+        activeIdx = i;
+        break;
+      }
+    }
+  }
+  if (activeIdx < 0) activeIdx = 0;
+
+  setActiveOutlineHeading(activeIdx);
+}
+
+function setActiveOutlineHeading(idx) {
+  elements.outlineDots.querySelectorAll(".outline-dot").forEach((dot, i) => {
+    dot.classList.toggle("active", i === idx);
+  });
+  elements.outlinePanelBody.querySelectorAll(".outline-heading-item").forEach((item, i) => {
+    item.classList.toggle("active", i === idx);
+  });
+  const activeItem = elements.outlinePanelBody.querySelector(".outline-heading-item.active");
+  if (activeItem) {
+    activeItem.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+}
+
+/* ---- Folder Management ---- */
+
+function getFolderNames() {
+  const names = new Set(state.notes.map(n => n.folder));
+  return [...names].sort((a, b) => a.localeCompare(b, "zh-CN"));
+}
+
+function renderFolderDatalist() {
+  elements.folderDatalist.innerHTML = getFolderNames()
+    .map(name => `<option value="${escapeAttribute(name)}"></option>`)
+    .join("");
+}
+
+function createFolder() {
+  let name = (window.prompt(t("folderNamePrompt"), "") || "").trim();
+  if (!name) return;
+  if (getFolderNames().includes(name)) {
+    showToast(t("folderExists"));
+    return;
+  }
+  state.selectedFolder = name;
+  renderLists();
+  renderFolderDatalist();
+  showToast(`已创建文件夹「${name}」`);
+}
+
+function renameFolder(oldName) {
+  const newName = (window.prompt(t("folderRenamePrompt"), oldName) || "").trim();
+  if (!newName || newName === oldName) return;
+  const otherNames = getFolderNames().filter(n => n !== oldName);
+  if (otherNames.includes(newName)) {
+    showToast(t("folderExists"));
+    return;
+  }
+  state.notes.forEach(note => {
+    if (note.folder === oldName) note.folder = newName;
+  });
+  if (state.selectedFolder === oldName) state.selectedFolder = newName;
+  saveNotes();
+  renderLists();
+  renderFolderDatalist();
+  renderEditor();
+  showToast(`已重命名为「${newName}」`);
+}
+
+function deleteFolder(name) {
+  if (name === "收件箱") {
+    showToast("收件箱是默认文件夹，不能删除。");
+    return;
+  }
+  const confirmed = window.confirm(
+    t("confirmDeleteFolder").replace("{name}", name)
+  );
+  if (!confirmed) return;
+  state.notes.forEach(note => {
+    if (note.folder === name) note.folder = "收件箱";
+  });
+  if (state.selectedFolder === name) state.selectedFolder = "";
+  saveNotes();
+  renderAll();
+  renderFolderDatalist();
+  showToast(`已删除文件夹「${name}」`);
+}
+
+function showFolderContextMenu(x, y) {
+  const menu = elements.folderContextMenu;
+  menu.hidden = false;
+  menu.style.left = `${Math.min(x, window.innerWidth - 160)}px`;
+  menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`;
+  const deleteBtn = menu.querySelector('[data-action="delete"]');
+  if (deleteBtn) {
+    const isInbox = state.contextMenuFolder === "收件箱";
+    deleteBtn.disabled = isInbox;
+    deleteBtn.style.opacity = isInbox ? "0.4" : "1";
+  }
+}
+
+function hideFolderContextMenu() {
+  elements.folderContextMenu.hidden = true;
+  state.contextMenuFolder = null;
 }
 
 function renderLists() {
@@ -843,7 +1036,16 @@ function renderFolders() {
     counts.set(note.folder, (counts.get(note.folder) || 0) + 1);
   });
 
-  const folders = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN"));
+  // Ensure inbox always appears
+  if (!counts.has("收件箱")) counts.set("收件箱", 0);
+
+  const folders = [...counts.entries()]
+    .sort((a, b) => {
+      if (a[0] === "收件箱") return -1;
+      if (b[0] === "收件箱") return 1;
+      return b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN");
+    });
+
   elements.folderList.innerHTML = folders.length
     ? folders
       .map(([folder, count]) => `
@@ -859,6 +1061,11 @@ function renderFolders() {
     button.addEventListener("click", () => {
       state.selectedFolder = button.dataset.folder || "";
       renderLists();
+    });
+    button.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      state.contextMenuFolder = button.dataset.folder || "";
+      showFolderContextMenu(event.clientX, event.clientY);
     });
   });
 }
@@ -1331,8 +1538,8 @@ function applyLanguage(language, initial = false) {
   if (elements.listStatus) elements.listStatus.textContent = `${filteredNotes().length} ${t("items")}`;
   const folderTitle = document.getElementById("folderSectionTitle");
   if (folderTitle) folderTitle.textContent = t("files");
-  const outlineTitle = document.getElementById("outlineSectionTitle");
-  if (outlineTitle) outlineTitle.textContent = t("outline");
+  const outlineHead = elements.outlinePanel?.querySelector(".outline-panel-head span");
+  if (outlineHead) outlineHead.textContent = t("outlineTitle");
   const editorToolsTitle = document.getElementById("editorToolsTitle");
   if (editorToolsTitle) editorToolsTitle.textContent = t("editorTools");
   const utilityDrawerTitle = document.getElementById("utilityDrawerTitle");
