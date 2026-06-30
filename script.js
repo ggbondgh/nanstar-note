@@ -1925,19 +1925,24 @@ function updateLineNumbers() {
     if (states[index]?.searchHit) classes.push("search-hit");
     return `<div class="${classes.join(" ")}" data-line="${lineNumber}">${lineNumber}</div>`;
   }).join("");
-  syncLineNumberScroll();
+  elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
   renderEditorSearchCount();
 }
 
-let _scrollSyncPending = false;
 function syncLineNumberScroll() {
-  if (_scrollSyncPending) return;
-  _scrollSyncPending = true;
-  requestAnimationFrame(() => {
-    elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
-    updateCurrentLineIndicator();
-    _scrollSyncPending = false;
-  });
+  elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
+  // Keep highlight visible at top of viewport during scroll
+  const lineHeight = 24;
+  const paddingTop = 14;
+  const lineNum = Math.max(1, Math.floor(elements.bodyInput.scrollTop / lineHeight) + 1);
+  if (state.currentLine !== lineNum) {
+    state.currentLine = lineNum;
+    updateLineNumberStyles();
+  }
+  const offset = Math.max(0, paddingTop + (lineNum - 1) * lineHeight - elements.bodyInput.scrollTop);
+  elements.editorLineHighlight.style.transform = `translateY(${offset}px)`;
+  elements.editorLineHighlight.style.height = `${lineHeight}px`;
+  elements.editorLineHighlight.style.display = "block";
 }
 
 function syncScrollState() {
