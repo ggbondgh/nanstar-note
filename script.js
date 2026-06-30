@@ -534,6 +534,7 @@ function bindEvents() {
         if (!folder) return;
         if (action === "rename") renameFolder(folder);
         else if (action === "delete") deleteFolder(folder);
+        else if (action === "new-note") createNoteInFolder(folder);
       });
     });
   }
@@ -1040,7 +1041,7 @@ function showNoteContextMenu(x, y) {
   if (!menu) return;
   menu.hidden = false;
   menu.style.left = `${Math.min(x, window.innerWidth - 170)}px`;
-  menu.style.top = `${Math.min(y, window.innerHeight - 200)}px`;
+  menu.style.top = `${Math.min(y, window.innerHeight - 260)}px`;
   const note = state.notes.find(n => n.id === state.contextMenuNoteId);
   if (note) {
     const pinItem = menu.querySelector('[data-action="pin"]');
@@ -1048,12 +1049,35 @@ function showNoteContextMenu(x, y) {
     const favItem = menu.querySelector('[data-action="favorite"]');
     if (favItem) favItem.textContent = note.favorite ? '★ 取消星标' : '★ 星标';
   }
+  // Populate move submenu
+  const moveList = document.getElementById('noteMoveList');
+  if (moveList) {
+    const folders = getFolderNames().filter(f => note && f !== note.folder);
+    moveList.innerHTML = folders.length
+      ? folders.map(f => `<button class="context-menu-item" data-action="move-to" data-folder="${escapeAttribute(f)}" type="button">${escapeHtml(f)}</button>`).join("")
+      : '<span style="padding:6px 12px;color:var(--muted);font-size:12px;">无其他文件夹</span>';
+    moveList.querySelectorAll('[data-action="move-to"]').forEach(btn => {
+      btn.addEventListener("click", () => {
+        const targetFolder = btn.dataset.folder;
+        hideNoteContextMenu();
+        moveNoteToFolder(state.contextMenuNoteId, targetFolder);
+      });
+    });
+  }
 }
 
 function hideNoteContextMenu() {
   if (!elements.noteContextMenu) return;
   elements.noteContextMenu.hidden = true;
   state.contextMenuNoteId = null;
+}
+
+function moveNoteToFolder(noteId, targetFolder) {
+  const note = state.notes.find(n => n.id === noteId);
+  if (!note || note.folder === targetFolder) return;
+  note.folder = targetFolder;
+  note.updatedAt = Date.now();
+  persistAndRender(`已移至「${targetFolder}」`);
 }
 
 function duplicateNoteById(id) {
@@ -1126,35 +1150,44 @@ function renderFolders() {
     counts.set(note.folder, (counts.get(note.folder) || 0) + 1);
   });
 
-  // Ensure inbox always appears
-  if (!counts.has("收件箱")) counts.set("收件箱", 0);
+  // 所有笔记 always first
+  const allTotal = state.notes.length;
+  let html = `<button class="folder-item ${!state.selectedFolder || state.selectedFolder === "所有笔记" ? "active" : ""}" type="button" data-folder="所有笔记">
+    <span>📋 所有笔记</span>
+    <strong>${allTotal}</strong>
+  </button>`;
 
-  const folders = [...counts.entries()]
+  // Other folders: sort by count desc, hide empty ones (but always show 收件箱)
+  const others = [...counts.entries()]
+    .filter(([name, count]) => count > 0 || name === "收件箱")
     .sort((a, b) => {
       if (a[0] === "收件箱") return -1;
       if (b[0] === "收件箱") return 1;
       return b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN");
     });
 
-  elements.folderList.innerHTML = folders.length
-    ? folders
-      .map(([folder, count]) => `
-        <button class="folder-item ${folder === state.selectedFolder ? "active" : ""}" type="button" data-folder="${escapeAttribute(folder)}">
-          <span>${escapeHtml(folder)}</span>
-          <strong>${count}</strong>
-        </button>
-      `)
-      .join("")
-    : `<div class="empty-state compact">还没有文件夹</div>`;
+  html += others
+    .map(([folder, count]) => `
+      <button class="folder-item ${folder === state.selectedFolder ? "active" : ""}" type="button" data-folder="${escapeAttribute(folder)}">
+        <span>${escapeHtml(folder)}</span>
+        <strong>${count}</strong>
+      </button>
+    `)
+    .join("");
+
+  elements.folderList.innerHTML = html;
 
   elements.folderList.querySelectorAll(".folder-item").forEach((button) => {
     button.addEventListener("click", () => {
-      state.selectedFolder = button.dataset.folder || "";
+      const f = button.dataset.folder || "";
+      state.selectedFolder = f === "所有笔记" ? "" : f;
       renderLists();
     });
     button.addEventListener("contextmenu", (event) => {
       event.preventDefault();
-      state.contextMenuFolder = button.dataset.folder || "";
+      const f = button.dataset.folder || "";
+      if (f === "所有笔记") return; // no context menu for 所有笔记
+      state.contextMenuFolder = f;
       showFolderContextMenu(event.clientX, event.clientY);
     });
   });
@@ -1219,9 +1252,22 @@ function renderSyncMeta() {
 
 function createNote(templateName) {
   const note = createNoteObject(templateName);
+  if (state.selectedFolder && state.selectedFolder !== "所有笔记") {
+    note.folder = state.selectedFolder;
+  }
   state.notes.unshift(note);
   state.activeId = note.id;
   persistAndRender("已创建笔记");
+  elements.titleInput.focus();
+  elements.titleInput.select();
+}
+
+function createNoteInFolder(folder) {
+  const note = createNoteObject("txt");
+  note.folder = folder;
+  state.notes.unshift(note);
+  state.activeId = note.id;
+  persistAndRender(`已在「${folder}」创建笔记`);
   elements.titleInput.focus();
   elements.titleInput.select();
 }

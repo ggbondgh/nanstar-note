@@ -218,6 +218,7 @@
 
     <!-- 文件夹右键菜单 -->
     <div class="context-menu" id="folderContextMenu" hidden>
+      <button class="context-menu-item" data-action="new-note" type="button">在此新建笔记</button>
       <button class="context-menu-item" data-action="rename" type="button">重命名</button>
       <button class="context-menu-item danger" data-action="delete" type="button">删除</button>
     </div>
@@ -226,6 +227,10 @@
     <div class="context-menu" id="noteContextMenu" hidden>
       <button class="context-menu-item" data-action="pin" type="button">📌 置顶/取消置顶</button>
       <button class="context-menu-item" data-action="favorite" type="button">★ 星标/取消星标</button>
+      <div class="context-menu-sub" id="noteMoveSubmenu">
+        <button class="context-menu-item" data-action="move" type="button">移动到 ▸</button>
+        <div class="context-sub-list" id="noteMoveList" hidden></div>
+      </div>
       <button class="context-menu-item" data-action="duplicate" type="button">复制为新笔记</button>
       <button class="context-menu-item" data-action="export" type="button">导出当前</button>
       <button class="context-menu-item danger" data-action="delete" type="button">删除</button>
