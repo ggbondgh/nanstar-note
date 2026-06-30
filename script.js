@@ -374,9 +374,9 @@ vim ~/.codex/auth.json
 const state = {
   notes: [],
   activeId: null,
-  filter: "all",
   selectedFolder: "",
   query: "",
+  sortBy: localStorage.getItem("nanstar-note-sort") || "updated",
   language: localStorage.getItem(storageKeys.language) === "en" ? "en" : "zh",
   previewFocus: false,
   editorSearch: {
@@ -390,7 +390,8 @@ const state = {
   saveTimer: null,
   autoSyncTimer: null,
   syncInFlight: false,
-  contextMenuFolder: null
+  contextMenuFolder: null,
+  contextMenuNoteId: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -407,23 +408,20 @@ const elements = {
   topSyncButton: $("#topSyncButton"),
   searchInput: $("#searchInput"),
   languageToggleButton: $("#languageToggleButton"),
-  filterItems: $$(".filter-item"),
   folderSection: $("#folderSection"),
   folderList: $("#folderList"),
   clearFolderButton: $("#clearFolderButton"),
   folderAddButton: $("#folderAddButton"),
   folderContextMenu: $("#folderContextMenu"),
+  noteContextMenu: $("#noteContextMenu"),
   folderDatalist: $("#folderDatalist"),
+  sortButtons: $$(".sort-button"),
   floatingOutline: $("#floatingOutline"),
   outlinePanel: $("#outlinePanel"),
   outlineDots: $("#outlineDots"),
   outlinePanelBody: $("#outlinePanelBody"),
   noteList: $("#noteList"),
   listStatus: $("#listStatus"),
-  allCount: $("#allCount"),
-  pinnedCount: $("#pinnedCount"),
-  favoriteCount: $("#favoriteCount"),
-  recentCount: $("#recentCount"),
   editorCard: $("#editorCard"),
   editorSection: $("#editorSection"),
   editorSectionState: $("#editorSectionState"),
@@ -501,10 +499,10 @@ function bindEvents() {
     renderLists();
   });
 
-  elements.filterItems.forEach((button) => {
+  elements.sortButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      state.filter = button.dataset.filter || "all";
-      renderFilterState();
+      state.sortBy = button.dataset.sort || "updated";
+      localStorage.setItem("nanstar-note-sort", state.sortBy);
       renderLists();
     });
   });
@@ -541,8 +539,28 @@ function bindEvents() {
   }
   document.addEventListener("click", (event) => {
     if (!event.target.closest("#folderContextMenu")) hideFolderContextMenu();
+    if (!event.target.closest("#noteContextMenu")) hideNoteContextMenu();
   });
-  window.addEventListener("scroll", hideFolderContextMenu, { capture: true });
+  window.addEventListener("scroll", () => { hideFolderContextMenu(); hideNoteContextMenu(); }, { capture: true });
+
+  // Note context menu
+  if (elements.noteContextMenu) {
+    elements.noteContextMenu.querySelectorAll(".context-menu-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const action = item.dataset.action;
+        const noteId = state.contextMenuNoteId;
+        hideNoteContextMenu();
+        if (!noteId) return;
+        const note = state.notes.find(n => n.id === noteId);
+        if (!note) return;
+        if (action === "pin") { note.pinned = !note.pinned; persistAndRender(note.pinned ? "已置顶" : "已取消置顶"); }
+        else if (action === "favorite") { note.favorite = !note.favorite; persistAndRender(note.favorite ? "已加星标" : "已取消星标"); }
+        else if (action === "duplicate") duplicateNoteById(noteId);
+        else if (action === "export") exportNoteById(noteId);
+        else if (action === "delete") deleteNoteById(noteId);
+      });
+    });
+  }
 
   document.querySelectorAll(".nav-section").forEach((section) => {
     section.open = false;
@@ -783,10 +801,10 @@ function renderEditor() {
   elements.bodyInput.value = note.body;
 
   elements.pinButton.classList.toggle("active", note.pinned);
-  elements.pinButton.textContent = "📌 置顶";
+  if (elements.pinButton) elements.pinButton.textContent = "📌 置顶";
   elements.pinButton.title = note.pinned ? "取消置顶" : "置顶";
   elements.pinButton.setAttribute("aria-pressed", String(note.pinned));
-  elements.favoriteButton.textContent = "星标";
+  if (elements.favoriteButton) elements.favoriteButton.textContent = "星标";
   elements.favoriteButton.title = note.favorite ? "取消星标" : "星标";
   elements.favoriteButton.classList.toggle("active", note.favorite);
   elements.favoriteButton.setAttribute("aria-pressed", String(note.favorite));
@@ -816,7 +834,7 @@ function renderModeState() {
   document.body.dataset.noteMode = note.mode;
   document.body.classList.toggle("preview-focus-mode", focused);
 
-  elements.modeHint.textContent = isMarkdown ? t("markdownMode") : t("txtMode");
+  if (elements.modeHint) elements.modeHint.textContent = isMarkdown ? t("markdownMode") : t("txtMode");
   elements.togglePreviewButton.textContent = previewVisible && !focused ? t("hidePreview") : t("showPreview");
   elements.togglePreviewButton.classList.toggle("active", previewVisible && !focused);
   elements.togglePreviewButton.disabled = !isMarkdown;
@@ -829,7 +847,7 @@ function renderModeState() {
   elements.previewFocusButton.title = focused ? t("exitFocus") : t("focusPreview");
   elements.previewPane.hidden = !previewVisible && !focused;
   elements.editorSection.open = Boolean(note.editorSectionOpen);
-  elements.editorSectionState.textContent = isMarkdown
+  if (elements.editorSectionState) elements.editorSectionState.textContent = isMarkdown
     ? `${t("modeMd")} · ${elements.editorSection.open ? t("collapseSection") : t("expandSection")}`
     : `${t("modeTxt")} · ${elements.editorSection.open ? t("collapseSection") : t("expandSection")}`;
   elements.splitEditor.style.setProperty("--split-ratio", `${Number(localStorage.getItem(storageKeys.splitRatio)) || 58}%`);
@@ -840,7 +858,7 @@ function renderModeState() {
 function renderPreview() {
   const note = activeNote();
   const body = note?.body || "";
-  elements.wordCount.textContent = `${countWords(body)} ${t("characters")} / ${countLines(body)} ${t("lines")}`;
+  if (elements.wordCount) elements.wordCount.textContent = `${countWords(body)} ${t("characters")} / ${countLines(body)} ${t("lines")}`;
 
   if (!note || note.mode !== "md") {
     elements.previewContent.innerHTML = "";
@@ -1017,6 +1035,59 @@ function hideFolderContextMenu() {
   state.contextMenuFolder = null;
 }
 
+function showNoteContextMenu(x, y) {
+  const menu = elements.noteContextMenu;
+  if (!menu) return;
+  menu.hidden = false;
+  menu.style.left = `${Math.min(x, window.innerWidth - 170)}px`;
+  menu.style.top = `${Math.min(y, window.innerHeight - 200)}px`;
+  const note = state.notes.find(n => n.id === state.contextMenuNoteId);
+  if (note) {
+    const pinItem = menu.querySelector('[data-action="pin"]');
+    if (pinItem) pinItem.textContent = note.pinned ? '📌 取消置顶' : '📌 置顶';
+    const favItem = menu.querySelector('[data-action="favorite"]');
+    if (favItem) favItem.textContent = note.favorite ? '★ 取消星标' : '★ 星标';
+  }
+}
+
+function hideNoteContextMenu() {
+  if (!elements.noteContextMenu) return;
+  elements.noteContextMenu.hidden = true;
+  state.contextMenuNoteId = null;
+}
+
+function duplicateNoteById(id) {
+  const note = state.notes.find(n => n.id === id);
+  if (!note) return;
+  const now = Date.now();
+  const copy = normalizeNote({...note, id: createId(), title: `${note.title} 副本`, pinned: false, createdAt: now, updatedAt: now});
+  state.notes.unshift(copy);
+  state.activeId = copy.id;
+  persistAndRender("已复制为新笔记");
+}
+
+function exportNoteById(id) {
+  const note = state.notes.find(n => n.id === id);
+  if (!note) return;
+  const isMarkdown = note.mode === "md";
+  const ext = isMarkdown ? "md" : "txt";
+  const type = isMarkdown ? "text/markdown" : "text/plain";
+  const content = isMarkdown ? formatMarkdownExport(note) : note.body;
+  downloadText(`${safeFileName(note.title)}.${ext}`, content, type);
+  showToast("已导出笔记");
+}
+
+function deleteNoteById(id) {
+  const note = state.notes.find(n => n.id === id);
+  if (!note) return;
+  const confirmed = window.confirm(`删除「${note.title}」？`);
+  if (!confirmed) return;
+  state.notes = state.notes.filter(n => n.id !== id);
+  if (state.activeId === id) state.activeId = state.notes[0]?.id || null;
+  ensureActiveNote();
+  persistAndRender("已删除笔记");
+}
+
 function renderLists() {
   renderCounts();
   renderFolders();
@@ -1024,17 +1095,29 @@ function renderLists() {
 }
 
 function renderFilterState() {
-  elements.filterItems.forEach((button) => {
-    button.classList.toggle("active", button.dataset.filter === state.filter);
-  });
+  // No-op: filter bar removed
 }
 
 function renderCounts() {
-  const now = Date.now();
-  elements.allCount.textContent = state.notes.length;
-  elements.pinnedCount.textContent = state.notes.filter((note) => note.pinned).length;
-  elements.favoriteCount.textContent = state.notes.filter((note) => note.favorite).length;
-  elements.recentCount.textContent = state.notes.filter((note) => now - note.updatedAt < 1000 * 60 * 60 * 24 * 7).length;
+  if (elements.listStatus) elements.listStatus.textContent = `${state.notes.length} ${t("items")}`;
+  elements.sortButtons.forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.sort === state.sortBy);
+  });
+}
+
+function sortedNotes() {
+  return state.notes
+    .filter((note) => {
+      if (state.selectedFolder && note.folder !== state.selectedFolder) return false;
+      if (!state.query) return true;
+      const haystack = `${note.title}\n${note.folder}\n${note.body}`.toLowerCase();
+      return haystack.includes(state.query);
+    })
+    .sort((a, b) => {
+      if (state.sortBy === "title") return a.title.localeCompare(b.title, "zh-CN");
+      if (state.sortBy === "created") return b.createdAt - a.createdAt;
+      return b.updatedAt - a.updatedAt; // default: updated
+    });
 }
 
 function renderFolders() {
@@ -1078,8 +1161,8 @@ function renderFolders() {
 }
 
 function renderNoteList() {
-  const notes = filteredNotes();
-  elements.listStatus.textContent = `${notes.length} ${state.language === "en" ? "items" : "条"}`;
+  const notes = sortedNotes();
+  if (elements.listStatus) elements.listStatus.textContent = `${notes.length} ${t("items")}`;
 
   if (!notes.length) {
     elements.noteList.innerHTML = `<div class="empty-state">${t("noNotes")}</div>`;
@@ -1113,22 +1196,12 @@ function renderNoteList() {
       renderAll();
       elements.bodyInput.focus();
     });
+    button.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      state.contextMenuNoteId = button.dataset.id;
+      showNoteContextMenu(event.clientX, event.clientY);
+    });
   });
-}
-
-function filteredNotes() {
-  const now = Date.now();
-  return state.notes
-    .filter((note) => {
-      if (state.filter === "pinned" && !note.pinned) return false;
-      if (state.filter === "favorite" && !note.favorite) return false;
-      if (state.filter === "recent" && now - note.updatedAt > 1000 * 60 * 60 * 24 * 7) return false;
-      if (state.selectedFolder && note.folder !== state.selectedFolder) return false;
-      if (!state.query) return true;
-      const haystack = `${note.title}\n${note.folder}\n${note.body}`.toLowerCase();
-      return haystack.includes(state.query);
-    })
-    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt);
 }
 
 function renderSyncMeta() {
@@ -1539,12 +1612,8 @@ function applyLanguage(language, initial = false) {
   if (elements.copyMarkdownButton) elements.copyMarkdownButton.textContent = t("copyCurrent");
   if (elements.downloadNoteButton) elements.downloadNoteButton.textContent = t("backupAll");
   if (elements.duplicateButton) elements.duplicateButton.textContent = t("duplicate");
-  if (elements.allCount) elements.allCount.previousElementSibling.textContent = t("allNotes");
-  if (elements.pinnedCount) elements.pinnedCount.previousElementSibling.textContent = t("pinned");
-  if (elements.favoriteCount) elements.favoriteCount.previousElementSibling.textContent = t("favorite");
-  if (elements.recentCount) elements.recentCount.previousElementSibling.textContent = t("recent");
   if (elements.clearFolderButton) elements.clearFolderButton.textContent = t("clearAll");
-  if (elements.listStatus) elements.listStatus.textContent = `${filteredNotes().length} ${t("items")}`;
+  if (elements.listStatus) elements.listStatus.textContent = `${sortedNotes().length} ${t("items")}`;
   const folderTitle = document.getElementById("folderSectionTitle");
   if (folderTitle) folderTitle.textContent = t("files");
   const outlineHead = elements.outlinePanel?.querySelector(".outline-panel-head span");

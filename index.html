@@ -45,8 +45,7 @@
           <input id="searchInput" type="search" placeholder="搜索标题、正文、文件夹" autocomplete="off" />
         </label>
 
-        <!-- 文件夹：放在筛选栏上方 -->
-        <details class="nav-section" id="folderSection" open>
+        <details class="nav-section" id="folderSection">
           <summary class="panel-summary">
             <span id="folderSectionTitle">文件夹</span>
             <div class="folder-summary-actions">
@@ -58,29 +57,14 @@
           <div class="folder-list" id="folderList"></div>
         </details>
 
-        <nav class="filter-list" aria-label="笔记筛选">
-          <button class="filter-item active" type="button" data-filter="all">
-            <span>全部笔记</span>
-            <strong id="allCount">0</strong>
-          </button>
-          <button class="filter-item" type="button" data-filter="pinned">
-            <span>置顶</span>
-            <strong id="pinnedCount">0</strong>
-          </button>
-          <button class="filter-item" type="button" data-filter="favorite">
-            <span>星标</span>
-            <strong id="favoriteCount">0</strong>
-          </button>
-          <button class="filter-item" type="button" data-filter="recent">
-            <span>最近编辑</span>
-            <strong id="recentCount">0</strong>
-          </button>
-        </nav>
-
         <section class="note-list-panel" aria-labelledby="noteListTitle">
-          <div class="panel-title">
-            <h2 id="noteListTitle">笔记列表</h2>
-            <span id="listStatus">0 条</span>
+          <div class="note-list-header">
+            <span class="note-list-count" id="listStatus">0 条</span>
+            <div class="note-list-sort">
+              <button class="sort-button active" data-sort="updated" type="button">最近</button>
+              <button class="sort-button" data-sort="title" type="button">标题</button>
+              <button class="sort-button" data-sort="created" type="button">创建</button>
+            </div>
           </div>
           <div class="note-list" id="noteList" aria-live="polite"></div>
         </section>
@@ -181,7 +165,6 @@
             <section class="write-pane" aria-labelledby="editorTitle">
               <div class="pane-head">
                 <h3 id="editorTitle">编辑</h3>
-                <span id="modeHint">TXT 纯文本模式</span>
               </div>
               <div class="text-shell" id="textShell">
                 <div class="editor-line-highlight" id="editorLineHighlight" aria-hidden="true"></div>
@@ -206,7 +189,6 @@
               <div class="preview-content" id="previewContent"></div>
             </section>
 
-            <!-- 浮动大纲面板 -->
             <aside class="floating-outline" id="floatingOutline" aria-label="文档目录" hidden>
               <div class="outline-rail" id="outlineRail" title="文档目录">
                 <div class="outline-dots" id="outlineDots"></div>
@@ -237,6 +219,15 @@
     <!-- 文件夹右键菜单 -->
     <div class="context-menu" id="folderContextMenu" hidden>
       <button class="context-menu-item" data-action="rename" type="button">重命名</button>
+      <button class="context-menu-item danger" data-action="delete" type="button">删除</button>
+    </div>
+
+    <!-- 笔记右键菜单 -->
+    <div class="context-menu" id="noteContextMenu" hidden>
+      <button class="context-menu-item" data-action="pin" type="button">📌 置顶/取消置顶</button>
+      <button class="context-menu-item" data-action="favorite" type="button">★ 星标/取消星标</button>
+      <button class="context-menu-item" data-action="duplicate" type="button">复制为新笔记</button>
+      <button class="context-menu-item" data-action="export" type="button">导出当前</button>
       <button class="context-menu-item danger" data-action="delete" type="button">删除</button>
     </div>
 
@@ -272,6 +263,6 @@
     <input id="importFileInput" type="file" accept=".json,.md,.txt" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./script.js?v=2"></script>
+    <script src="./script.js?v=3"></script>
   </body>
 </html>
