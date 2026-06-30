@@ -823,7 +823,7 @@ function renderModeState() {
   });
   elements.togglePreviewButton.hidden = !isMarkdown;
   elements.previewFocusButton.hidden = !isMarkdown;
-  elements.previewFocusButton.textContent = focused ? "⤡" : "⤢";
+  elements.previewFocusButton.textContent = focused ? "✕" : "⤢";
   elements.previewFocusButton.title = focused ? t("exitFocus") : t("focusPreview");
   elements.previewPane.hidden = !previewVisible && !focused;
   elements.editorSection.open = Boolean(note.editorSectionOpen);
@@ -1742,82 +1742,170 @@ function applyToolbarAction(button) {
   }
 
   const textarea = elements.bodyInput;
-  const selected = textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const value = textarea.value;
+  const selected = value.slice(start, end);
 
   if (button.dataset.wrap) {
     const mark = button.dataset.wrap;
-    replaceSelection(`${mark}${selected || "内容"}${mark}`);
+    toggleWrap(mark, mark);
   } else if (button.dataset.prefix) {
-    replaceSelectedLines(button.dataset.prefix);
+    toggleLinePrefix(button.dataset.prefix);
   } else if (button.dataset.block === "code") {
-    replaceSelection(`\`\`\`bash\n${selected || ""}\n\`\`\``);
+    toggleCodeBlock();
+  } else if (button.dataset.block === "table") {
+    insertTable();
   }
 
   window.setTimeout(updateActiveFromInputs, 0);
   textarea.focus();
 }
 
-function runNativeHistoryCommand(command) {
-  elements.bodyInput.focus();
-  try {
-    document.execCommand(command);
-  } finally {
-    window.setTimeout(updateActiveFromInputs, 0);
-  }
-}
-
-function insertSnippet(type) {
-  const note = activeNote();
-  const isMarkdown = note?.mode === "md";
-  const snippets = {
-    path: isMarkdown
-      ? "\n\n```txt\nD:\\\\project\\\\path\n\\\\server\\\\share\\\\path\n```\n"
-      : "\n路径：D:\\\\project\\\\path\n共享路径：\\\\server\\\\share\\\\path\n",
-    command: isMarkdown
-      ? "\n\n```bash\n# 在这里写命令\n```\n"
-      : "\n命令：\n执行目录：\n注意：\n",
-    checklist: isMarkdown
-      ? "\n- [ ] 前置条件\n- [ ] 执行步骤\n- [ ] 退出前检查\n"
-      : "\n[ ] 前置条件\n[ ] 执行步骤\n[ ] 退出前检查\n"
-  };
-  replaceSelection(snippets[type] || "");
-  window.setTimeout(updateActiveFromInputs, 0);
-  elements.bodyInput.focus();
-}
-
-function replaceSelection(replacement) {
+/** Smart toggle: if selection is wrapped with mark, unwrap; else wrap */
+function toggleWrap(prefix, suffix) {
   const textarea = elements.bodyInput;
-  textarea.focus();
-  if (document.queryCommandSupported?.("insertText")) {
-    document.execCommand("insertText", false, replacement);
-    return;
-  }
   const start = textarea.selectionStart;
   const end = textarea.selectionEnd;
-  textarea.setRangeText(replacement, start, end, "end");
-  textarea.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-function replaceSelectedLines(prefix) {
-  const textarea = elements.bodyInput;
   const value = textarea.value;
-  let start = textarea.selectionStart;
-  let end = textarea.selectionEnd;
 
-  if (start === end) {
-    start = value.lastIndexOf("\n", start - 1) + 1;
-    const nextBreak = value.indexOf("\n", end);
-    end = nextBreak === -1 ? value.length : nextBreak;
+  // Expand selection to include word if nothing selected
+  let selStart = start;
+  let selEnd = end;
+  if (selStart === selEnd) {
+    const wordMatch = value.slice(0, selStart).match(/(\S+)$/);
+    if (wordMatch) selStart -= wordMatch[1].length;
+    const nextWord = value.slice(selEnd).match(/^(\S+)/);
+    if (nextWord) selEnd += nextWord[1].length;
+    if (selStart === selEnd) {
+      // Nothing to wrap, just insert marks and place cursor
+      replaceRange(selStart, selEnd, prefix + suffix);
+      textarea.setSelectionRange(selStart + prefix.length, selStart + prefix.length);
+      return;
+    }
+  } else {
+    // Check if selection has wrapping whitespace - trim it
+    const inner = value.slice(selStart, selEnd);
+    const trimmed = inner.trim();
+    const leading = inner.length - inner.trimStart().length;
+    const trailing = inner.length - inner.trimEnd().length;
+    selStart += leading;
+    selEnd -= trailing;
   }
 
-  const selected = value.slice(start, end) || "内容";
-  const replacement = selected
-    .split("\n")
-    .map((line) => `${prefix}${line}`)
-    .join("\n");
+  const inner = value.slice(selStart, selEnd);
+  const before = value.slice(0, selStart);
+  const after = value.slice(selEnd);
 
-  textarea.setSelectionRange(start, end);
-  replaceSelection(replacement);
+  // Check if already wrapped
+  const hasPrefix = before.endsWith(prefix);
+  const hasSuffix = after.startsWith(suffix);
+
+  if (hasPrefix && hasSuffix) {
+    // Unwrap
+    replaceRange(selStart - prefix.length, selEnd + suffix.length, inner);
+    textarea.setSelectionRange(selStart - prefix.length, selEnd - prefix.length);
+  } else {
+    // Wrap
+    replaceRange(selStart, selEnd, prefix + inner + suffix);
+    textarea.setSelectionRange(selStart + prefix.length, selStart + prefix.length + inner.length);
+  }
+}
+
+/** Toggle line prefix: if all selected lines start with prefix, remove it; else prepend it */
+function toggleLinePrefix(prefix) {
+  const textarea = elements.bodyInput;
+  let start = textarea.selectionStart;
+  let end = textarea.selectionEnd;
+  const value = textarea.value;
+
+  // Expand to line boundaries
+  start = value.lastIndexOf("\n", start - 1) + 1;
+  const nextBreak = value.indexOf("\n", end);
+  if (start === end && nextBreak === -1) {
+    // Single line, no selection
+  }
+  if (nextBreak !== -1) end = nextBreak;
+  else end = value.length;
+
+  const block = value.slice(start, end);
+  const lines = block.split("\n");
+
+  // Check if ALL non-empty lines already have the prefix
+  const allHavePrefix = lines.every(line => line === "" || line.startsWith(prefix));
+  let replacement;
+
+  if (allHavePrefix) {
+    // Remove prefix from all lines
+    replacement = lines.map(line => line === "" ? line : line.slice(prefix.length)).join("\n");
+  } else {
+    // Add prefix to all non-empty lines
+    replacement = lines.map(line => line === "" ? line : prefix + line).join("\n");
+  }
+
+  replaceRange(start, end, replacement);
+
+  // Preserve selection
+  const delta = replacement.length - block.length;
+  textarea.setSelectionRange(start, start + replacement.length);
+}
+
+/** Toggle code block: wrap/unwrap selection with ```bash ... ``` */
+function toggleCodeBlock() {
+  const textarea = elements.bodyInput;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const value = textarea.value;
+
+  const selected = value.slice(start, end).trim() || "";
+
+  // Check if selection is already inside a code block
+  const before = value.slice(0, start);
+  const after = value.slice(end);
+  const codeFence = "```";
+
+  // Check if preceded and followed by ``` on their own lines
+  const fenceBefore = before.match(/(?:^|\n)```(?:\S*)\s*$/);
+  const fenceAfter = after.match(/^\s*\n```/);
+
+  if (fenceBefore && fenceAfter) {
+    // Unwrap: remove the fences
+    const fenceBeforeStart = start - fenceBefore[0].length + (fenceBefore[0].startsWith("\n") ? 0 : 0);
+    const fenceBeforeText = fenceBefore[0];
+    let cutStart = fenceBeforeStart;
+    let cutEnd = end + fenceAfter[0].length;
+    if (before.charAt(fenceBeforeStart - 1) === "\n") cutStart = fenceBeforeStart - 1;
+    // Find actual fence positions
+    const beforeLines = before.split("\n");
+    let fenceLine = -1;
+    for (let i = beforeLines.length - 1; i >= 0; i--) {
+      if (beforeLines[i].startsWith("```")) { fenceLine = i; break; }
+    }
+    if (fenceLine >= 0) {
+      const prefixLen = beforeLines.slice(0, fenceLine).join("\n").length + (fenceLine > 0 ? 1 : 0);
+      cutStart = prefixLen;
+    }
+    const afterIdx = after.indexOf("\n```");
+    if (afterIdx >= 0) {
+      const extra = after.slice(afterIdx + 4).startsWith("\n") ? 5 : 4;
+      cutEnd = end + afterIdx + extra;
+    }
+    replaceRange(cutStart, cutEnd, selected);
+    textarea.setSelectionRange(cutStart, cutStart + selected.length);
+  } else {
+    // Wrap
+    const lang = "bash";
+    const wrap = `\n${codeFence}${lang}\n${selected}\n${codeFence}\n`;
+    replaceRange(start, end, wrap);
+    textarea.setSelectionRange(start + codeFence.length + lang.length + 2, start + codeFence.length + lang.length + 2 + selected.length);
+  }
+}
+
+/** Replace a range in the textarea and fire input event */
+function replaceRange(from, to, text) {
+  const textarea = elements.bodyInput;
+  textarea.setRangeText(text, from, to, "end");
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 function updateLineNumbers() {
