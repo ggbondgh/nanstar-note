@@ -5,7 +5,133 @@ const storageKeys = {
   lastSyncAt: "nanstar-note-last-sync-at",
   autoSync: "nanstar-note-auto-sync",
   splitRatio: "nanstar-note-split-ratio",
-  sidebarCollapsed: "nanstar-note-sidebar-collapsed"
+  sidebarCollapsed: "nanstar-note-sidebar-collapsed",
+  language: "nanstar-note-language"
+};
+
+const i18n = {
+  zh: {
+    workspaceTitle: "内容工作台",
+    newNote: "新建笔记",
+    titlePlaceholder: "写一个清晰的标题",
+    folderPlaceholder: "文件夹，例如：WK / 客户现场",
+    editorPlaceholder: "纯文本适合放路径、账号检查清单、命令备忘；Markdown 适合结构化文档。Ctrl+Z / Ctrl+Y 保持浏览器原生编辑习惯。",
+    sync: "同步",
+    import: "导入",
+    exportCurrent: "导出当前",
+    share: "分享",
+    delete: "删除",
+    copyCurrent: "复制当前内容",
+    backupAll: "备份全部 JSON",
+    duplicate: "复制为新笔记",
+    allNotes: "全部笔记",
+    pinned: "置顶",
+    favorite: "星标",
+    recent: "最近编辑",
+    files: "文件夹",
+    outline: "目录",
+    noteListTitle: "笔记列表",
+    editorTitle: "编辑",
+    previewTitle: "预览",
+    editorTools: "编辑工具",
+    moreActions: "更多操作与状态",
+    clearAll: "全部",
+    searchPlaceholder: "搜索标题、正文、文件夹",
+    editorSearchPlaceholder: "查找当前笔记内容",
+    searchCount: "{current} / {total}",
+    searchNoMatch: "0 / 0",
+    currentLine: "当前行",
+    lines: "行",
+    characters: "字",
+    noSearchMatch: "未找到匹配项",
+    markdownMode: "Markdown 结构化模式",
+    txtMode: "TXT 纯文本模式",
+    showPreview: "显示预览",
+    hidePreview: "隐藏预览",
+    focusPreview: "专注预览",
+    exitFocus: "退出专注",
+    noNotes: "没有匹配的笔记",
+    txtOutlineEmpty: "TXT 模式不显示目录",
+    noHeadings: "暂无标题",
+    cloudAuto: "云同步 / 自动",
+    cloudReady: "云同步已配置",
+    localMode: "本地模式",
+    local: "本地",
+    cloudUnsynced: "云端未同步",
+    synced: "已同步",
+    syncSettings: "同步设置",
+    syncCopy: "使用 Cloudflare Pages Functions + D1 保存云端笔记。客户电脑建议使用无痕窗口，离开时清除 Token。",
+    syncToken: "同步 Token",
+    autoSync: "编辑后自动推送到云端",
+    pushCloud: "推送到云端",
+    pullCloud: "从云端拉取并合并",
+    clearToken: "清除 Token",
+    editorSearchLabel: "查找",
+    modeTxt: "TXT",
+    modeMd: "MD",
+    items: "条"
+  },
+  en: {
+    workspaceTitle: "Content Desk",
+    newNote: "New Note",
+    titlePlaceholder: "Write a clear title",
+    folderPlaceholder: "Folder, e.g. WK / Client Site",
+    editorPlaceholder: "Plain text works well for paths, checklists, and command notes; Markdown is better for structured docs. Ctrl+Z / Ctrl+Y keep the browser's native editing flow.",
+    sync: "Sync",
+    import: "Import",
+    exportCurrent: "Export Current",
+    share: "Share",
+    delete: "Delete",
+    copyCurrent: "Copy Current",
+    backupAll: "Backup JSON",
+    duplicate: "Duplicate Note",
+    allNotes: "All Notes",
+    pinned: "Pinned",
+    favorite: "Favorites",
+    recent: "Recent",
+    files: "Folders",
+    outline: "Outline",
+    noteListTitle: "Notes",
+    editorTitle: "Editor",
+    previewTitle: "Preview",
+    editorTools: "Editor Tools",
+    moreActions: "More Actions & Status",
+    clearAll: "All",
+    searchPlaceholder: "Search title, body, folder",
+    editorSearchPlaceholder: "Find in current note",
+    searchCount: "{current} / {total}",
+    searchNoMatch: "0 / 0",
+    currentLine: "Current line",
+    lines: "lines",
+    characters: "chars",
+    noSearchMatch: "No matches",
+    markdownMode: "Markdown mode",
+    txtMode: "Plain text mode",
+    showPreview: "Show preview",
+    hidePreview: "Hide preview",
+    focusPreview: "Focus preview",
+    exitFocus: "Exit focus",
+    noNotes: "No matching notes",
+    txtOutlineEmpty: "No outline in TXT mode",
+    noHeadings: "No headings",
+    cloudAuto: "Cloud sync / auto",
+    cloudReady: "Cloud sync ready",
+    localMode: "Local mode",
+    local: "Local",
+    cloudUnsynced: "Cloud not synced",
+    synced: "Synced",
+    syncSettings: "Sync Settings",
+    syncCopy: "Use Cloudflare Pages Functions + D1 to store notes in the cloud. On client computers, use an incognito window and clear the token when leaving.",
+    syncToken: "Sync Token",
+    autoSync: "Auto push after editing",
+    pushCloud: "Push to Cloud",
+    pullCloud: "Pull & Merge",
+    clearToken: "Clear Token",
+    editorSearchLabel: "Find",
+    modeTxt: "TXT",
+    modeMd: "MD",
+    items: "items"
+  }
 };
 
 const templates = {
@@ -223,7 +349,15 @@ const state = {
   filter: "all",
   selectedFolder: "",
   query: "",
+  language: localStorage.getItem(storageKeys.language) === "en" ? "en" : "zh",
   previewFocus: false,
+  editorSearch: {
+    open: false,
+    query: "",
+    matches: [],
+    activeIndex: -1
+  },
+  currentLine: 1,
   sidebarCollapsed: localStorage.getItem(storageKeys.sidebarCollapsed) === "1",
   saveTimer: null,
   autoSyncTimer: null,
@@ -243,6 +377,7 @@ const elements = {
   syncButton: $("#syncButton"),
   topSyncButton: $("#topSyncButton"),
   searchInput: $("#searchInput"),
+  languageToggleButton: $("#languageToggleButton"),
   filterItems: $$(".filter-item"),
   folderList: $("#folderList"),
   clearFolderButton: $("#clearFolderButton"),
@@ -262,11 +397,18 @@ const elements = {
   favoriteButton: $("#favoriteButton"),
   modeButtons: $$(".mode-button"),
   folderInput: $("#folderInput"),
+  editorFindBar: $("#editorFindBar"),
+  editorSearchInput: $("#editorSearchInput"),
+  editorSearchCount: $("#editorSearchCount"),
+  editorSearchPrevButton: $("#editorSearchPrevButton"),
+  editorSearchNextButton: $("#editorSearchNextButton"),
+  editorSearchCloseButton: $("#editorSearchCloseButton"),
   toolbar: $(".toolbar"),
   togglePreviewButton: $("#togglePreviewButton"),
   splitEditor: $("#splitEditor"),
   splitter: $("#splitter"),
   lineNumbers: $("#lineNumbers"),
+  editorLineHighlight: $("#editorLineHighlight"),
   textShell: $("#textShell"),
   bodyInput: $("#bodyInput"),
   previewPane: $("#previewPane"),
@@ -303,6 +445,7 @@ function init() {
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
   elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) === "1";
+  applyLanguage(state.language, true);
   applySplitRatio(Number(localStorage.getItem(storageKeys.splitRatio)) || 58);
   applySidebarCollapsed(state.sidebarCollapsed);
 
@@ -317,6 +460,7 @@ function bindEvents() {
   elements.newNoteButton.addEventListener("click", () => createNote("txt"));
   elements.sidebarToggleButton.addEventListener("click", toggleSidebar);
   elements.sidebarQuickNewButton?.addEventListener("click", () => createNote("txt"));
+  elements.languageToggleButton?.addEventListener("click", toggleLanguage);
   elements.searchInput.addEventListener("input", (event) => {
     state.query = event.target.value.trim().toLowerCase();
     renderLists();
@@ -350,6 +494,14 @@ function bindEvents() {
   elements.folderInput.addEventListener("input", updateActiveFromInputs);
   elements.bodyInput.addEventListener("input", updateActiveFromInputs);
   elements.bodyInput.addEventListener("scroll", syncLineNumberScroll);
+  elements.bodyInput.addEventListener("keyup", handleEditorCursorChange);
+  elements.bodyInput.addEventListener("click", handleEditorCursorChange);
+  elements.bodyInput.addEventListener("select", handleEditorCursorChange);
+  elements.editorSearchInput.addEventListener("input", handleEditorSearchInput);
+  elements.editorSearchInput.addEventListener("keydown", handleEditorSearchKeydown);
+  elements.editorSearchPrevButton.addEventListener("click", () => moveEditorSearch(-1));
+  elements.editorSearchNextButton.addEventListener("click", () => moveEditorSearch(1));
+  elements.editorSearchCloseButton.addEventListener("click", closeEditorSearch);
 
   elements.pinButton.addEventListener("click", togglePinned);
   elements.favoriteButton.addEventListener("click", toggleFavorite);
@@ -413,9 +565,24 @@ function bindEvents() {
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
+    if ((event.ctrlKey || event.metaKey) && key === "f") {
+      event.preventDefault();
+      openEditorSearch(elements.bodyInput.value.slice(elements.bodyInput.selectionStart, elements.bodyInput.selectionEnd) || state.editorSearch.query || "");
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && key === "g" && state.editorSearch.open) {
+      event.preventDefault();
+      moveEditorSearch(event.shiftKey ? -1 : 1);
+      return;
+    }
     if (key === "escape" && state.previewFocus) {
       event.preventDefault();
       togglePreviewFocus();
+      return;
+    }
+    if (key === "escape" && state.editorSearch.open) {
+      event.preventDefault();
+      closeEditorSearch();
       return;
     }
     if ((event.ctrlKey || event.metaKey) && key === "s") {
@@ -511,6 +678,7 @@ function updateActiveFromInputs() {
   renderOutline();
   renderLists();
   renderSyncMeta();
+  syncEditorSearchState();
 }
 
 function activeNote() {
@@ -556,6 +724,7 @@ function renderEditor() {
 
   renderModeState();
   updateLineNumbers();
+  handleEditorCursorChange();
 }
 
 function renderModeState() {
@@ -573,9 +742,9 @@ function renderModeState() {
   document.body.dataset.noteMode = note.mode;
   document.body.classList.toggle("preview-focus-mode", focused);
 
-  elements.modeHint.textContent = isMarkdown ? "Markdown 结构化模式" : "TXT 纯文本模式";
-  elements.outlineStatus.textContent = isMarkdown ? "MD" : "TXT";
-  elements.togglePreviewButton.textContent = previewVisible && !focused ? "隐藏预览" : "显示预览";
+  elements.modeHint.textContent = isMarkdown ? t("markdownMode") : t("txtMode");
+  elements.outlineStatus.textContent = isMarkdown ? t("modeMd") : t("modeTxt");
+  elements.togglePreviewButton.textContent = previewVisible && !focused ? t("hidePreview") : t("showPreview");
   elements.togglePreviewButton.classList.toggle("active", previewVisible && !focused);
   elements.togglePreviewButton.disabled = !isMarkdown;
   elements.toolbar.querySelectorAll(".md-tool, [data-insert]").forEach((button) => {
@@ -584,20 +753,21 @@ function renderModeState() {
   elements.togglePreviewButton.hidden = !isMarkdown;
   elements.previewFocusButton.hidden = !isMarkdown;
   elements.previewFocusButton.textContent = focused ? "⤡" : "⤢";
-  elements.previewFocusButton.title = focused ? "退出专注" : "专注预览";
+  elements.previewFocusButton.title = focused ? t("exitFocus") : t("focusPreview");
   elements.previewPane.hidden = !previewVisible && !focused;
-  elements.editorSectionState.textContent = isMarkdown ? "MD" : "TXT";
+  elements.editorSectionState.textContent = isMarkdown ? t("modeMd") : t("modeTxt");
   if (elements.editorSection.open !== isMarkdown) {
     elements.editorSection.open = isMarkdown;
   }
   elements.splitEditor.style.setProperty("--split-ratio", `${Number(localStorage.getItem(storageKeys.splitRatio)) || 58}%`);
   syncScrollState();
+  syncEditorSearchState();
 }
 
 function renderPreview() {
   const note = activeNote();
   const body = note?.body || "";
-  elements.wordCount.textContent = `${countWords(body)} 字 / ${countLines(body)} 行`;
+  elements.wordCount.textContent = `${countWords(body)} ${t("characters")} / ${countLines(body)} ${t("lines")}`;
 
   if (!note || note.mode !== "md") {
     elements.previewContent.innerHTML = "";
@@ -610,13 +780,13 @@ function renderPreview() {
 function renderOutline() {
   const note = activeNote();
   if (!note || note.mode !== "md") {
-    elements.outlineList.innerHTML = `<div class="empty-state compact">TXT 模式不显示目录</div>`;
+    elements.outlineList.innerHTML = `<div class="empty-state compact">${t("txtOutlineEmpty")}</div>`;
     return;
   }
 
   const headings = extractHeadings(note.body);
   if (!headings.length) {
-    elements.outlineList.innerHTML = `<div class="empty-state compact">暂无标题</div>`;
+    elements.outlineList.innerHTML = `<div class="empty-state compact">${t("noHeadings")}</div>`;
     return;
   }
 
@@ -681,10 +851,10 @@ function renderFolders() {
 
 function renderNoteList() {
   const notes = filteredNotes();
-  elements.listStatus.textContent = `${notes.length} 条`;
+  elements.listStatus.textContent = `${notes.length} ${state.language === "en" ? "items" : "条"}`;
 
   if (!notes.length) {
-    elements.noteList.innerHTML = `<div class="empty-state">没有匹配的笔记</div>`;
+    elements.noteList.innerHTML = `<div class="empty-state">${t("noNotes")}</div>`;
     return;
   }
 
@@ -738,12 +908,12 @@ function renderSyncMeta() {
   const lastSync = localStorage.getItem(storageKeys.lastSyncAt);
   const auto = elements.autoSyncToggle.checked;
 
-  elements.cloudStatus.textContent = token ? (auto ? "云同步 / 自动" : "云同步已配置") : "本地模式";
+  elements.cloudStatus.textContent = token ? (auto ? t("cloudAuto") : t("cloudReady")) : t("localMode");
   elements.syncState.textContent = token
     ? lastSync
-      ? `已同步 ${formatDate(Number(lastSync))}`
-      : "云端未同步"
-    : "本地";
+      ? `${t("synced")} ${formatDate(Number(lastSync))}`
+      : t("cloudUnsynced")
+    : t("local");
 }
 
 function createNote(templateName) {
@@ -1098,6 +1268,236 @@ function setSaveStatus(message) {
   elements.saveStatus.textContent = message;
 }
 
+function t(key) {
+  return i18n[state.language]?.[key] || i18n.zh[key] || key;
+}
+
+function applyLanguage(language, initial = false) {
+  const next = language === "en" ? "en" : "zh";
+  state.language = next;
+  localStorage.setItem(storageKeys.language, next);
+  document.documentElement.lang = next === "en" ? "en" : "zh-CN";
+
+  if (elements.languageToggleButton) {
+    elements.languageToggleButton.textContent = next === "en" ? "EN / 中" : "中 / EN";
+  }
+  if (elements.searchInput) elements.searchInput.placeholder = t("searchPlaceholder");
+  if (elements.editorSearchInput) elements.editorSearchInput.placeholder = t("editorSearchPlaceholder");
+  if (elements.newNoteButton) elements.newNoteButton.querySelector("span:last-child").textContent = t("newNote");
+  if (elements.titleInput) elements.titleInput.placeholder = t("titlePlaceholder");
+  if (elements.folderInput) elements.folderInput.placeholder = t("folderPlaceholder");
+  if (elements.bodyInput) elements.bodyInput.placeholder = t("editorPlaceholder");
+  if (elements.sidebarQuickNewButton) elements.sidebarQuickNewButton.title = t("newNote");
+  if (elements.sidebarQuickNewButton) elements.sidebarQuickNewButton.setAttribute("aria-label", t("newNote"));
+  if (elements.syncButton) elements.syncButton.title = t("sync");
+  if (elements.topSyncButton) elements.topSyncButton.textContent = t("sync");
+  if (elements.importButton) elements.importButton.textContent = t("import");
+  if (elements.exportButton) elements.exportButton.textContent = t("exportCurrent");
+  if (elements.shareButton) elements.shareButton.textContent = t("share");
+  if (elements.deleteButton) elements.deleteButton.textContent = t("delete");
+  if (elements.copyMarkdownButton) elements.copyMarkdownButton.textContent = t("copyCurrent");
+  if (elements.downloadNoteButton) elements.downloadNoteButton.textContent = t("backupAll");
+  if (elements.duplicateButton) elements.duplicateButton.textContent = t("duplicate");
+  if (elements.allCount) elements.allCount.previousElementSibling.textContent = t("allNotes");
+  if (elements.pinnedCount) elements.pinnedCount.previousElementSibling.textContent = t("pinned");
+  if (elements.favoriteCount) elements.favoriteCount.previousElementSibling.textContent = t("favorite");
+  if (elements.recentCount) elements.recentCount.previousElementSibling.textContent = t("recent");
+  if (elements.clearFolderButton) elements.clearFolderButton.textContent = t("clearAll");
+  if (elements.listStatus) elements.listStatus.textContent = `${filteredNotes().length} ${t("items")}`;
+  const folderTitle = document.getElementById("folderSectionTitle");
+  if (folderTitle) folderTitle.textContent = t("files");
+  const outlineTitle = document.getElementById("outlineSectionTitle");
+  if (outlineTitle) outlineTitle.textContent = t("outline");
+  const editorToolsTitle = document.getElementById("editorToolsTitle");
+  if (editorToolsTitle) editorToolsTitle.textContent = t("editorTools");
+  const utilityDrawerTitle = document.getElementById("utilityDrawerTitle");
+  if (utilityDrawerTitle) utilityDrawerTitle.textContent = t("moreActions");
+  if (elements.noteListTitle) {
+    const title = document.getElementById("noteListTitle");
+    if (title) title.textContent = t("noteListTitle");
+  }
+  const topTitle = document.querySelector(".topbar-title h2");
+  if (topTitle) topTitle.textContent = t("workspaceTitle");
+  const eyebrow = document.querySelector(".topbar-title .eyebrow");
+  if (eyebrow) eyebrow.textContent = next === "en" ? "NanStar Note / Content Desk" : "NanStar Note / 内容工作台";
+  const brandState = elements.cloudStatus;
+  if (brandState && !localStorage.getItem(storageKeys.syncToken)) {
+    brandState.textContent = t("localMode");
+  }
+  const syncModalEyebrow = document.getElementById("syncModalEyebrow");
+  if (syncModalEyebrow) syncModalEyebrow.textContent = next === "en" ? "Cloudflare Sync" : "Cloudflare Sync";
+  const syncModalTitle = document.getElementById("syncModalTitle");
+  if (syncModalTitle) syncModalTitle.textContent = t("syncSettings");
+  const syncModalCopy = document.getElementById("syncModalCopy");
+  if (syncModalCopy) syncModalCopy.textContent = t("syncCopy");
+  const syncTokenLabel = document.getElementById("syncTokenLabel");
+  if (syncTokenLabel) syncTokenLabel.textContent = t("syncToken");
+  const autoSyncLabel = document.getElementById("autoSyncLabel");
+  if (autoSyncLabel) autoSyncLabel.textContent = t("autoSync");
+  if (!initial) {
+    renderAll();
+    showToast(next === "en" ? "Switched to English" : "已切换为中文");
+  }
+}
+
+function toggleLanguage() {
+  applyLanguage(state.language === "zh" ? "en" : "zh");
+}
+
+function openEditorSearch(query = "") {
+  state.editorSearch.open = true;
+  elements.editorFindBar.hidden = false;
+  elements.editorSearchInput.value = query;
+  state.editorSearch.query = query;
+  refreshEditorSearchMatches();
+  elements.editorSearchInput.focus();
+  elements.editorSearchInput.select();
+}
+
+function closeEditorSearch() {
+  state.editorSearch.open = false;
+  state.editorSearch.query = "";
+  state.editorSearch.matches = [];
+  state.editorSearch.activeIndex = -1;
+  elements.editorFindBar.hidden = true;
+  elements.editorSearchInput.value = "";
+  updateLineNumbers();
+  elements.bodyInput.focus();
+}
+
+function handleEditorSearchInput() {
+  state.editorSearch.query = elements.editorSearchInput.value;
+  refreshEditorSearchMatches();
+}
+
+function handleEditorSearchKeydown(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    moveEditorSearch(event.shiftKey ? -1 : 1);
+    return;
+  }
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeEditorSearch();
+  }
+}
+
+function moveEditorSearch(direction) {
+  if (!state.editorSearch.matches.length) return;
+  const total = state.editorSearch.matches.length;
+  const nextIndex = state.editorSearch.activeIndex === -1
+    ? (direction > 0 ? 0 : total - 1)
+    : (state.editorSearch.activeIndex + direction + total) % total;
+  state.editorSearch.activeIndex = nextIndex;
+  selectMatch(state.editorSearch.matches[nextIndex]);
+  renderEditorSearchCount();
+}
+
+function refreshEditorSearchMatches() {
+  const query = state.editorSearch.query.trim();
+  const text = elements.bodyInput.value || "";
+  const matches = [];
+
+  if (query) {
+    const source = text.toLowerCase();
+    const needle = query.toLowerCase();
+    let index = 0;
+    while (index <= source.length) {
+      const hit = source.indexOf(needle, index);
+      if (hit === -1) break;
+      matches.push({ start: hit, end: hit + query.length, line: getLineFromIndex(text, hit) });
+      index = hit + Math.max(needle.length, 1);
+    }
+  }
+
+  state.editorSearch.matches = matches;
+  if (!matches.length) {
+    state.editorSearch.activeIndex = -1;
+  } else if (state.editorSearch.activeIndex < 0 || state.editorSearch.activeIndex >= matches.length) {
+    state.editorSearch.activeIndex = 0;
+  }
+  updateLineNumbers();
+  renderEditorSearchCount();
+}
+
+function renderEditorSearchCount() {
+  if (!state.editorSearch.open) {
+    elements.editorSearchCount.textContent = t("searchNoMatch");
+    return;
+  }
+  const total = state.editorSearch.matches.length;
+  if (!total) {
+    elements.editorSearchCount.textContent = t("searchNoMatch");
+    return;
+  }
+  const current = state.editorSearch.activeIndex >= 0 ? state.editorSearch.activeIndex + 1 : 1;
+  elements.editorSearchCount.textContent = t("searchCount").replace("{current}", current).replace("{total}", total);
+}
+
+function selectMatch(match) {
+  if (!match) return;
+  const textarea = elements.bodyInput;
+  textarea.focus();
+  textarea.setSelectionRange(match.start, match.end);
+  const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight) || 22;
+  textarea.scrollTop = Math.max(0, (match.line - 1) * lineHeight - textarea.clientHeight / 3);
+  updateCurrentLineIndicator();
+  syncLineNumberScroll();
+}
+
+function handleEditorCursorChange() {
+  updateCurrentLineIndicator();
+  if (!state.editorSearch.query.trim()) {
+    renderEditorSearchCount();
+  }
+}
+
+function updateCurrentLineIndicator() {
+  const text = elements.bodyInput.value.replace(/\r\n/g, "\n");
+  const position = elements.bodyInput.selectionStart || 0;
+  state.currentLine = getLineFromIndex(text, position);
+  const lineHeight = parseFloat(getComputedStyle(elements.bodyInput).lineHeight) || 22;
+  const paddingTop = parseFloat(getComputedStyle(elements.bodyInput).paddingTop) || 0;
+  const offset = Math.max(0, paddingTop + (state.currentLine - 1) * lineHeight - elements.bodyInput.scrollTop);
+  elements.editorLineHighlight.style.transform = `translateY(${offset}px)`;
+  elements.editorLineHighlight.style.height = `${Math.max(lineHeight, 22)}px`;
+  elements.editorLineHighlight.style.display = text ? "block" : "none";
+  updateLineNumberStyles();
+}
+
+function updateLineNumberStyles() {
+  const items = elements.lineNumbers.querySelectorAll(".line-number");
+  const hitLines = new Set(state.editorSearch.matches.map((match) => match.line));
+  items.forEach((item) => {
+    const line = Number(item.dataset.line || 0);
+    item.classList.toggle("current", line === state.currentLine);
+    item.classList.toggle("search-hit", hitLines.has(line));
+  });
+}
+
+function syncEditorSearchState() {
+  if (!elements.editorFindBar) return;
+  if (!state.editorSearch.open) {
+    elements.editorFindBar.hidden = true;
+    elements.editorSearchCount.textContent = t("searchNoMatch");
+    return;
+  }
+  elements.editorFindBar.hidden = false;
+  renderEditorSearchCount();
+}
+
+function getLineStates() {
+  const lines = elements.bodyInput.value.replace(/\r\n/g, "\n").split("\n");
+  const hitLines = new Set(state.editorSearch.matches.map((match) => match.line));
+  return lines.map((_, index) => ({
+    searchHit: hitLines.has(index + 1)
+  }));
+}
+
+function getLineFromIndex(text, index) {
+  return text.slice(0, Math.max(0, index)).split("\n").length;
+}
+
 function applyToolbarAction(button) {
   if (button.dataset.command) {
     runNativeHistoryCommand(button.dataset.command);
@@ -1189,17 +1589,22 @@ function replaceSelectedLines(prefix) {
 }
 
 function updateLineNumbers() {
-  const lines = countLines(elements.bodyInput.value);
-  let html = "";
-  for (let index = 1; index <= lines; index += 1) {
-    html += `${index}<br>`;
-  }
-  elements.lineNumbers.innerHTML = html || "1";
+  const states = getLineStates();
+  const total = Math.max(1, states.length);
+  elements.lineNumbers.innerHTML = Array.from({ length: total }, (_, index) => {
+    const lineNumber = index + 1;
+    const classes = ["line-number"];
+    if (lineNumber === state.currentLine) classes.push("current");
+    if (states[index]?.searchHit) classes.push("search-hit");
+    return `<div class="${classes.join(" ")}" data-line="${lineNumber}">${lineNumber}</div>`;
+  }).join("");
   syncLineNumberScroll();
+  renderEditorSearchCount();
 }
 
 function syncLineNumberScroll() {
   elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
+  updateCurrentLineIndicator();
 }
 
 function syncScrollState() {
