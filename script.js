@@ -520,6 +520,7 @@ const SYNC_POLL_INTERVAL = 15000;
 const SYNC_PUSH_DELAY = 1200;
 const TRANSFER_NOTE_ID = "nanstar-transfer-assistant";
 const MAX_PASTE_IMAGE_BYTES = 900 * 1024;
+const MAX_TRANSFER_IMAGES = 4;
 
 const elements = {
   appShell: $(".app-shell"),
@@ -800,11 +801,20 @@ function bindEvents() {
 
   elements.previewContent.addEventListener("click", (event) => {
     const button = event.target.closest(".code-copy");
-    if (!button) return;
-    const code = button.closest(".code-card")?.querySelector("code")?.innerText || "";
-    navigator.clipboard.writeText(code).then(
-      () => showToast("已复制代码块"),
-      () => showToast("当前浏览器不允许复制")
+    if (button) {
+      const code = button.closest(".code-card")?.querySelector("code")?.innerText || "";
+      navigator.clipboard.writeText(code).then(
+        () => showToast("已复制代码块"),
+        () => showToast("当前浏览器不允许复制")
+      );
+      return;
+    }
+    const imageButton = event.target.closest(".preview-copy-image");
+    if (!imageButton) return;
+    const src = imageButton.dataset.src || "";
+    copyPreviewImage(src).then(
+      () => showToast("已复制图片"),
+      () => showToast(t("imagePasteFailed"))
     );
   });
   elements.bodyInput.addEventListener("scroll", syncPreviewScroll);
@@ -1621,8 +1631,11 @@ function renderNoteList() {
       const flags = isTransferAssistant(note) ? "⇄" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
       const title = isTransferAssistant(note) ? t("transferAssistantTitle") : note.title;
       const body = isTransferAssistant(note) && !note.body.trim() ? t("transferAssistantExcerpt") : excerpt(note.body);
+      const classes = ["note-item"];
+      if (note.id === state.activeId) classes.push("active");
+      if (isTransferAssistant(note)) classes.push("transfer-assistant");
       return `
-        <button class="note-item ${note.id === state.activeId ? "active" : ""}" type="button" data-id="${note.id}">
+        <button class="${classes.join(" ")}" type="button" data-id="${note.id}">
           <span class="note-item-head">
             <h3>${escapeHtml(title)}</h3>
             <span class="note-flags-text">${flags}</span>
@@ -2806,6 +2819,10 @@ function handleEditorPaste(event) {
     showToast(t("imageTooLarge"));
     return;
   }
+  if (countMarkdownImages(note.body) >= MAX_TRANSFER_IMAGES) {
+    showToast(`文件传输助手最多保存 ${MAX_TRANSFER_IMAGES} 张图片`);
+    return;
+  }
 
   const reader = new FileReader();
   reader.onload = () => {
@@ -2827,6 +2844,10 @@ function handleEditorPaste(event) {
   };
   reader.onerror = () => showToast(t("imagePasteFailed"));
   reader.readAsDataURL(file);
+}
+
+function countMarkdownImages(value) {
+  return String(value).match(/!\[[^\]]*\]\((?:data:image\/[^)]+|https?:\/\/[^)]+)\)/g)?.length || 0;
 }
 
 /** Replace a range in the textarea and fire input event */
@@ -3126,7 +3147,12 @@ function inlineMarkdown(text) {
   html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => {
     if (!isSafeImageUrl(url)) return _;
     const token = `@@NANSTAR_IMAGE_${images.length}@@`;
-    images.push(`<img src="${escapeAttribute(url)}" alt="${escapeAttribute(alt)}" loading="lazy" />`);
+    images.push(`
+      <figure class="preview-image-card">
+        <button class="preview-copy-image" type="button" data-src="${escapeAttribute(url)}" title="复制图片" aria-label="复制图片"></button>
+        <img src="${escapeAttribute(url)}" alt="${escapeAttribute(alt)}" loading="lazy" />
+      </figure>
+    `);
     return token;
   });
 
@@ -3150,6 +3176,48 @@ function inlineMarkdown(text) {
 function isSafeImageUrl(url) {
   return /^data:image\/(?:png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$/i.test(url)
     || /^https?:\/\/[^\s<>"']+$/i.test(url);
+}
+
+async function copyPreviewImage(src) {
+  if (!src) throw new Error("empty");
+  if (src.startsWith("data:image/")) {
+    const blob = dataUrlToBlob(src);
+    if (navigator.clipboard?.write && globalThis.ClipboardItem) {
+      await navigator.clipboard.write([new ClipboardItem({ [blob.type || "image/png"]: blob })]);
+      return;
+    }
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(src);
+      return;
+    }
+    throw new Error("clipboard");
+  }
+  try {
+    const response = await fetch(src, { mode: "cors" });
+    if (!response.ok) throw new Error("fetch failed");
+    const blob = await response.blob();
+    if (!blob.type.startsWith("image/")) throw new Error("not image");
+    if (navigator.clipboard?.write && globalThis.ClipboardItem) {
+      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      return;
+    }
+  } catch {
+    // fall through to text copy
+  }
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(src);
+    return;
+  }
+  throw new Error("clipboard");
+}
+
+function dataUrlToBlob(dataUrl) {
+  const [meta, base64] = dataUrl.split(",");
+  const mime = (meta.match(/data:([^;]+)/)?.[1]) || "image/png";
+  const binary = atob(base64 || "");
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
 }
 
 function formatMarkdownExport(note) {
