@@ -254,7 +254,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .note-list-panel { flex: 1; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
 .note-list { overflow: auto; padding-right: 2px; }
 .note-list::-webkit-scrollbar, textarea::-webkit-scrollbar, .preview-content::-webkit-scrollbar, .outline-list::-webkit-scrollbar { width: 8px; }
-.note-list::-webkit-scrollbar:hover, textarea::-webkit-scrollbar:hover, .preview-content::-webkit-scrollbar:hover, .outline-list::-webkit-scrollbar:hover { width: 12px; }
+.note-list::-webkit-scrollbar:hover, textarea::-webkit-scrollbar:hover, .preview-content::-webkit-scrollbar:hover, .outline-list::-webkit-scrollbar:hover { width: 10px; }
 .note-list::-webkit-scrollbar-thumb, textarea::-webkit-scrollbar-thumb, .preview-content::-webkit-scrollbar-thumb, .outline-list::-webkit-scrollbar-thumb {
   border: 2px solid transparent; border-radius: 999px; background: rgba(102, 115, 133, 0.35); background-clip: padding-box;
 }
