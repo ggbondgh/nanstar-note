@@ -47,6 +47,9 @@ const i18n = {
     editorSearchPlaceholder: "查找当前笔记内容",
     searchCount: "{current} / {total}",
     searchNoMatch: "0 / 0",
+    searchPrev: "上一个匹配",
+    searchNext: "下一个匹配",
+    searchClose: "关闭搜索",
     currentLine: "当前行",
     lines: "行",
     characters: "字",
@@ -55,6 +58,15 @@ const i18n = {
     txtMode: "TXT 纯文本模式",
     showPreview: "显示预览",
     hidePreview: "隐藏预览",
+    undo: "撤回 Ctrl+Z",
+    redo: "重做 Ctrl+Y",
+    bold: "加粗",
+    inlineCode: "行内代码",
+    unorderedList: "无序列表",
+    orderedList: "有序列表",
+    taskList: "任务清单",
+    quote: "引用",
+    codeBlock: "代码块",
     insertSnippets: "插入片段",
     insertPathSnippet: "路径片段",
     insertCommandSnippet: "命令片段",
@@ -76,13 +88,37 @@ const i18n = {
     local: "本地",
     cloudUnsynced: "云端未同步",
     synced: "已同步",
+    syncChecking: "正在检查云端...",
+    syncPushing: "正在同步到云端...",
+    syncPulling: "正在拉取云端...",
+    syncFailed: "同步失败",
+    syncRetry: "待重试",
+    syncPending: "本地已保存，等待同步",
+    syncPendingShort: "待同步",
+    saving: "保存中...",
+    savedLocal: "已保存本地",
+    syncPushedAt: "已同步到云端 {time}",
+    syncPulledAt: "已从云端更新 {time}",
+    syncCheckedAt: "已检查云端 {time}",
+    syncBlockedDirty: "云端有更新，本地正在编辑，已保留本地",
+    syncNoChange: "云端暂无更新",
+    transferAssistantTitle: "文件传输助手",
+    transferAssistantBody: "# 文件传输助手\n\n这里可以临时放文字、路径、截图和小图片。直接在编辑区粘贴图片即可插入，所有设备会跟随笔记同步。\n\n",
+    transferAssistantExcerpt: "临时传文字、路径、截图和小图片",
+    imageTooLarge: "图片太大，已跳过。建议单张图片小于 900KB。",
+    imagePasteFailed: "图片粘贴失败",
+    imagePasted: "已插入图片",
+    codeCopy: "复制",
+    markdownEmpty: "开始写 Markdown 后，这里会实时预览。",
     syncSettings: "同步设置",
     syncCopy: "使用 Cloudflare Pages Functions + D1 保存云端笔记。客户电脑建议使用无痕窗口，离开时清除 Token。",
     syncToken: "同步 Token",
-    autoSync: "自动同步：打开页面自动拉取，编辑后自动保存到云端",
+    autoSync: "自动同步：打开页面和停留时检查云端；离开笔记或 Ctrl+S 时同步到云端",
     pushCloud: "立即同步",
     pullCloud: "检查云端更新",
     clearToken: "清除 Token",
+    syncLocalReady: "未连接云同步，本地编辑可正常使用。",
+    tokenCleared: "已清除本地 Token。",
     editorSearchLabel: "查找",
     modeTxt: "TXT",
     modeMd: "MD",
@@ -140,6 +176,9 @@ const i18n = {
     editorSearchPlaceholder: "Find in current note",
     searchCount: "{current} / {total}",
     searchNoMatch: "0 / 0",
+    searchPrev: "Previous match",
+    searchNext: "Next match",
+    searchClose: "Close search",
     currentLine: "Current line",
     lines: "lines",
     characters: "chars",
@@ -148,6 +187,15 @@ const i18n = {
     txtMode: "Plain text mode",
     showPreview: "Show preview",
     hidePreview: "Hide preview",
+    undo: "Undo Ctrl+Z",
+    redo: "Redo Ctrl+Y",
+    bold: "Bold",
+    inlineCode: "Inline code",
+    unorderedList: "Bulleted list",
+    orderedList: "Numbered list",
+    taskList: "Task list",
+    quote: "Quote",
+    codeBlock: "Code block",
     insertSnippets: "Insert snippets",
     insertPathSnippet: "Path snippet",
     insertCommandSnippet: "Command snippet",
@@ -169,13 +217,37 @@ const i18n = {
     local: "Local",
     cloudUnsynced: "Cloud not synced",
     synced: "Synced",
+    syncChecking: "Checking cloud...",
+    syncPushing: "Syncing to cloud...",
+    syncPulling: "Pulling cloud updates...",
+    syncFailed: "Sync failed",
+    syncRetry: "Retry pending",
+    syncPending: "Local saved, waiting to sync",
+    syncPendingShort: "Pending sync",
+    saving: "Saving...",
+    savedLocal: "Saved locally",
+    syncPushedAt: "Synced to cloud {time}",
+    syncPulledAt: "Updated from cloud {time}",
+    syncCheckedAt: "Checked cloud {time}",
+    syncBlockedDirty: "Cloud changed, local edit kept",
+    syncNoChange: "No cloud changes",
+    transferAssistantTitle: "File Transfer",
+    transferAssistantBody: "# File Transfer\n\nDrop temporary text, paths, screenshots, and small images here. Paste an image in the editor to insert it, and it will sync with this note across devices.\n\n",
+    transferAssistantExcerpt: "Temporary text, paths, screenshots, and small images",
+    imageTooLarge: "Image is too large and was skipped. Keep each image under 900KB.",
+    imagePasteFailed: "Failed to paste image",
+    imagePasted: "Image inserted",
+    codeCopy: "Copy",
+    markdownEmpty: "Start writing Markdown to preview it here.",
     syncSettings: "Sync Settings",
     syncCopy: "Use Cloudflare Pages Functions + D1 to store notes in the cloud. On client computers, use an incognito window and clear the token when leaving.",
     syncToken: "Sync Token",
-    autoSync: "Auto sync on open and after editing",
+    autoSync: "Auto check on open and while active; sync on note switch or Ctrl+S",
     pushCloud: "Sync Now",
     pullCloud: "Check Cloud Updates",
     clearToken: "Clear Token",
+    syncLocalReady: "Cloud sync is not connected. Local editing still works.",
+    tokenCleared: "Local token cleared.",
     editorSearchLabel: "Find",
     modeTxt: "TXT",
     modeMd: "MD",
@@ -427,11 +499,15 @@ const state = {
   sidebarCollapsed: localStorage.getItem(storageKeys.sidebarCollapsed) === "1",
   localStateSource: localStorage.getItem(storageKeys.notes) ? "stored" : "default",
   saveTimer: null,
+  savePendingNoteId: null,
   autoSyncTimer: null,
   syncStartupTimer: null,
   syncPollTimer: null,
   syncInFlight: false,
-  syncQueued: false,
+  syncQueued: null,
+  syncAction: "",
+  lastCloudPullAt: 0,
+  dirtyNoteIds: new Set(),
   contextMenuFolder: null,
   contextMenuNoteId: null
 };
@@ -442,6 +518,8 @@ const DEFAULT_SPLIT_RATIO = 52;
 const DEFAULT_SIDEBAR_WIDTH = 248;
 const SYNC_POLL_INTERVAL = 15000;
 const SYNC_PUSH_DELAY = 1200;
+const TRANSFER_NOTE_ID = "nanstar-transfer-assistant";
+const MAX_PASTE_IMAGE_BYTES = 900 * 1024;
 
 const elements = {
   appShell: $(".app-shell"),
@@ -475,6 +553,8 @@ const elements = {
   editorCard: $("#editorCard"),
   editorSection: $("#editorSection"),
   editorSectionState: $("#editorSectionState"),
+  editorTitle: $("#editorTitle"),
+  previewTitle: $("#previewTitle"),
   titleInput: $("#titleInput"),
   modeButtons: $$(".mode-button"),
   folderInput: $("#folderInput"),
@@ -525,6 +605,7 @@ init();
 function init() {
   state.notes = loadNotes();
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
+  restoreDirtyNotes();
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
   elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) !== "0";
   applyLanguage(state.language, true);
@@ -635,8 +716,8 @@ function bindEvents() {
         if (!noteId) return;
         const note = state.notes.find(n => n.id === noteId && !isDeletedNote(n));
         if (!note) return;
-        if (action === "pin") { note.pinned = !note.pinned; note.updatedAt = Date.now(); persistAndRender(note.pinned ? "已置顶" : "已取消置顶"); }
-        else if (action === "favorite") { note.favorite = !note.favorite; note.updatedAt = Date.now(); persistAndRender(note.favorite ? "已加星标" : "已取消星标"); }
+        if (action === "pin") { note.pinned = !note.pinned; note.updatedAt = Date.now(); persistAndRender(note.pinned ? "已置顶" : "已取消置顶", { dirtyNoteId: note.id }); }
+        else if (action === "favorite") { note.favorite = !note.favorite; note.updatedAt = Date.now(); persistAndRender(note.favorite ? "已加星标" : "已取消星标", { dirtyNoteId: note.id }); }
         else if (action === "duplicate") duplicateNoteById(noteId);
         else if (action === "export") exportNoteById(noteId);
         else if (action === "delete") deleteNoteById(noteId);
@@ -651,6 +732,7 @@ function bindEvents() {
   elements.titleInput.addEventListener("input", updateActiveFromInputs);
   elements.folderInput?.addEventListener("input", updateActiveFromInputs);
   elements.bodyInput.addEventListener("input", updateActiveFromInputs);
+  elements.bodyInput.addEventListener("paste", handleEditorPaste);
   elements.bodyInput.addEventListener("scroll", syncLineNumberScroll);
   elements.bodyInput.addEventListener("keyup", handleEditorCursorChange);
   elements.bodyInput.addEventListener("click", handleEditorCursorChange);
@@ -744,8 +826,8 @@ function bindEvents() {
     });
   }
 
-  elements.pushCloudButton.addEventListener("click", () => syncCloud({ manual: true, forcePush: true }));
-  elements.pullCloudButton.addEventListener("click", () => syncCloud({ manual: true }));
+  elements.pushCloudButton.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "manual-push" }));
+  elements.pullCloudButton.addEventListener("click", () => syncCloud({ manual: true, pullOnly: true, reason: "manual-pull" }));
   elements.logoutCloudButton.addEventListener("click", clearSyncToken);
   elements.syncTokenInput.addEventListener("input", () => {
     const token = elements.syncTokenInput.value.trim();
@@ -761,7 +843,7 @@ function bindEvents() {
     else stopCloudSync();
   });
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) syncCloud({ silent: true });
+    if (!document.hidden) syncCloud({ silent: true, pullOnly: true, reason: "check" });
   });
 
   window.addEventListener("keydown", (event) => {
@@ -788,9 +870,8 @@ function bindEvents() {
     }
     if ((event.ctrlKey || event.metaKey) && key === "s") {
       event.preventDefault();
-      saveNotes();
-      setSaveStatus("已保存本地");
-      showToast("已保存到浏览器本地");
+      syncCurrentNoteNow();
+      return;
     }
     if ((event.ctrlKey || event.metaKey) && key === "n") {
       event.preventDefault();
@@ -798,18 +879,18 @@ function bindEvents() {
     }
   });
 
-  window.addEventListener("beforeunload", saveNotes);
+  window.addEventListener("beforeunload", () => flushPendingSave(state.activeId));
 }
 
 function loadNotes() {
   try {
     const raw = localStorage.getItem(storageKeys.notes);
-    if (!raw) return defaultNotes.map(normalizeNote);
+    if (!raw) return withSystemNotes(defaultNotes.map(normalizeNote));
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return defaultNotes.map(normalizeNote);
-    return parsed.map(normalizeNote);
+    if (!Array.isArray(parsed) || parsed.length === 0) return withSystemNotes(defaultNotes.map(normalizeNote));
+    return withSystemNotes(parsed.map(normalizeNote));
   } catch {
-    return defaultNotes.map(normalizeNote);
+    return withSystemNotes(defaultNotes.map(normalizeNote));
   }
 }
 
@@ -823,12 +904,57 @@ function normalizeNote(note) {
     body,
     pinned: Boolean(note.pinned),
     favorite: Boolean(note.favorite),
+    system: note.system || "",
     editorSectionOpen: typeof note.editorSectionOpen === "boolean" ? note.editorSectionOpen : normalizeMode(note.mode, body) === "md",
     previewVisible: note.previewVisible !== false,
     createdAt: Number(note.createdAt) || Date.now(),
     updatedAt: Number(note.updatedAt) || Date.now(),
     deletedAt: Number(note.deletedAt) || 0
   };
+}
+
+function createTransferAssistantNote() {
+  const now = Date.now();
+  return normalizeNote({
+    id: TRANSFER_NOTE_ID,
+    title: t("transferAssistantTitle"),
+    mode: "md",
+    folder: t("inbox"),
+    body: t("transferAssistantBody"),
+    pinned: true,
+    favorite: false,
+    system: "transfer",
+    editorSectionOpen: true,
+    previewVisible: true,
+    deletedAt: 0,
+    createdAt: now,
+    updatedAt: now
+  });
+}
+
+function isTransferAssistant(note) {
+  return note?.id === TRANSFER_NOTE_ID || note?.system === "transfer";
+}
+
+function withSystemNotes(notes) {
+  const normalized = notes.map(normalizeNote);
+  const transfer = normalized.find(isTransferAssistant);
+  if (transfer) {
+    transfer.id = TRANSFER_NOTE_ID;
+    transfer.system = "transfer";
+    transfer.mode = "md";
+    transfer.pinned = true;
+    transfer.favorite = false;
+    transfer.deletedAt = 0;
+    transfer.folder = t("inbox");
+    transfer.previewVisible = true;
+    transfer.editorSectionOpen = true;
+    if (!transfer.title || transfer.title === "File Transfer" || transfer.title === "文件传输助手") {
+      transfer.title = t("transferAssistantTitle");
+    }
+    return normalized.filter((note) => !isTransferAssistant(note)).concat(transfer);
+  }
+  return [createTransferAssistantNote(), ...normalized];
 }
 
 function isDeletedNote(note) {
@@ -848,15 +974,20 @@ function noteVersion(note) {
 }
 
 function syncableNotes() {
-  return state.notes.map(normalizeNote).sort((a, b) => a.id.localeCompare(b.id));
+  return withSystemNotes(state.notes).map(normalizeNote).sort((a, b) => a.id.localeCompare(b.id));
 }
 
 function notesSignature(notes = state.notes) {
   return JSON.stringify(notes.map(normalizeNote).sort((a, b) => a.id.localeCompare(b.id)));
 }
 
+function noteSignatureById(noteId) {
+  const note = state.notes.find((item) => item.id === noteId);
+  return note ? notesSignature([note]) : "";
+}
+
 function isDefaultSeedState(notes = state.notes) {
-  const visible = notes.map(normalizeNote).filter((note) => !isDeletedNote(note));
+  const visible = notes.map(normalizeNote).filter((note) => !isDeletedNote(note) && !isTransferAssistant(note));
   if (visible.length !== defaultNotes.length) return false;
   return defaultNotes.every((seed) => visible.some((note) => note.title === seed.title && note.body === seed.body));
 }
@@ -881,21 +1012,108 @@ function saveNotes() {
 }
 
 function scheduleSave(message = "已保存本地") {
-  setSaveStatus("保存中...");
+  setSaveStatus(t("saving"));
   clearTimeout(state.saveTimer);
+  state.savePendingNoteId = state.activeId;
+  markNoteDirty(state.savePendingNoteId);
   state.saveTimer = window.setTimeout(() => {
     saveNotes();
-    setSaveStatus(message);
-    markSyncPending();
-    scheduleAutoSync();
+    setSaveStatus(getSyncToken() ? t("syncPending") : message);
+    markSyncPending(state.savePendingNoteId);
+    state.savePendingNoteId = null;
   }, 240);
+}
+
+function flushPendingSave(noteId = state.activeId) {
+  const pendingNoteId = state.savePendingNoteId || noteId;
+  if (state.saveTimer) {
+    clearTimeout(state.saveTimer);
+    state.saveTimer = null;
+    saveNotes();
+    markNoteDirty(pendingNoteId);
+    markSyncPending(pendingNoteId);
+    state.savePendingNoteId = null;
+    setSaveStatus(getSyncToken() ? t("syncPending") : t("savedLocal"));
+    return true;
+  }
+  saveNotes();
+  return Boolean(pendingNoteId && isDirtyNoteId(pendingNoteId));
+}
+
+function isDirtyNoteId(noteId) {
+  return Boolean(noteId && state.dirtyNoteIds.has(noteId));
+}
+
+function hasDirtyNotes() {
+  return state.dirtyNoteIds.size > 0 || Boolean(readSyncMeta().pending);
+}
+
+function markNoteDirty(noteId = state.activeId) {
+  if (noteId) state.dirtyNoteIds.add(noteId);
+}
+
+function markAllNotesDirty() {
+  visibleNotes().forEach((note) => state.dirtyNoteIds.add(note.id));
+}
+
+function restoreDirtyNotes() {
+  const dirtyIds = readSyncMeta().dirtyNoteIds;
+  state.dirtyNoteIds = new Set(Array.isArray(dirtyIds) ? dirtyIds.filter(Boolean) : []);
+}
+
+function dirtyNoteIds() {
+  return [...state.dirtyNoteIds].filter(Boolean);
+}
+
+function mergeCloudNotesSafely(incomingNotes) {
+  const dirty = new Set(dirtyNoteIds());
+  let blocked = false;
+  let changed = false;
+  const map = new Map(state.notes.map((note) => [note.id, normalizeNote(note)]));
+
+  incomingNotes.forEach((note) => {
+    const existing = map.get(note.id);
+    if (dirty.has(note.id)) {
+      if (!existing || notesSignature([existing]) !== notesSignature([note])) blocked = true;
+      return;
+    }
+    if (!existing || noteVersion(note) >= noteVersion(existing)) {
+      if (!existing || notesSignature([existing]) !== notesSignature([note])) changed = true;
+      map.set(note.id, note);
+    }
+  });
+
+  if (changed) {
+    state.notes = [...map.values()].sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
+    if (!activeNote()) state.activeId = firstVisibleNote()?.id || null;
+    ensureActiveNote();
+    saveNotes();
+    renderAll();
+    setSaveStatus(t("savedLocal"));
+  }
+
+  return { changed, blocked };
+}
+
+function clearDirtyNotes() {
+  state.dirtyNoteIds.clear();
+}
+
+function clearSyncedDirtyNotes(snapshots) {
+  if (!snapshots) {
+    clearDirtyNotes();
+    return;
+  }
+  Object.entries(snapshots).forEach(([noteId, signature]) => {
+    if (noteSignatureById(noteId) === signature) state.dirtyNoteIds.delete(noteId);
+  });
 }
 
 function scheduleAutoSync() {
   clearTimeout(state.autoSyncTimer);
   if (!elements.autoSyncToggle.checked || !getSyncToken() || state.syncInFlight) return;
   state.autoSyncTimer = window.setTimeout(() => {
-    syncCloud({ silent: true });
+    syncCloud({ silent: true, pullOnly: true, reason: "check" });
   }, SYNC_PUSH_DELAY);
 }
 
@@ -1141,16 +1359,17 @@ function renameFolder(oldName) {
     showToast(t("folderExists"));
     return;
   }
+  const changedIds = [];
   state.notes.forEach(note => {
     if (note.folder === oldName && !isDeletedNote(note)) {
       note.folder = newName;
       note.updatedAt = Date.now();
+      changedIds.push(note.id);
     }
   });
   if (state.selectedFolder === oldName) state.selectedFolder = newName;
   saveNotes();
-  markSyncPending();
-  scheduleAutoSync();
+  changedIds.forEach((id) => markSyncPending(id));
   renderLists();
   renderFolderDatalist();
   renderEditor();
@@ -1166,16 +1385,17 @@ function deleteFolder(name) {
     t("confirmDeleteFolder").replace("{name}", name)
   );
   if (!confirmed) return;
+  const changedIds = [];
   state.notes.forEach(note => {
     if (note.folder === name && !isDeletedNote(note)) {
       note.folder = "收件箱";
       note.updatedAt = Date.now();
+      changedIds.push(note.id);
     }
   });
   if (state.selectedFolder === name) state.selectedFolder = "";
   saveNotes();
-  markSyncPending();
-  scheduleAutoSync();
+  changedIds.forEach((id) => markSyncPending(id));
   renderAll();
   renderFolderDatalist();
   showToast(`已删除文件夹「${name}」`);
@@ -1250,7 +1470,7 @@ function moveNoteToFolder(noteId, targetFolder) {
   if (!note || note.folder === targetFolder) return;
   note.folder = targetFolder;
   note.updatedAt = Date.now();
-  persistAndRender(`已移至「${targetFolder}」`);
+  persistAndRender(`已移至「${targetFolder}」`, { dirtyNoteId: note.id });
 }
 
 function duplicateNoteById(id) {
@@ -1275,6 +1495,12 @@ function exportNoteById(id) {
 }
 
 function markNoteDeleted(note) {
+  if (isTransferAssistant(note)) {
+    note.deletedAt = 0;
+    note.pinned = true;
+    note.favorite = false;
+    return;
+  }
   const now = Date.now();
   note.deletedAt = now;
   note.updatedAt = now;
@@ -1290,7 +1516,7 @@ function deleteNoteById(id) {
   markNoteDeleted(note);
   if (state.activeId === id) state.activeId = firstVisibleNote()?.id || null;
   ensureActiveNote();
-  persistAndRender("已删除笔记");
+  persistAndRender("已删除笔记", { dirtyNoteId: id });
 }
 
 function renderLists() {
@@ -1319,6 +1545,8 @@ function sortedNotes() {
       return haystack.includes(state.query);
     })
     .sort((a, b) => {
+      if (isTransferAssistant(a) && !isTransferAssistant(b)) return -1;
+      if (!isTransferAssistant(a) && isTransferAssistant(b)) return 1;
       // Pinned always first
       if (a.pinned && !b.pinned) return -1;
       if (!a.pinned && b.pinned) return 1;
@@ -1390,14 +1618,16 @@ function renderNoteList() {
   elements.noteList.innerHTML = notes
     .map((note) => {
       const mode = note.mode === "md" ? "MD" : "TXT";
-      const flags = `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
+      const flags = isTransferAssistant(note) ? "⇄" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
+      const title = isTransferAssistant(note) ? t("transferAssistantTitle") : note.title;
+      const body = isTransferAssistant(note) && !note.body.trim() ? t("transferAssistantExcerpt") : excerpt(note.body);
       return `
         <button class="note-item ${note.id === state.activeId ? "active" : ""}" type="button" data-id="${note.id}">
           <span class="note-item-head">
-            <h3>${escapeHtml(note.title)}</h3>
+            <h3>${escapeHtml(title)}</h3>
             <span class="note-flags-text">${flags}</span>
           </span>
-          <p>${escapeHtml(excerpt(note.body))}</p>
+          <p>${escapeHtml(body)}</p>
           <span class="note-item-meta">
             <span class="note-item-mode">${mode}</span>
             <time>${formatShortDate(note.updatedAt)}</time>
@@ -1408,18 +1638,39 @@ function renderNoteList() {
     .join("");
 
   elements.noteList.querySelectorAll(".note-item").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.activeId = button.dataset.id;
-      saveNotes();
-      renderAll();
-      elements.bodyInput.focus();
-    });
+    button.addEventListener("click", () => switchToNote(button.dataset.id));
     button.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       state.contextMenuNoteId = button.dataset.id;
       showNoteContextMenu(event.clientX, event.clientY);
     });
   });
+}
+
+async function switchToNote(nextId) {
+  if (!nextId || nextId === state.activeId) {
+    if (nextId) await syncCloud({ silent: true, pullOnly: true, reason: "open-note", noteId: nextId });
+    return;
+  }
+
+  const previousId = state.activeId;
+  flushPendingSave(previousId);
+  if (isDirtyNoteId(previousId)) {
+    await syncCloud({ silent: false, forcePush: true, reason: "leave-note", noteId: previousId });
+  }
+
+  state.activeId = nextId;
+  saveNotes();
+  renderAll();
+  elements.bodyInput.focus();
+  await syncCloud({ silent: true, pullOnly: true, reason: "open-note", noteId: nextId });
+}
+
+async function syncCurrentNoteNow() {
+  const noteId = state.activeId;
+  flushPendingSave(noteId);
+  markSyncPending(noteId);
+  await syncCloud({ manual: true, forcePush: true, reason: "ctrl-s", noteId });
 }
 
 function renderSyncMeta() {
@@ -1432,14 +1683,21 @@ function renderSyncMeta() {
     elements.cloudStatus.textContent = t("localMode");
     elements.syncState.textContent = t("local");
   } else if (state.syncInFlight) {
-    elements.cloudStatus.textContent = "同步中...";
-    elements.syncState.textContent = "同步中";
+    const label = state.syncAction === "pulling" ? t("syncPulling") : t("syncPushing");
+    elements.cloudStatus.textContent = label;
+    elements.syncState.textContent = label;
   } else if (syncMeta.lastError) {
-    elements.cloudStatus.textContent = "同步失败";
-    elements.syncState.textContent = "待重试";
+    elements.cloudStatus.textContent = t("syncFailed");
+    elements.syncState.textContent = t("syncRetry");
   } else if (syncMeta.pending) {
-    elements.cloudStatus.textContent = "有本地改动待同步";
-    elements.syncState.textContent = "待同步";
+    elements.cloudStatus.textContent = t("syncPending");
+    elements.syncState.textContent = t("syncPendingShort");
+  } else if (syncMeta.lastPushAt) {
+    elements.cloudStatus.textContent = auto ? t("cloudAuto") : t("cloudReady");
+    elements.syncState.textContent = t("syncPushedAt").replace("{time}", formatTime(Number(syncMeta.lastPushAt)));
+  } else if (syncMeta.lastPullAt) {
+    elements.cloudStatus.textContent = auto ? t("cloudAuto") : t("cloudReady");
+    elements.syncState.textContent = t("syncPulledAt").replace("{time}", formatTime(Number(syncMeta.lastPullAt)));
   } else {
     elements.cloudStatus.textContent = auto ? t("cloudAuto") : t("cloudReady");
     elements.syncState.textContent = lastSync
@@ -1531,6 +1789,7 @@ function togglePreview() {
   state.previewFocus = false;
   note.updatedAt = Date.now();
   saveNotes();
+  markSyncPending(note.id);
   renderModeState();
   renderPreview();
 }
@@ -1542,6 +1801,7 @@ function togglePreviewFocus() {
   if (state.previewFocus) note.previewVisible = true;
   note.updatedAt = Date.now();
   saveNotes();
+  markSyncPending(note.id);
   renderModeState();
   renderPreview();
 }
@@ -1552,6 +1812,7 @@ function handleEditorSectionToggle() {
   note.editorSectionOpen = elements.editorSection.open;
   note.updatedAt = Date.now();
   saveNotes();
+  markSyncPending(note.id);
   renderModeState();
 }
 
@@ -1617,12 +1878,17 @@ function bindSidebarResizer() {
 function deleteActiveNote() {
   const note = activeNote();
   if (!note) return;
+  if (isTransferAssistant(note)) {
+    showToast(t("transferAssistantTitle"));
+    return;
+  }
   const confirmed = window.confirm(`删除「${note.title}」？下次推送到云端时会同步这个删除结果。`);
   if (!confirmed) return;
+  const deletedId = note.id;
   markNoteDeleted(note);
   state.activeId = firstVisibleNote()?.id || null;
   ensureActiveNote();
-  persistAndRender("已删除笔记");
+  persistAndRender("已删除笔记", { dirtyNoteId: deletedId });
 }
 
 function duplicateActiveNote() {
@@ -1738,12 +2004,30 @@ function mergeNotes(incoming, options = {}) {
   setSaveStatus("已保存本地");
   if (options.scheduleSync !== false) {
     markSyncPending();
-    scheduleAutoSync();
   }
   if (!options.silent) {
     showToast("已合并笔记");
   }
   return changed;
+}
+
+function applyCloudNotes(remoteNotes, options = {}) {
+  const before = notesSignature();
+  const incomingNotes = remoteNotes.map(normalizeNote);
+  const localWasDefault = state.localStateSource === "default";
+  const hasRemoteVisibleNotes = incomingNotes.some((note) => !isDeletedNote(note));
+  const allowReplace = options.allowReplace === true;
+  const hasLocalDirty = hasDirtyNotes();
+
+  if ((allowReplace || localWasDefault || isDefaultSeedState()) && hasRemoteVisibleNotes && !hasLocalDirty) {
+    replaceNotesFromCloud(incomingNotes, { keepActiveId: true });
+    return { changed: before !== notesSignature(), blocked: false };
+  } else if (hasLocalDirty) {
+    return mergeCloudNotesSafely(incomingNotes);
+  } else {
+    mergeNotes(incomingNotes, { silent: true, scheduleSync: false });
+    return { changed: before !== notesSignature(), blocked: false };
+  }
 }
 
 function createShareLink() {
@@ -1778,11 +2062,11 @@ function decodeSharedNote() {
 }
 
 async function pushCloud(options = {}) {
-  return syncCloud({ manual: !options.silent, silent: Boolean(options.silent), forcePush: true });
+  return syncCloud({ manual: !options.silent, silent: Boolean(options.silent), forcePush: true, reason: "push" });
 }
 
 async function pullCloud() {
-  return syncCloud({ manual: true });
+  return syncCloud({ manual: true, pullOnly: true, reason: "pull" });
 }
 
 function readSyncMeta() {
@@ -1799,23 +2083,27 @@ function writeSyncMeta(patch) {
   return next;
 }
 
-function markSyncPending() {
+function markSyncPending(noteId = state.activeId) {
   if (!getSyncToken()) {
     renderSyncMeta();
     return;
   }
-  writeSyncMeta({ pending: true, lastError: "" });
+  markNoteDirty(noteId);
+  writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: "" });
   renderSyncMeta();
 }
 
-function clearSyncPending(remoteUpdatedAt = Date.now()) {
+function clearSyncPending(remoteUpdatedAt = Date.now(), patch = {}, syncedSnapshots = null) {
   const now = Date.now();
   localStorage.setItem(storageKeys.lastSyncAt, String(now));
+  clearSyncedDirtyNotes(syncedSnapshots);
   writeSyncMeta({
-    pending: false,
+    pending: state.dirtyNoteIds.size > 0,
+    dirtyNoteIds: dirtyNoteIds(),
     lastError: "",
     remoteUpdatedAt: Number(remoteUpdatedAt) || now,
-    lastSyncedAt: now
+    lastSyncedAt: now,
+    ...patch
   });
 }
 
@@ -1826,9 +2114,9 @@ function startCloudSync() {
     return;
   }
   renderSyncMeta();
-  state.syncStartupTimer = window.setTimeout(() => syncCloud({ silent: true }), 300);
+  state.syncStartupTimer = window.setTimeout(() => syncCloud({ silent: true, pullOnly: true, reason: "startup" }), 300);
   state.syncPollTimer = window.setInterval(() => {
-    if (!document.hidden) syncCloud({ silent: true });
+    if (!document.hidden) syncCloud({ silent: true, pullOnly: true, reason: "poll" });
   }, SYNC_POLL_INTERVAL);
 }
 
@@ -1868,9 +2156,12 @@ async function putCloudState(token) {
   return response.json();
 }
 
-function replaceNotesFromCloud(notes) {
+function replaceNotesFromCloud(notes, options = {}) {
+  const keepActiveId = options.keepActiveId !== false ? state.activeId : null;
   state.notes = notes.map(normalizeNote).sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
-  state.activeId = firstVisibleNote()?.id || null;
+  state.activeId = keepActiveId && state.notes.some((note) => note.id === keepActiveId && !isDeletedNote(note))
+    ? keepActiveId
+    : firstVisibleNote()?.id || null;
   ensureActiveNote();
   saveNotes();
   renderAll();
@@ -1881,6 +2172,8 @@ async function syncCloud(options = {}) {
   const manual = Boolean(options.manual);
   const silent = Boolean(options.silent);
   const forcePush = Boolean(options.forcePush);
+  const pullOnly = Boolean(options.pullOnly) && !forcePush;
+  const reason = options.reason || (pullOnly ? "check" : "sync");
 
   if (!token) {
     if (manual) showSyncMessage("请先填写同步 Token。");
@@ -1889,44 +2182,82 @@ async function syncCloud(options = {}) {
   }
   if (!manual && !elements.autoSyncToggle.checked) return;
   if (state.syncInFlight) {
-    state.syncQueued = true;
+    state.syncQueued = options;
     return;
   }
 
   clearTimeout(state.autoSyncTimer);
   localStorage.setItem(storageKeys.syncToken, token);
-  const localWasDefault = state.localStateSource === "default";
-  const pendingBefore = Boolean(readSyncMeta().pending || forcePush);
+  if (forcePush && !hasDirtyNotes()) markAllNotesDirty();
+  const pendingBefore = hasDirtyNotes() || forcePush;
+  const dirtySnapshot = Object.fromEntries(dirtyNoteIds().map((id) => [id, noteSignatureById(id)]));
   state.syncInFlight = true;
+  state.syncAction = pullOnly ? "pulling" : "pushing";
   renderSyncMeta();
-  if (!silent) showSyncMessage("正在自动合并云端和本地...");
+  if (!silent) showSyncMessage(pullOnly ? t("syncPulling") : t("syncPushing"));
 
   try {
     const remotePayload = await fetchCloudState(token);
     const remoteNotes = Array.isArray(remotePayload.notes) ? remotePayload.notes.map(normalizeNote) : [];
     const remoteSignature = notesSignature(remoteNotes);
-    const hasRemoteVisibleNotes = remoteNotes.some((note) => !isDeletedNote(note));
+    let remoteUpdatedAt = Number(remotePayload.updatedAt) || Date.now();
+    let pulled = false;
+    let pushed = false;
+    let blocked = false;
 
-    if ((localWasDefault || isDefaultSeedState()) && hasRemoteVisibleNotes && !pendingBefore) {
-      replaceNotesFromCloud(remoteNotes);
-    } else {
-      mergeNotes(remoteNotes, { silent: true, scheduleSync: false });
+    if (pullOnly) {
+      const result = applyCloudNotes(remoteNotes, { allowReplace: reason === "startup" || reason === "open-note" || reason === "manual-pull" });
+      pulled = result.changed;
+      blocked = result.blocked;
+    } else if (!pendingBefore && notesSignature() !== remoteSignature) {
+      const result = applyCloudNotes(remoteNotes, { allowReplace: reason === "startup" || reason === "open-note" });
+      pulled = result.changed;
+      blocked = result.blocked;
     }
 
-    const shouldPush = forcePush || readSyncMeta().pending || notesSignature() !== remoteSignature;
-    let remoteUpdatedAt = Number(remotePayload.updatedAt) || Date.now();
-    if (shouldPush) {
+    if (!pullOnly && !blocked && hasDirtyNotes()) {
+      const pulledBeforePush = applyCloudNotes(remoteNotes, { allowReplace: false });
+      blocked = pulledBeforePush.blocked;
       const pushResult = await putCloudState(token);
       remoteUpdatedAt = Number(pushResult.updatedAt) || Date.now();
+      pushed = true;
     }
 
-    clearSyncPending(remoteUpdatedAt);
+    const now = Date.now();
+    if (pushed) {
+      clearSyncPending(remoteUpdatedAt, { lastPushAt: now, lastPullAt: pulled ? now : readSyncMeta().lastPullAt || 0 }, dirtySnapshot);
+    } else if (pulled) {
+      writeSyncMeta({ lastError: "", lastPullAt: now, remoteUpdatedAt, lastSyncedAt: now });
+      localStorage.setItem(storageKeys.lastSyncAt, String(now));
+    } else if (blocked) {
+      writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: "", remoteUpdatedAt });
+    } else {
+      writeSyncMeta({ lastError: "", remoteUpdatedAt, lastCheckedAt: now });
+    }
+
     renderSyncMeta();
-    if (manual) showToast("同步完成");
-    if (!silent) showSyncMessage("同步完成。后续会自动检查云端更新。");
+    if (blocked) {
+      const message = t("syncBlockedDirty");
+      showSyncMessage(message);
+      if (!silent) showToast(message);
+    } else if (pushed) {
+      const message = t("syncPushedAt").replace("{time}", formatTime(Date.now()));
+      showSyncMessage(message);
+      showToast(message);
+    } else if (pulled) {
+      const message = t("syncPulledAt").replace("{time}", formatTime(Date.now()));
+      showSyncMessage(message);
+      showToast(message);
+    } else if (manual) {
+      const message = t("syncNoChange");
+      showSyncMessage(message);
+      showToast(message);
+    } else if (!silent) {
+      showSyncMessage(t("syncCheckedAt").replace("{time}", formatTime(Date.now())));
+    }
   } catch (error) {
-    const message = `同步失败：${cloudErrorText(error)}`;
-    if (pendingBefore || forcePush) writeSyncMeta({ pending: true, lastError: message });
+    const message = `${t("syncFailed")}：${cloudErrorText(error)}`;
+    if (pendingBefore || forcePush) writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: message });
     else writeSyncMeta({ lastError: message });
     renderSyncMeta();
     if (!silent) {
@@ -1935,10 +2266,12 @@ async function syncCloud(options = {}) {
     }
   } finally {
     state.syncInFlight = false;
+    state.syncAction = "";
     renderSyncMeta();
     if (state.syncQueued) {
-      state.syncQueued = false;
-      scheduleAutoSync();
+      const queued = state.syncQueued;
+      state.syncQueued = null;
+      window.setTimeout(() => syncCloud(queued), 120);
     }
   }
 }
@@ -1952,7 +2285,7 @@ function clearSyncToken() {
   localStorage.setItem(storageKeys.autoSync, "0");
   elements.autoSyncToggle.checked = false;
   renderSyncMeta();
-  showSyncMessage("已清除本地 Token。");
+  showSyncMessage(t("tokenCleared"));
 }
 
 function getSyncToken() {
@@ -1973,12 +2306,12 @@ function cloudErrorText(error) {
   return text.slice(0, 160);
 }
 
-function persistAndRender(message) {
+function persistAndRender(message, options = {}) {
+  const dirtyId = options.dirtyNoteId || state.activeId;
   saveNotes();
   renderAll();
-  setSaveStatus("已保存本地");
-  markSyncPending();
-  scheduleAutoSync();
+  setSaveStatus(getSyncToken() ? t("syncPending") : t("savedLocal"));
+  markSyncPending(dirtyId);
   if (message) showToast(message);
 }
 
@@ -2013,6 +2346,18 @@ function applyLanguage(language, initial = false) {
   document.querySelectorAll('.filter-tab[data-filter="all"]').forEach(b => { b.childNodes[0].textContent = t("allNotesTab"); });
   document.querySelectorAll('.filter-tab[data-filter="favorite"]').forEach(b => { b.childNodes[0].textContent = t("favoritesTab"); });
   if (elements.editorSearchInput) elements.editorSearchInput.placeholder = t("editorSearchPlaceholder");
+  if (elements.editorSearchPrevButton) {
+    elements.editorSearchPrevButton.title = t("searchPrev");
+    elements.editorSearchPrevButton.setAttribute("aria-label", t("searchPrev"));
+  }
+  if (elements.editorSearchNextButton) {
+    elements.editorSearchNextButton.title = t("searchNext");
+    elements.editorSearchNextButton.setAttribute("aria-label", t("searchNext"));
+  }
+  if (elements.editorSearchCloseButton) {
+    elements.editorSearchCloseButton.title = t("searchClose");
+    elements.editorSearchCloseButton.setAttribute("aria-label", t("searchClose"));
+  }
   if (elements.newNoteButton) elements.newNoteButton.querySelector("span:last-child").textContent = t("newNote");
   if (elements.titleInput) elements.titleInput.placeholder = t("titlePlaceholder");
   if (elements.folderInput) elements.folderInput.placeholder = t("folderPlaceholder");
@@ -2032,6 +2377,15 @@ function applyLanguage(language, initial = false) {
   setMenuItemLabel(elements.shareButton, t("share"));
   setMenuItemLabel(elements.deleteButton, t("delete"));
   setMenuItemLabel(elements.downloadNoteButton, t("backupAllJson"));
+  setToolbarTitle('[data-command="undo"]', t("undo"));
+  setToolbarTitle('[data-command="redo"]', t("redo"));
+  setToolbarTitle('[data-wrap="**"]', t("bold"));
+  setToolbarTitle('[data-wrap="`"]', t("inlineCode"));
+  setToolbarTitle('[data-prefix="- "]', t("unorderedList"));
+  setToolbarTitle('[data-prefix="1. "]', t("orderedList"));
+  setToolbarTitle('[data-prefix="- [ ] "]', t("taskList"));
+  setToolbarTitle('[data-prefix="> "]', t("quote"));
+  setToolbarTitle('[data-block="code"]', t("codeBlock"));
   const insertMenu = document.querySelector(".toolbar-menu > summary");
   if (insertMenu) {
     insertMenu.title = t("insertSnippets");
@@ -2049,6 +2403,11 @@ function applyLanguage(language, initial = false) {
   if (outlineHead) outlineHead.textContent = t("outlineTitle");
   const editorToolsTitle = document.getElementById("editorToolsTitle");
   if (editorToolsTitle) editorToolsTitle.textContent = t("editorTools");
+  if (elements.editorTitle) elements.editorTitle.textContent = t("editorTitle");
+  if (elements.previewTitle) elements.previewTitle.textContent = t("previewTitle");
+  if (elements.pushCloudButton) elements.pushCloudButton.textContent = t("pushCloud");
+  if (elements.pullCloudButton) elements.pullCloudButton.textContent = t("pullCloud");
+  if (elements.logoutCloudButton) elements.logoutCloudButton.textContent = t("clearToken");
   if (elements.noteListTitle) {
     const title = document.getElementById("noteListTitle");
     if (title) title.textContent = t("noteListTitle");
@@ -2073,10 +2432,18 @@ function applyLanguage(language, initial = false) {
   if (syncTokenLabel) syncTokenLabel.textContent = t("syncToken");
   const autoSyncLabel = document.getElementById("autoSyncLabel");
   if (autoSyncLabel) autoSyncLabel.textContent = t("autoSync");
+  if (elements.syncMessage && !getSyncToken()) elements.syncMessage.textContent = t("syncLocalReady");
+  renderSystemNoteTitles();
   if (!initial) {
     renderAll();
     showToast(next === "en" ? "Switched to English" : "已切换为中文");
   }
+}
+
+function renderSystemNoteTitles() {
+  const transfer = state.notes.find(isTransferAssistant);
+  if (!transfer) return;
+  transfer.title = t("transferAssistantTitle");
 }
 
 function toggleLanguage() {
@@ -2091,6 +2458,13 @@ function setMenuItemLabel(button, label) {
   } else {
     button.textContent = label;
   }
+}
+
+function setToolbarTitle(selector, label) {
+  const button = document.querySelector(selector);
+  if (!button) return;
+  button.title = label;
+  button.setAttribute("aria-label", label);
 }
 
 function readSplitRatio() {
@@ -2418,6 +2792,43 @@ function toggleCodeBlock() {
   }
 }
 
+function handleEditorPaste(event) {
+  const note = activeNote();
+  const items = Array.from(event.clipboardData?.items || []);
+  const imageItem = items.find((item) => item.kind === "file" && item.type.startsWith("image/"));
+  if (!note || !imageItem) return;
+
+  const file = imageItem.getAsFile();
+  if (!file) return;
+  event.preventDefault();
+
+  if (file.size > MAX_PASTE_IMAGE_BYTES) {
+    showToast(t("imageTooLarge"));
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = String(reader.result || "");
+    if (!dataUrl.startsWith("data:image/")) {
+      showToast(t("imagePasteFailed"));
+      return;
+    }
+    if (note.mode !== "md") {
+      note.mode = "md";
+      note.previewVisible = true;
+      note.editorSectionOpen = true;
+    }
+    const stamp = formatImageStamp(Date.now());
+    const prefix = elements.bodyInput.selectionStart > 0 && !elements.bodyInput.value.slice(0, elements.bodyInput.selectionStart).endsWith("\n") ? "\n\n" : "";
+    replaceRange(elements.bodyInput.selectionStart, elements.bodyInput.selectionEnd, `${prefix}![pasted image ${stamp}](${dataUrl})\n\n`);
+    renderModeState();
+    showToast(t("imagePasted"));
+  };
+  reader.onerror = () => showToast(t("imagePasteFailed"));
+  reader.readAsDataURL(file);
+}
+
 /** Replace a range in the textarea and fire input event */
 function replaceRange(from, to, text) {
   const textarea = elements.bodyInput;
@@ -2604,7 +3015,7 @@ function renderMarkdown(markdown) {
     const label = escapeHtml(codeLanguage || "code");
     html.push(`
       <div class="code-card">
-        <div class="code-head"><span>${label}</span><button class="code-copy" type="button">复制</button></div>
+        <div class="code-head"><span>${label}</span><button class="code-copy" type="button">${t("codeCopy")}</button></div>
         <pre><code>${code}</code></pre>
       </div>
     `);
@@ -2704,12 +3115,21 @@ function renderMarkdown(markdown) {
   flushTable();
   closeList();
   if (inCode) flushCode();
-  return html.join("\n") || `<p class="empty-state compact">开始写 Markdown 后，这里会实时预览。</p>`;
+  return html.join("\n") || `<p class="empty-state compact">${t("markdownEmpty")}</p>`;
 }
 
 function inlineMarkdown(text) {
+  const images = [];
   const links = [];
   let html = escapeHtml(text);
+
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => {
+    if (!isSafeImageUrl(url)) return _;
+    const token = `@@NANSTAR_IMAGE_${images.length}@@`;
+    images.push(`<img src="${escapeAttribute(url)}" alt="${escapeAttribute(alt)}" loading="lazy" />`);
+    return token;
+  });
+
   html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_, label, url) => {
     const token = `@@NANSTAR_LINK_${links.length}@@`;
     links.push(`<a href="${url}" target="_blank" rel="noreferrer">${label}</a>`);
@@ -2718,10 +3138,18 @@ function inlineMarkdown(text) {
   html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
   html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   html = html.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
+  images.forEach((image, index) => {
+    html = html.replace(`@@NANSTAR_IMAGE_${index}@@`, image);
+  });
   links.forEach((link, index) => {
     html = html.replace(`@@NANSTAR_LINK_${index}@@`, link);
   });
   return html;
+}
+
+function isSafeImageUrl(url) {
+  return /^data:image\/(?:png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$/i.test(url)
+    || /^https?:\/\/[^\s<>"']+$/i.test(url);
 }
 
 function formatMarkdownExport(note) {
@@ -2780,6 +3208,14 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function formatTime(value) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).format(new Date(value));
+}
+
 function formatShortDate(value) {
   const date = new Date(value);
   const now = new Date();
@@ -2793,6 +3229,12 @@ function formatFileDate(value) {
   const date = new Date(value);
   const pad = (number) => String(number).padStart(2, "0");
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}`;
+}
+
+function formatImageStamp(value) {
+  const date = new Date(value);
+  const pad = (number) => String(number).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
 }
 
 function safeFileName(value) {
