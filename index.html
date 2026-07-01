@@ -76,12 +76,32 @@
           <div class="topbar-actions">
             <button class="icon-button" id="languageToggleButton" type="button" title="切换语言" aria-label="切换语言">中</button>
             <button class="icon-button topbar-new-button" id="sidebarQuickNewButton" type="button" title="新建笔记" aria-label="新建笔记">＋</button>
-            <button class="icon-button topbar-install-button" id="topInstallButton" type="button" hidden title="安装到桌面" aria-label="安装到桌面">⤓</button>
             <button class="primary-button" id="topSyncButton" type="button">同步</button>
-            <button class="ghost-button" id="importButton" type="button">导入</button>
-            <button class="ghost-button" id="exportButton" type="button">导出当前</button>
-            <button class="ghost-button" id="shareButton" type="button">分享</button>
-            <button class="danger-button" id="deleteButton" type="button">删除</button>
+            <details class="topbar-menu">
+              <summary class="icon-button topbar-menu-button" title="更多操作" aria-label="更多操作">⋯</summary>
+              <div class="topbar-menu-panel">
+                <button class="menu-item topbar-install-button" id="topInstallButton" type="button" hidden title="安装到桌面" aria-label="安装到桌面">
+                  <span aria-hidden="true">⤓</span>
+                  <span>安装到桌面</span>
+                </button>
+                <button class="menu-item" id="importButton" type="button">
+                  <span aria-hidden="true">⇣</span>
+                  <span>导入</span>
+                </button>
+                <button class="menu-item" id="exportButton" type="button">
+                  <span aria-hidden="true">⇡</span>
+                  <span>导出当前</span>
+                </button>
+                <button class="menu-item" id="shareButton" type="button">
+                  <span aria-hidden="true">↗</span>
+                  <span>分享</span>
+                </button>
+                <button class="menu-item danger-menu-item" id="deleteButton" type="button">
+                  <span aria-hidden="true">×</span>
+                  <span>删除</span>
+                </button>
+              </div>
+            </details>
           </div>
         </header>
 
@@ -106,15 +126,23 @@
                 <span class="summary-meta" id="editorSectionState">TXT</span>
               </summary>
               <div class="editor-section-body">
-                <div class="meta-row">
-                  <div class="segmented segmented-tight" aria-label="编辑模式">
-                    <button class="mode-button active" type="button" data-mode="txt">TXT</button>
-                    <button class="mode-button" type="button" data-mode="md">MD</button>
+                <div class="editor-control-row">
+                  <div class="meta-row">
+                    <div class="segmented segmented-tight" aria-label="编辑模式">
+                      <button class="mode-button active" type="button" data-mode="txt">TXT</button>
+                      <button class="mode-button" type="button" data-mode="md">MD</button>
+                    </div>
+                    <input id="folderInput" class="folder-input" type="text"
+                           placeholder="文件夹，例如：WK / 客户现场"
+                           list="folderDatalist" autocomplete="off" />
+                    <datalist id="folderDatalist"></datalist>
                   </div>
-                  <input id="folderInput" class="folder-input" type="text"
-                         placeholder="文件夹，例如：WK / 客户现场"
-                         list="folderDatalist" autocomplete="off" />
-                  <datalist id="folderDatalist"></datalist>
+
+                  <div class="editor-status-bar">
+                    <span id="saveStatus">已保存本地</span>
+                    <span id="syncState">本地</span>
+                    <span id="wordCount">0 字</span>
+                  </div>
                 </div>
 
                 <div class="find-bar" id="editorFindBar" hidden>
@@ -140,16 +168,24 @@
                   <button class="md-tool" type="button" data-prefix="> " title="引用">❝</button>
                   <button class="md-tool" type="button" data-block="code" title="代码块">&lt;/&gt;</button>
                   <span class="toolbar-separator" aria-hidden="true"></span>
-                  <button type="button" data-insert="path" title="插入路径片段">路径</button>
-                  <button type="button" data-insert="command" title="插入命令片段">命令</button>
-                  <button type="button" data-insert="checklist" title="插入检查清单">清单</button>
-                  <button class="md-only" id="togglePreviewButton" type="button" title="显示或隐藏预览">预览</button>
-                </div>
-
-                <div class="editor-status-bar">
-                  <span id="saveStatus">已保存本地</span>
-                  <span id="syncState">本地</span>
-                  <span id="wordCount">0 字</span>
+                  <details class="toolbar-menu md-tool">
+                    <summary title="插入片段" aria-label="插入片段">＋</summary>
+                    <div class="toolbar-menu-panel">
+                      <button type="button" data-insert="path" title="插入路径片段">
+                        <span aria-hidden="true">⌁</span>
+                        <span>路径片段</span>
+                      </button>
+                      <button type="button" data-insert="command" title="插入命令片段">
+                        <span aria-hidden="true">&gt;_</span>
+                        <span>命令片段</span>
+                      </button>
+                      <button type="button" data-insert="checklist" title="插入检查清单">
+                        <span aria-hidden="true">☑</span>
+                        <span>检查清单</span>
+                      </button>
+                    </div>
+                  </details>
+                  <button class="md-only icon-tool-button" id="togglePreviewButton" type="button" title="显示或隐藏预览" aria-label="显示或隐藏预览">◫</button>
                 </div>
               </div>
             </details>

@@ -17,6 +17,7 @@ const i18n = {
     folderPlaceholder: "文件夹，例如：WK / 客户现场",
     editorPlaceholder: "纯文本适合放路径、账号检查清单、命令备忘；Markdown 适合结构化文档。Ctrl+Z / Ctrl+Y 保持浏览器原生编辑习惯。",
     sync: "同步",
+    installDesktop: "安装到桌面",
     import: "导入",
     exportCurrent: "导出当前",
     share: "分享",
@@ -48,8 +49,14 @@ const i18n = {
     txtMode: "TXT 纯文本模式",
     showPreview: "显示预览",
     hidePreview: "隐藏预览",
+    insertSnippets: "插入片段",
+    insertPathSnippet: "路径片段",
+    insertCommandSnippet: "命令片段",
+    insertChecklistSnippet: "检查清单",
     focusPreview: "专注预览",
     exitFocus: "退出专注",
+    collapseSidebar: "收起侧栏",
+    expandSidebar: "展开侧栏",
     collapseSection: "收起",
     expandSection: "展开",
     expanded: "展开",
@@ -99,6 +106,7 @@ const i18n = {
     folderPlaceholder: "Folder, e.g. WK / Client Site",
     editorPlaceholder: "Plain text works well for paths, checklists, and command notes; Markdown is better for structured docs. Ctrl+Z / Ctrl+Y keep the browser's native editing flow.",
     sync: "Sync",
+    installDesktop: "Install App",
     import: "Import",
     exportCurrent: "Export Current",
     share: "Share",
@@ -130,8 +138,14 @@ const i18n = {
     txtMode: "Plain text mode",
     showPreview: "Show preview",
     hidePreview: "Hide preview",
+    insertSnippets: "Insert snippets",
+    insertPathSnippet: "Path snippet",
+    insertCommandSnippet: "Command snippet",
+    insertChecklistSnippet: "Checklist",
     focusPreview: "Focus preview",
     exitFocus: "Exit focus",
+    collapseSidebar: "Collapse sidebar",
+    expandSidebar: "Expand sidebar",
     collapseSection: "Collapse",
     expandSection: "Expand",
     expanded: "Open",
@@ -410,6 +424,7 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+const DEFAULT_SPLIT_RATIO = 52;
 
 const elements = {
   appShell: $(".app-shell"),
@@ -420,6 +435,7 @@ const elements = {
   newNoteButton: $("#newNoteButton"),
   syncButton: $("#syncButton"),
   topSyncButton: $("#topSyncButton"),
+  topbarMenu: $(".topbar-menu"),
   searchInput: $("#searchInput"),
   languageToggleButton: $("#languageToggleButton"),
   folderSection: $("#folderSection"),
@@ -495,7 +511,7 @@ function init() {
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
   elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) === "1";
   applyLanguage(state.language, true);
-  applySplitRatio(Number(localStorage.getItem(storageKeys.splitRatio)) || 58);
+  applySplitRatio(readSplitRatio());
   applySidebarCollapsed(state.sidebarCollapsed);
 
   decodeSharedNote();
@@ -563,6 +579,8 @@ function bindEvents() {
   document.addEventListener("click", (event) => {
     if (!event.target.closest("#folderContextMenu")) hideFolderContextMenu();
     if (!event.target.closest("#noteContextMenu")) hideNoteContextMenu();
+    if (!event.target.closest(".topbar-menu")) elements.topbarMenu?.removeAttribute("open");
+    if (!event.target.closest(".toolbar-menu")) document.querySelectorAll(".toolbar-menu[open]").forEach((menu) => menu.removeAttribute("open"));
   });
   window.addEventListener("scroll", () => { hideFolderContextMenu(); hideNoteContextMenu(); }, { capture: true });
 
@@ -620,7 +638,10 @@ function bindEvents() {
   });
   elements.toolbar.addEventListener("click", (event) => {
     const button = event.target.closest("button");
-    if (button) applyToolbarAction(button);
+    if (button) {
+      applyToolbarAction(button);
+      button.closest(".toolbar-menu")?.removeAttribute("open");
+    }
   });
   bindSplitter();
 
@@ -649,6 +670,9 @@ function bindEvents() {
   elements.importButton.addEventListener("click", () => elements.importFileInput.click());
   elements.importFileInput.addEventListener("change", importFile);
   elements.shareButton.addEventListener("click", createShareLink);
+  [elements.importButton, elements.exportButton, elements.shareButton, elements.deleteButton].forEach((button) => {
+    button?.addEventListener("click", () => elements.topbarMenu?.removeAttribute("open"));
+  });
 
   elements.previewContent.addEventListener("click", (event) => {
     const button = event.target.closest(".code-copy");
@@ -882,7 +906,9 @@ function renderModeState() {
   document.body.classList.toggle("preview-focus-mode", focused);
 
   if (elements.modeHint) elements.modeHint.textContent = isMarkdown ? t("markdownMode") : t("txtMode");
-  elements.togglePreviewButton.textContent = previewVisible && !focused ? t("hidePreview") : t("showPreview");
+  elements.togglePreviewButton.textContent = previewVisible && !focused ? "◫" : "◨";
+  elements.togglePreviewButton.title = previewVisible && !focused ? t("hidePreview") : t("showPreview");
+  elements.togglePreviewButton.setAttribute("aria-label", previewVisible && !focused ? t("hidePreview") : t("showPreview"));
   elements.togglePreviewButton.classList.toggle("active", previewVisible && !focused);
   elements.togglePreviewButton.disabled = !isMarkdown;
   elements.toolbar.querySelectorAll(".md-tool, [data-insert]").forEach((button) => {
@@ -892,12 +918,13 @@ function renderModeState() {
   elements.previewFocusButton.hidden = !isMarkdown;
   elements.previewFocusButton.textContent = focused ? "✕" : "⤢";
   elements.previewFocusButton.title = focused ? t("exitFocus") : t("focusPreview");
+  elements.previewFocusButton.setAttribute("aria-label", focused ? t("exitFocus") : t("focusPreview"));
   elements.previewPane.hidden = !previewVisible && !focused;
   elements.editorSection.open = Boolean(note.editorSectionOpen);
   if (elements.editorSectionState) elements.editorSectionState.textContent = isMarkdown
     ? `${t("modeMd")} · ${elements.editorSection.open ? t("collapseSection") : t("expandSection")}`
     : `${t("modeTxt")} · ${elements.editorSection.open ? t("collapseSection") : t("expandSection")}`;
-  elements.splitEditor.style.setProperty("--split-ratio", `${Number(localStorage.getItem(storageKeys.splitRatio)) || 58}%`);
+  elements.splitEditor.style.setProperty("--split-ratio", `${readSplitRatio()}%`);
   syncScrollState();
   syncEditorSearchState();
 }
@@ -1421,8 +1448,9 @@ function applySidebarCollapsed(collapsed) {
   const toggleIcon = elements.sidebarToggleButton?.querySelector(".toggle-icon");
   if (toggleIcon) toggleIcon.textContent = isCollapsed ? "\u2630" : "\u25C0";
   if (elements.sidebarToggleButton) {
-    elements.sidebarToggleButton.title = isCollapsed ? "展开侧栏" : "收起侧栏";
-    elements.sidebarToggleButton.setAttribute("aria-label", isCollapsed ? "展开侧栏" : "收起侧栏");
+    const label = isCollapsed ? t("expandSidebar") : t("collapseSidebar");
+    elements.sidebarToggleButton.title = label;
+    elements.sidebarToggleButton.setAttribute("aria-label", label);
   }
 }
 
@@ -1721,10 +1749,25 @@ function applyLanguage(language, initial = false) {
   if (elements.sidebarQuickNewButton) elements.sidebarQuickNewButton.setAttribute("aria-label", t("newNote"));
   if (elements.syncButton) elements.syncButton.title = t("sync");
   if (elements.topSyncButton) elements.topSyncButton.textContent = t("sync");
-  if (elements.importButton) elements.importButton.textContent = t("import");
-  if (elements.exportButton) elements.exportButton.textContent = t("exportCurrent");
-  if (elements.shareButton) elements.shareButton.textContent = t("share");
-  if (elements.deleteButton) elements.deleteButton.textContent = t("delete");
+  const topbarMenuButton = document.querySelector(".topbar-menu-button");
+  if (topbarMenuButton) {
+    topbarMenuButton.title = t("moreActions");
+    topbarMenuButton.setAttribute("aria-label", t("moreActions"));
+  }
+  applySidebarCollapsed(state.sidebarCollapsed);
+  setMenuItemLabel(document.getElementById("topInstallButton"), t("installDesktop"));
+  setMenuItemLabel(elements.importButton, t("import"));
+  setMenuItemLabel(elements.exportButton, t("exportCurrent"));
+  setMenuItemLabel(elements.shareButton, t("share"));
+  setMenuItemLabel(elements.deleteButton, t("delete"));
+  const insertMenu = document.querySelector(".toolbar-menu > summary");
+  if (insertMenu) {
+    insertMenu.title = t("insertSnippets");
+    insertMenu.setAttribute("aria-label", t("insertSnippets"));
+  }
+  setMenuItemLabel(document.querySelector('[data-insert="path"]'), t("insertPathSnippet"));
+  setMenuItemLabel(document.querySelector('[data-insert="command"]'), t("insertCommandSnippet"));
+  setMenuItemLabel(document.querySelector('[data-insert="checklist"]'), t("insertChecklistSnippet"));
   if (elements.copyMarkdownButton) elements.copyMarkdownButton.textContent = t("copyCurrent");
   if (elements.duplicateButton) elements.duplicateButton.textContent = t("duplicate");
   if (elements.listStatus) elements.listStatus.textContent = `${sortedNotes().length} ${t("items")}`;
@@ -1766,6 +1809,22 @@ function applyLanguage(language, initial = false) {
 
 function toggleLanguage() {
   applyLanguage(state.language === "zh" ? "en" : "zh");
+}
+
+function setMenuItemLabel(button, label) {
+  if (!button) return;
+  const textNode = button.querySelector("span:last-child");
+  if (textNode) {
+    textNode.textContent = label;
+  } else {
+    button.textContent = label;
+  }
+}
+
+function readSplitRatio() {
+  const stored = Number(localStorage.getItem(storageKeys.splitRatio));
+  if (!stored || stored === 58) return DEFAULT_SPLIT_RATIO;
+  return stored;
 }
 
 function openEditorSearch(query = "") {
@@ -2167,7 +2226,7 @@ function bindSplitter() {
 }
 
 function applySplitRatio(value) {
-  const ratio = Math.max(32, Math.min(68, Number(value) || 58));
+  const ratio = Math.max(32, Math.min(68, Number(value) || DEFAULT_SPLIT_RATIO));
   elements.splitEditor.style.setProperty("--split-ratio", `${ratio}%`);
   localStorage.setItem(storageKeys.splitRatio, String(ratio));
 }
