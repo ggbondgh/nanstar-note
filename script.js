@@ -5,6 +5,7 @@ const storageKeys = {
   lastSyncAt: "nanstar-note-last-sync-at",
   autoSync: "nanstar-note-auto-sync",
   splitRatio: "nanstar-note-split-ratio",
+  sidebarWidth: "nanstar-note-sidebar-width",
   sidebarCollapsed: "nanstar-note-sidebar-collapsed",
   language: "nanstar-note-language"
 };
@@ -36,6 +37,10 @@ const i18n = {
     previewTitle: "预览",
     editorTools: "编辑工具",
     moreActions: "更多操作与状态",
+    backupAllJson: "备份全部 JSON",
+    noteCreated: "创建",
+    noteUpdated: "更新",
+    clearSearch: "清除搜索",
     clearAll: "全部",
     searchPlaceholder: "搜索标题、正文、文件夹",
     editorSearchPlaceholder: "查找当前笔记内容",
@@ -125,6 +130,10 @@ const i18n = {
     previewTitle: "Preview",
     editorTools: "Editor Tools",
     moreActions: "More Actions & Status",
+    backupAllJson: "Backup JSON",
+    noteCreated: "Created",
+    noteUpdated: "Updated",
+    clearSearch: "Clear Search",
     clearAll: "All",
     searchPlaceholder: "Search title, body, folder",
     editorSearchPlaceholder: "Find in current note",
@@ -425,18 +434,20 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 const DEFAULT_SPLIT_RATIO = 52;
+const DEFAULT_SIDEBAR_WIDTH = 248;
 
 const elements = {
   appShell: $(".app-shell"),
   sidebar: $(".sidebar"),
+  sidebarResizer: $("#sidebarResizer"),
   cloudStatus: $("#cloudStatus"),
   sidebarToggleButton: $("#sidebarToggleButton"),
   sidebarQuickNewButton: $("#sidebarQuickNewButton"),
   newNoteButton: $("#newNoteButton"),
-  syncButton: $("#syncButton"),
   topSyncButton: $("#topSyncButton"),
   topbarMenu: $(".topbar-menu"),
   searchInput: $("#searchInput"),
+  searchClearButton: $("#searchClearButton"),
   languageToggleButton: $("#languageToggleButton"),
   folderSection: $("#folderSection"),
   folderList: $("#folderList"),
@@ -445,7 +456,6 @@ const elements = {
   noteContextMenu: $("#noteContextMenu"),
   folderDatalist: $("#folderDatalist"),
   filterTabs: $$(".filter-tab"),
-  searchClearButton: $("#searchClearButton"),
   newNoteDialog: $("#newNoteDialog"),
   newNoteFolderSelect: $("#newNoteFolderSelect"),
   newNoteConfirmBtn: $("#newNoteConfirmBtn"),
@@ -511,6 +521,7 @@ function init() {
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
   elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) === "1";
   applyLanguage(state.language, true);
+  applySidebarWidth(readSidebarWidth());
   applySplitRatio(readSplitRatio());
   applySidebarCollapsed(state.sidebarCollapsed);
 
@@ -526,13 +537,35 @@ function bindEvents() {
   elements.sidebarToggleButton.addEventListener("click", toggleSidebar);
   elements.sidebarQuickNewButton?.addEventListener("click", () => openNewNoteDialog());
   elements.languageToggleButton?.addEventListener("click", toggleLanguage);
-  elements.searchInput.addEventListener("input", (event) => {
-    state.query = event.target.value.trim().toLowerCase();
-    if (elements.searchClearButton) elements.searchClearButton.hidden = !state.query;
+  let searchComposing = false;
+  const updateSearchClearButton = () => {
+    if (elements.searchClearButton) elements.searchClearButton.hidden = !(elements.searchInput.value || searchComposing);
+  };
+  const updateSearchQuery = () => {
+    state.query = elements.searchInput.value.trim().toLowerCase();
+    updateSearchClearButton();
     renderLists();
+  };
+  elements.searchInput.addEventListener("input", updateSearchQuery);
+  elements.searchInput.addEventListener("compositionstart", () => {
+    searchComposing = true;
+    updateSearchClearButton();
   });
+  elements.searchInput.addEventListener("compositionupdate", (event) => {
+    searchComposing = Boolean(event.data || elements.searchInput.value);
+    updateSearchClearButton();
+  });
+  elements.searchInput.addEventListener("compositionend", () => {
+    searchComposing = false;
+    updateSearchQuery();
+  });
+  updateSearchClearButton();
   if (elements.searchClearButton) {
+    elements.searchClearButton.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+    });
     elements.searchClearButton.addEventListener("click", () => {
+      searchComposing = false;
       elements.searchInput.value = "";
       state.query = "";
       elements.searchClearButton.hidden = true;
@@ -644,6 +677,7 @@ function bindEvents() {
     }
   });
   bindSplitter();
+  bindSidebarResizer();
 
   // New note dialog
   if (elements.newNoteConfirmBtn) {
@@ -694,13 +728,13 @@ function bindEvents() {
     elements.floatingOutline.classList.toggle("expanded");
   });
 
-  [elements.syncButton, elements.topSyncButton].forEach((button) => {
-    button.addEventListener("click", () => {
+  if (elements.topSyncButton) {
+    elements.topSyncButton.addEventListener("click", () => {
       elements.syncDialog.showModal();
       elements.syncTokenInput.focus();
       elements.syncTokenInput.select();
     });
-  });
+  }
 
   elements.pushCloudButton.addEventListener("click", () => pushCloud());
   elements.pullCloudButton.addEventListener("click", pullCloud);
@@ -1333,6 +1367,13 @@ function renderSyncMeta() {
       ? `${t("synced")} ${formatDate(Number(lastSync))}`
       : t("cloudUnsynced")
     : t("local");
+  const note = activeNote();
+  if (elements.createdAt) {
+    elements.createdAt.textContent = note ? `${t("noteCreated")} ${formatDate(Number(note.createdAt) || Date.now())}` : t("noteCreated");
+  }
+  if (elements.updatedAt) {
+    elements.updatedAt.textContent = note ? `${t("noteUpdated")} ${formatDate(Number(note.updatedAt) || Date.now())}` : t("noteUpdated");
+  }
 }
 
 function openNewNoteDialog() {
@@ -1452,6 +1493,46 @@ function applySidebarCollapsed(collapsed) {
     elements.sidebarToggleButton.title = label;
     elements.sidebarToggleButton.setAttribute("aria-label", label);
   }
+}
+
+function readSidebarWidth() {
+  const stored = Number(localStorage.getItem(storageKeys.sidebarWidth));
+  if (!stored || Number.isNaN(stored)) return DEFAULT_SIDEBAR_WIDTH;
+  return Math.max(200, Math.min(360, stored));
+}
+
+function applySidebarWidth(value) {
+  const width = Math.max(200, Math.min(360, Number(value) || DEFAULT_SIDEBAR_WIDTH));
+  if (elements.appShell) {
+    elements.appShell.style.setProperty("--sidebar-width", `${width}px`);
+  }
+  localStorage.setItem(storageKeys.sidebarWidth, String(width));
+}
+
+function bindSidebarResizer() {
+  let dragging = false;
+
+  const move = (event) => {
+    if (!dragging) return;
+    const rect = elements.appShell.getBoundingClientRect();
+    const width = event.clientX - rect.left;
+    applySidebarWidth(width);
+  };
+
+  const stop = () => {
+    dragging = false;
+    document.body.classList.remove("is-dragging-split");
+  };
+
+  elements.sidebarResizer?.addEventListener("mousedown", (event) => {
+    if (window.innerWidth <= 1020 || state.previewFocus || state.sidebarCollapsed) return;
+    dragging = true;
+    document.body.classList.add("is-dragging-split");
+    event.preventDefault();
+  });
+
+  window.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", stop);
 }
 
 function deleteActiveNote() {
@@ -1736,7 +1817,8 @@ function applyLanguage(language, initial = false) {
   const newNoteFolderLabel = document.getElementById("newNoteFolderLabel");
   if (newNoteFolderLabel) newNoteFolderLabel.textContent = t("newNoteFolderLabel");
   if (elements.newNoteConfirmBtn) elements.newNoteConfirmBtn.textContent = t("create");
-  if (elements.downloadNoteButton) elements.downloadNoteButton.textContent = t("backup");
+  if (elements.createdAt) elements.createdAt.textContent = t("noteCreated");
+  if (elements.updatedAt) elements.updatedAt.textContent = t("noteUpdated");
   // Update filter tabs
   document.querySelectorAll('.filter-tab[data-filter="all"]').forEach(b => { b.childNodes[0].textContent = t("allNotesTab"); });
   document.querySelectorAll('.filter-tab[data-filter="favorite"]').forEach(b => { b.childNodes[0].textContent = t("favoritesTab"); });
@@ -1747,7 +1829,6 @@ function applyLanguage(language, initial = false) {
   if (elements.bodyInput) elements.bodyInput.placeholder = t("editorPlaceholder");
   if (elements.sidebarQuickNewButton) elements.sidebarQuickNewButton.title = t("newNote");
   if (elements.sidebarQuickNewButton) elements.sidebarQuickNewButton.setAttribute("aria-label", t("newNote"));
-  if (elements.syncButton) elements.syncButton.title = t("sync");
   if (elements.topSyncButton) elements.topSyncButton.textContent = t("sync");
   const topbarMenuButton = document.querySelector(".topbar-menu-button");
   if (topbarMenuButton) {
@@ -1760,6 +1841,7 @@ function applyLanguage(language, initial = false) {
   setMenuItemLabel(elements.exportButton, t("exportCurrent"));
   setMenuItemLabel(elements.shareButton, t("share"));
   setMenuItemLabel(elements.deleteButton, t("delete"));
+  setMenuItemLabel(elements.downloadNoteButton, t("backupAllJson"));
   const insertMenu = document.querySelector(".toolbar-menu > summary");
   if (insertMenu) {
     insertMenu.title = t("insertSnippets");
@@ -1777,8 +1859,6 @@ function applyLanguage(language, initial = false) {
   if (outlineHead) outlineHead.textContent = t("outlineTitle");
   const editorToolsTitle = document.getElementById("editorToolsTitle");
   if (editorToolsTitle) editorToolsTitle.textContent = t("editorTools");
-  const utilityDrawerTitle = document.getElementById("utilityDrawerTitle");
-  if (utilityDrawerTitle) utilityDrawerTitle.textContent = t("moreActions");
   if (elements.noteListTitle) {
     const title = document.getElementById("noteListTitle");
     if (title) title.textContent = t("noteListTitle");
@@ -1791,6 +1871,8 @@ function applyLanguage(language, initial = false) {
   if (brandState && !localStorage.getItem(storageKeys.syncToken)) {
     brandState.textContent = t("localMode");
   }
+  if (elements.searchClearButton) elements.searchClearButton.title = t("clearSearch");
+  if (elements.searchClearButton) elements.searchClearButton.setAttribute("aria-label", t("clearSearch"));
   const syncModalEyebrow = document.getElementById("syncModalEyebrow");
   if (syncModalEyebrow) syncModalEyebrow.textContent = next === "en" ? "Cloudflare Sync" : "Cloudflare Sync";
   const syncModalTitle = document.getElementById("syncModalTitle");

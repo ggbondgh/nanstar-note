@@ -35,16 +35,13 @@
             <span aria-hidden="true">+</span>
             <span>新建笔记</span>
           </button>
-          <button class="icon-button" id="syncButton" type="button" title="同步" aria-label="同步">
-            <span aria-hidden="true">↻</span>
-          </button>
         </div>
 
-        <label class="search-box" for="searchInput">
+        <div class="search-box" role="search">
           <span aria-hidden="true">⌕</span>
-          <input id="searchInput" type="search" placeholder="搜索笔记..." autocomplete="off" />
-          <button class="search-clear" id="searchClearButton" type="button" title="清除搜索" hidden>✕</button>
-        </label>
+          <input id="searchInput" type="text" placeholder="搜索笔记..." aria-label="搜索笔记" autocomplete="off" />
+          <button class="search-clear" id="searchClearButton" type="button" title="清除搜索" aria-label="清除搜索" hidden>×</button>
+        </div>
 
         <details class="nav-section" id="folderSection">
           <summary class="panel-summary">
@@ -66,6 +63,8 @@
           <div class="note-list" id="noteList" aria-live="polite"></div>
         </section>
       </aside>
+
+      <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="调整侧栏和工作区宽度"></div>
 
       <main class="main">
         <header class="topbar">
@@ -100,6 +99,15 @@
                   <span aria-hidden="true">×</span>
                   <span>删除</span>
                 </button>
+                <div class="menu-divider" aria-hidden="true"></div>
+                <button class="menu-item" id="downloadNoteButton" type="button">
+                  <span aria-hidden="true">⎘</span>
+                  <span>备份全部 JSON</span>
+                </button>
+                <div class="menu-meta" aria-live="polite">
+                  <span id="createdAt">创建 -</span>
+                  <span id="updatedAt">更新 -</span>
+                </div>
               </div>
             </details>
           </div>
@@ -117,6 +125,19 @@
               />
             </div>
 
+            <div class="editor-meta-strip">
+              <div class="meta-row">
+                <div class="segmented segmented-tight" aria-label="编辑模式">
+                  <button class="mode-button active" type="button" data-mode="txt">TXT</button>
+                  <button class="mode-button" type="button" data-mode="md">MD</button>
+                </div>
+                <input id="folderInput" class="folder-input" type="text"
+                       placeholder="文件夹，例如：WK / 客户现场"
+                       list="folderDatalist" autocomplete="off" />
+                <datalist id="folderDatalist"></datalist>
+              </div>
+            </div>
+
             <details class="editor-section" id="editorSection">
               <summary class="panel-summary editor-summary">
                 <span class="summary-title">
@@ -126,25 +147,6 @@
                 <span class="summary-meta" id="editorSectionState">TXT</span>
               </summary>
               <div class="editor-section-body">
-                <div class="editor-control-row">
-                  <div class="meta-row">
-                    <div class="segmented segmented-tight" aria-label="编辑模式">
-                      <button class="mode-button active" type="button" data-mode="txt">TXT</button>
-                      <button class="mode-button" type="button" data-mode="md">MD</button>
-                    </div>
-                    <input id="folderInput" class="folder-input" type="text"
-                           placeholder="文件夹，例如：WK / 客户现场"
-                           list="folderDatalist" autocomplete="off" />
-                    <datalist id="folderDatalist"></datalist>
-                  </div>
-
-                  <div class="editor-status-bar">
-                    <span id="saveStatus">已保存本地</span>
-                    <span id="syncState">本地</span>
-                    <span id="wordCount">0 字</span>
-                  </div>
-                </div>
-
                 <div class="find-bar" id="editorFindBar" hidden>
                   <label class="find-field" for="editorSearchInput">
                     <span aria-hidden="true">⌕</span>
@@ -186,6 +188,12 @@
                     </div>
                   </details>
                   <button class="md-only icon-tool-button" id="togglePreviewButton" type="button" title="显示或隐藏预览" aria-label="显示或隐藏预览">◫</button>
+                </div>
+
+                <div class="editor-status-bar">
+                  <span id="saveStatus">已保存本地</span>
+                  <span id="syncState">本地</span>
+                  <span id="wordCount">0 字</span>
                 </div>
               </div>
             </details>
@@ -234,15 +242,6 @@
             </aside>
           </div>
         </article>
-
-        <details class="utility-drawer">
-          <summary id="utilityDrawerTitle">备份与信息</summary>
-          <div class="utility-grid">
-            <button class="ghost-button" id="downloadNoteButton" type="button">备份全部 JSON</button>
-            <span id="createdAt">创建 -</span>
-            <span id="updatedAt">更新 -</span>
-          </div>
-        </details>
       </main>
     </div>
 
