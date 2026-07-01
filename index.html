@@ -310,10 +310,12 @@
     <input id="importFileInput" type="file" accept=".json,.md,.txt" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./script.js?v=4"></script>
+    <script src="./script.js?v=5"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
+        navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
+          .then((registration) => registration.update())
+          .catch(() => {});
       }
       let deferredPrompt;
       const installButton = document.getElementById("topInstallButton");

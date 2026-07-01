@@ -1849,7 +1849,7 @@ function cloudHeaders(token, includeBody = false) {
 }
 
 async function fetchCloudState(token) {
-  const response = await fetch("./api/notes", {
+  const response = await fetch(`./api/notes?t=${Date.now()}`, {
     cache: "no-store",
     headers: cloudHeaders(token)
   });

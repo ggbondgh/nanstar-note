@@ -1,4 +1,4 @@
-const CACHE = "nanstar-note-v3";
+const CACHE = "nanstar-note-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -26,9 +26,14 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin === self.location.origin && requestUrl.pathname.startsWith("/api/")) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   if (event.request.method !== "GET") return;
 
-  const requestUrl = new URL(event.request.url);
   const isCoreAsset = requestUrl.origin === self.location.origin && (
     event.request.mode === "navigate"
     || event.request.destination === "document"
