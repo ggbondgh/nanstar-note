@@ -131,10 +131,6 @@
                   <button class="mode-button active" type="button" data-mode="txt">TXT</button>
                   <button class="mode-button" type="button" data-mode="md">MD</button>
                 </div>
-                <input id="folderInput" class="folder-input" type="text"
-                       placeholder="文件夹，例如：WK / 客户现场"
-                       list="folderDatalist" autocomplete="off" />
-                <datalist id="folderDatalist"></datalist>
               </div>
             </div>
 
@@ -300,11 +296,11 @@
         </label>
         <label class="toggle-field">
           <input id="autoSyncToggle" type="checkbox" />
-          <span id="autoSyncLabel">编辑后自动推送到云端</span>
+          <span id="autoSyncLabel">自动同步：打开页面自动拉取，编辑后自动保存到云端</span>
         </label>
         <div class="sync-grid">
-          <button class="primary-button" id="pushCloudButton" type="button">推送到云端</button>
-          <button class="ghost-button" id="pullCloudButton" type="button">从云端拉取并合并</button>
+          <button class="primary-button" id="pushCloudButton" type="button">立即同步</button>
+          <button class="ghost-button" id="pullCloudButton" type="button">检查云端更新</button>
           <button class="ghost-button" id="logoutCloudButton" type="button">清除 Token</button>
         </div>
         <div class="sync-message" id="syncMessage">未连接云同步，本地编辑可正常使用。</div>

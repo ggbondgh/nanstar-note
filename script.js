@@ -2,6 +2,7 @@ const storageKeys = {
   notes: "nanstar-note-notes",
   activeNote: "nanstar-note-active",
   syncToken: "nanstar-note-sync-token",
+  syncMeta: "nanstar-note-sync-meta",
   lastSyncAt: "nanstar-note-last-sync-at",
   autoSync: "nanstar-note-auto-sync",
   splitRatio: "nanstar-note-split-ratio",
@@ -78,9 +79,9 @@ const i18n = {
     syncSettings: "同步设置",
     syncCopy: "使用 Cloudflare Pages Functions + D1 保存云端笔记。客户电脑建议使用无痕窗口，离开时清除 Token。",
     syncToken: "同步 Token",
-    autoSync: "编辑后自动推送到云端",
-    pushCloud: "推送到云端",
-    pullCloud: "从云端拉取并合并",
+    autoSync: "自动同步：打开页面自动拉取，编辑后自动保存到云端",
+    pushCloud: "立即同步",
+    pullCloud: "检查云端更新",
     clearToken: "清除 Token",
     editorSearchLabel: "查找",
     modeTxt: "TXT",
@@ -171,9 +172,9 @@ const i18n = {
     syncSettings: "Sync Settings",
     syncCopy: "Use Cloudflare Pages Functions + D1 to store notes in the cloud. On client computers, use an incognito window and clear the token when leaving.",
     syncToken: "Sync Token",
-    autoSync: "Auto push after editing",
-    pushCloud: "Push to Cloud",
-    pullCloud: "Pull & Merge",
+    autoSync: "Auto sync on open and after editing",
+    pushCloud: "Sync Now",
+    pullCloud: "Check Cloud Updates",
     clearToken: "Clear Token",
     editorSearchLabel: "Find",
     modeTxt: "TXT",
@@ -424,9 +425,13 @@ const state = {
   },
   currentLine: 1,
   sidebarCollapsed: localStorage.getItem(storageKeys.sidebarCollapsed) === "1",
+  localStateSource: localStorage.getItem(storageKeys.notes) ? "stored" : "default",
   saveTimer: null,
   autoSyncTimer: null,
+  syncStartupTimer: null,
+  syncPollTimer: null,
   syncInFlight: false,
+  syncQueued: false,
   contextMenuFolder: null,
   contextMenuNoteId: null
 };
@@ -435,6 +440,8 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 const DEFAULT_SPLIT_RATIO = 52;
 const DEFAULT_SIDEBAR_WIDTH = 248;
+const SYNC_POLL_INTERVAL = 15000;
+const SYNC_PUSH_DELAY = 1200;
 
 const elements = {
   appShell: $(".app-shell"),
@@ -519,7 +526,7 @@ function init() {
   state.notes = loadNotes();
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
-  elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) === "1";
+  elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) !== "0";
   applyLanguage(state.language, true);
   applySidebarWidth(readSidebarWidth());
   applySplitRatio(readSplitRatio());
@@ -530,6 +537,7 @@ function init() {
   ensureActiveNote();
   renderAll();
   setSaveStatus("已保存本地");
+  startCloudSync();
 }
 
 function bindEvents() {
@@ -625,10 +633,10 @@ function bindEvents() {
         const noteId = state.contextMenuNoteId;
         hideNoteContextMenu();
         if (!noteId) return;
-        const note = state.notes.find(n => n.id === noteId);
+        const note = state.notes.find(n => n.id === noteId && !isDeletedNote(n));
         if (!note) return;
-        if (action === "pin") { note.pinned = !note.pinned; persistAndRender(note.pinned ? "已置顶" : "已取消置顶"); }
-        else if (action === "favorite") { note.favorite = !note.favorite; persistAndRender(note.favorite ? "已加星标" : "已取消星标"); }
+        if (action === "pin") { note.pinned = !note.pinned; note.updatedAt = Date.now(); persistAndRender(note.pinned ? "已置顶" : "已取消置顶"); }
+        else if (action === "favorite") { note.favorite = !note.favorite; note.updatedAt = Date.now(); persistAndRender(note.favorite ? "已加星标" : "已取消星标"); }
         else if (action === "duplicate") duplicateNoteById(noteId);
         else if (action === "export") exportNoteById(noteId);
         else if (action === "delete") deleteNoteById(noteId);
@@ -641,7 +649,7 @@ function bindEvents() {
   });
 
   elements.titleInput.addEventListener("input", updateActiveFromInputs);
-  elements.folderInput.addEventListener("input", updateActiveFromInputs);
+  elements.folderInput?.addEventListener("input", updateActiveFromInputs);
   elements.bodyInput.addEventListener("input", updateActiveFromInputs);
   elements.bodyInput.addEventListener("scroll", syncLineNumberScroll);
   elements.bodyInput.addEventListener("keyup", handleEditorCursorChange);
@@ -736,17 +744,24 @@ function bindEvents() {
     });
   }
 
-  elements.pushCloudButton.addEventListener("click", () => pushCloud());
-  elements.pullCloudButton.addEventListener("click", pullCloud);
+  elements.pushCloudButton.addEventListener("click", () => syncCloud({ manual: true, forcePush: true }));
+  elements.pullCloudButton.addEventListener("click", () => syncCloud({ manual: true }));
   elements.logoutCloudButton.addEventListener("click", clearSyncToken);
   elements.syncTokenInput.addEventListener("input", () => {
-    localStorage.setItem(storageKeys.syncToken, elements.syncTokenInput.value.trim());
+    const token = elements.syncTokenInput.value.trim();
+    if (token) localStorage.setItem(storageKeys.syncToken, token);
+    else localStorage.removeItem(storageKeys.syncToken);
     renderSyncMeta();
+    startCloudSync();
   });
   elements.autoSyncToggle.addEventListener("change", () => {
     localStorage.setItem(storageKeys.autoSync, elements.autoSyncToggle.checked ? "1" : "0");
     renderSyncMeta();
-    if (elements.autoSyncToggle.checked) scheduleAutoSync();
+    if (elements.autoSyncToggle.checked) startCloudSync();
+    else stopCloudSync();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) syncCloud({ silent: true });
   });
 
   window.addEventListener("keydown", (event) => {
@@ -811,8 +826,39 @@ function normalizeNote(note) {
     editorSectionOpen: typeof note.editorSectionOpen === "boolean" ? note.editorSectionOpen : normalizeMode(note.mode, body) === "md",
     previewVisible: note.previewVisible !== false,
     createdAt: Number(note.createdAt) || Date.now(),
-    updatedAt: Number(note.updatedAt) || Date.now()
+    updatedAt: Number(note.updatedAt) || Date.now(),
+    deletedAt: Number(note.deletedAt) || 0
   };
+}
+
+function isDeletedNote(note) {
+  return Boolean(Number(note?.deletedAt) || 0);
+}
+
+function visibleNotes() {
+  return state.notes.filter((note) => !isDeletedNote(note));
+}
+
+function firstVisibleNote() {
+  return visibleNotes()[0] || null;
+}
+
+function noteVersion(note) {
+  return Math.max(Number(note?.updatedAt) || 0, Number(note?.deletedAt) || 0, Number(note?.createdAt) || 0);
+}
+
+function syncableNotes() {
+  return state.notes.map(normalizeNote).sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function notesSignature(notes = state.notes) {
+  return JSON.stringify(notes.map(normalizeNote).sort((a, b) => a.id.localeCompare(b.id)));
+}
+
+function isDefaultSeedState(notes = state.notes) {
+  const visible = notes.map(normalizeNote).filter((note) => !isDeletedNote(note));
+  if (visible.length !== defaultNotes.length) return false;
+  return defaultNotes.every((seed) => visible.some((note) => note.title === seed.title && note.body === seed.body));
 }
 
 function normalizeMode(mode, body) {
@@ -831,6 +877,7 @@ function looksLikeMarkdown(body) {
 function saveNotes() {
   localStorage.setItem(storageKeys.notes, JSON.stringify(state.notes));
   if (state.activeId) localStorage.setItem(storageKeys.activeNote, state.activeId);
+  state.localStateSource = "stored";
 }
 
 function scheduleSave(message = "已保存本地") {
@@ -839,6 +886,7 @@ function scheduleSave(message = "已保存本地") {
   state.saveTimer = window.setTimeout(() => {
     saveNotes();
     setSaveStatus(message);
+    markSyncPending();
     scheduleAutoSync();
   }, 240);
 }
@@ -847,15 +895,15 @@ function scheduleAutoSync() {
   clearTimeout(state.autoSyncTimer);
   if (!elements.autoSyncToggle.checked || !getSyncToken() || state.syncInFlight) return;
   state.autoSyncTimer = window.setTimeout(() => {
-    pushCloud({ silent: true });
-  }, 1800);
+    syncCloud({ silent: true });
+  }, SYNC_PUSH_DELAY);
 }
 
 function updateActiveFromInputs() {
   const note = activeNote();
   if (!note) return;
   note.title = elements.titleInput.value.trimStart() || "未命名笔记";
-  note.folder = elements.folderInput.value.trim() || "收件箱";
+  if (elements.folderInput) note.folder = elements.folderInput.value.trim() || "收件箱";
   note.body = elements.bodyInput.value;
   note.updatedAt = Date.now();
 
@@ -871,15 +919,15 @@ function updateActiveFromInputs() {
 }
 
 function activeNote() {
-  return state.notes.find((note) => note.id === state.activeId) || null;
+  return state.notes.find((note) => note.id === state.activeId && !isDeletedNote(note)) || null;
 }
 
 function ensureActiveNote() {
-  if (!state.notes.length) {
+  if (!visibleNotes().length) {
     state.notes.push(createNoteObject("txt"));
   }
   if (!activeNote()) {
-    state.activeId = state.notes[0].id;
+    state.activeId = firstVisibleNote()?.id || null;
   }
 }
 
@@ -899,7 +947,7 @@ function renderEditor() {
   if (note.mode !== "md") state.previewFocus = false;
 
   elements.titleInput.value = note.title;
-  elements.folderInput.value = note.folder;
+  if (elements.folderInput) elements.folderInput.value = note.folder;
   elements.bodyInput.value = note.body;
 
   if (elements.pinButton) {
@@ -1061,7 +1109,7 @@ function setActiveOutlineHeading(idx) {
 /* ---- Folder Management ---- */
 
 function getFolderNames() {
-  const names = new Set(state.notes.map(n => n.folder));
+  const names = new Set(visibleNotes().map(n => n.folder));
   return [...names].sort((a, b) => a.localeCompare(b, "zh-CN"));
 }
 
@@ -1094,10 +1142,15 @@ function renameFolder(oldName) {
     return;
   }
   state.notes.forEach(note => {
-    if (note.folder === oldName) note.folder = newName;
+    if (note.folder === oldName && !isDeletedNote(note)) {
+      note.folder = newName;
+      note.updatedAt = Date.now();
+    }
   });
   if (state.selectedFolder === oldName) state.selectedFolder = newName;
   saveNotes();
+  markSyncPending();
+  scheduleAutoSync();
   renderLists();
   renderFolderDatalist();
   renderEditor();
@@ -1114,10 +1167,15 @@ function deleteFolder(name) {
   );
   if (!confirmed) return;
   state.notes.forEach(note => {
-    if (note.folder === name) note.folder = "收件箱";
+    if (note.folder === name && !isDeletedNote(note)) {
+      note.folder = "收件箱";
+      note.updatedAt = Date.now();
+    }
   });
   if (state.selectedFolder === name) state.selectedFolder = "";
   saveNotes();
+  markSyncPending();
+  scheduleAutoSync();
   renderAll();
   renderFolderDatalist();
   showToast(`已删除文件夹「${name}」`);
@@ -1149,7 +1207,7 @@ function showNoteContextMenu(x, y) {
   menu.hidden = false;
   menu.style.left = `${Math.min(x, window.innerWidth - 170)}px`;
   menu.style.top = `${Math.min(y, window.innerHeight - 260)}px`;
-  const note = state.notes.find(n => n.id === state.contextMenuNoteId);
+  const note = state.notes.find(n => n.id === state.contextMenuNoteId && !isDeletedNote(n));
   if (note) {
     const pinItem = menu.querySelector('[data-action="pin"]');
     if (pinItem) pinItem.textContent = note.pinned ? '📌 取消置顶' : '📌 置顶';
@@ -1188,7 +1246,7 @@ function hideNoteContextMenu() {
 }
 
 function moveNoteToFolder(noteId, targetFolder) {
-  const note = state.notes.find(n => n.id === noteId);
+  const note = state.notes.find(n => n.id === noteId && !isDeletedNote(n));
   if (!note || note.folder === targetFolder) return;
   note.folder = targetFolder;
   note.updatedAt = Date.now();
@@ -1196,7 +1254,7 @@ function moveNoteToFolder(noteId, targetFolder) {
 }
 
 function duplicateNoteById(id) {
-  const note = state.notes.find(n => n.id === id);
+  const note = state.notes.find(n => n.id === id && !isDeletedNote(n));
   if (!note) return;
   const now = Date.now();
   const copy = normalizeNote({...note, id: createId(), title: `${note.title} 副本`, pinned: false, createdAt: now, updatedAt: now});
@@ -1206,7 +1264,7 @@ function duplicateNoteById(id) {
 }
 
 function exportNoteById(id) {
-  const note = state.notes.find(n => n.id === id);
+  const note = state.notes.find(n => n.id === id && !isDeletedNote(n));
   if (!note) return;
   const isMarkdown = note.mode === "md";
   const ext = isMarkdown ? "md" : "txt";
@@ -1216,13 +1274,21 @@ function exportNoteById(id) {
   showToast("已导出笔记");
 }
 
+function markNoteDeleted(note) {
+  const now = Date.now();
+  note.deletedAt = now;
+  note.updatedAt = now;
+  note.pinned = false;
+  note.favorite = false;
+}
+
 function deleteNoteById(id) {
-  const note = state.notes.find(n => n.id === id);
+  const note = state.notes.find(n => n.id === id && !isDeletedNote(n));
   if (!note) return;
   const confirmed = window.confirm(`删除「${note.title}」？`);
   if (!confirmed) return;
-  state.notes = state.notes.filter(n => n.id !== id);
-  if (state.activeId === id) state.activeId = state.notes[0]?.id || null;
+  markNoteDeleted(note);
+  if (state.activeId === id) state.activeId = firstVisibleNote()?.id || null;
   ensureActiveNote();
   persistAndRender("已删除笔记");
 }
@@ -1240,11 +1306,11 @@ function renderFilterState() {
 }
 
 function renderCounts() {
-  if (elements.listStatus) elements.listStatus.textContent = `${state.notes.length} ${t("items")}`;
+  if (elements.listStatus) elements.listStatus.textContent = `${visibleNotes().length} ${t("items")}`;
 }
 
 function sortedNotes() {
-  return state.notes
+  return visibleNotes()
     .filter((note) => {
       if (state.viewFilter === "favorite" && !note.favorite) return false;
       if (state.selectedFolder && note.folder !== state.selectedFolder) return false;
@@ -1262,12 +1328,12 @@ function sortedNotes() {
 
 function renderFolders() {
   const counts = new Map();
-  state.notes.forEach((note) => {
+  visibleNotes().forEach((note) => {
     counts.set(note.folder, (counts.get(note.folder) || 0) + 1);
   });
 
   // 所有笔记 always first
-  const allTotal = state.notes.length;
+  const allTotal = visibleNotes().length;
   let html = `<button class="folder-item ${!state.selectedFolder || state.selectedFolder === "所有笔记" ? "active" : ""}" type="button" data-folder="所有笔记">
     <span>📋 所有笔记</span>
     <strong>${allTotal}</strong>
@@ -1360,13 +1426,26 @@ function renderSyncMeta() {
   const token = getSyncToken();
   const lastSync = localStorage.getItem(storageKeys.lastSyncAt);
   const auto = elements.autoSyncToggle.checked;
+  const syncMeta = readSyncMeta();
 
-  elements.cloudStatus.textContent = token ? (auto ? t("cloudAuto") : t("cloudReady")) : t("localMode");
-  elements.syncState.textContent = token
-    ? lastSync
+  if (!token) {
+    elements.cloudStatus.textContent = t("localMode");
+    elements.syncState.textContent = t("local");
+  } else if (state.syncInFlight) {
+    elements.cloudStatus.textContent = "同步中...";
+    elements.syncState.textContent = "同步中";
+  } else if (syncMeta.lastError) {
+    elements.cloudStatus.textContent = "同步失败";
+    elements.syncState.textContent = "待重试";
+  } else if (syncMeta.pending) {
+    elements.cloudStatus.textContent = "有本地改动待同步";
+    elements.syncState.textContent = "待同步";
+  } else {
+    elements.cloudStatus.textContent = auto ? t("cloudAuto") : t("cloudReady");
+    elements.syncState.textContent = lastSync
       ? `${t("synced")} ${formatDate(Number(lastSync))}`
-      : t("cloudUnsynced")
-    : t("local");
+      : t("cloudUnsynced");
+  }
   const note = activeNote();
   if (elements.createdAt) {
     elements.createdAt.textContent = note ? `${t("noteCreated")} ${formatDate(Number(note.createdAt) || Date.now())}` : t("noteCreated");
@@ -1540,8 +1619,8 @@ function deleteActiveNote() {
   if (!note) return;
   const confirmed = window.confirm(`删除「${note.title}」？下次推送到云端时会同步这个删除结果。`);
   if (!confirmed) return;
-  state.notes = state.notes.filter((item) => item.id !== note.id);
-  state.activeId = state.notes[0]?.id || null;
+  markNoteDeleted(note);
+  state.activeId = firstVisibleNote()?.id || null;
   ensureActiveNote();
   persistAndRender("已删除笔记");
 }
@@ -1640,17 +1719,31 @@ function importFile(event) {
   reader.readAsText(file, "utf-8");
 }
 
-function mergeNotes(incoming) {
+function mergeNotes(incoming, options = {}) {
+  const before = notesSignature();
+  const incomingNotes = incoming.map(normalizeNote);
   const map = new Map(state.notes.map((note) => [note.id, normalizeNote(note)]));
-  incoming.map(normalizeNote).forEach((note) => {
+  incomingNotes.forEach((note) => {
     const existing = map.get(note.id);
-    if (!existing || note.updatedAt >= existing.updatedAt) {
+    if (!existing || noteVersion(note) >= noteVersion(existing)) {
       map.set(note.id, note);
     }
   });
-  state.notes = [...map.values()].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt);
-  state.activeId = incoming[0]?.id || state.activeId;
-  persistAndRender("已合并笔记");
+  state.notes = [...map.values()].sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
+  if (!activeNote()) state.activeId = firstVisibleNote()?.id || null;
+  ensureActiveNote();
+  const changed = before !== notesSignature();
+  saveNotes();
+  renderAll();
+  setSaveStatus("已保存本地");
+  if (options.scheduleSync !== false) {
+    markSyncPending();
+    scheduleAutoSync();
+  }
+  if (!options.silent) {
+    showToast("已合并笔记");
+  }
+  return changed;
 }
 
 function createShareLink() {
@@ -1685,81 +1778,177 @@ function decodeSharedNote() {
 }
 
 async function pushCloud(options = {}) {
-  const token = getSyncToken();
-  const silent = Boolean(options.silent);
-  if (!token) {
-    showSyncMessage("请先填写同步 Token。");
-    return;
-  }
-
-  localStorage.setItem(storageKeys.syncToken, token);
-  state.syncInFlight = true;
-  if (!silent) showSyncMessage("正在推送到云端...");
-  elements.cloudStatus.textContent = "正在同步...";
-
-  try {
-    saveNotes();
-    const response = await fetch("./api/notes", {
-      method: "PUT",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ notes: state.notes, updatedAt: Date.now() })
-    });
-    if (!response.ok) throw new Error(await response.text());
-    localStorage.setItem(storageKeys.lastSyncAt, String(Date.now()));
-    renderSyncMeta();
-    if (!silent) {
-      showSyncMessage("已推送到云端。");
-      showToast("云同步推送完成");
-    }
-  } catch (error) {
-    const message = `推送失败：${cloudErrorText(error)}`;
-    showSyncMessage(message);
-    if (!silent) showToast(message);
-    elements.cloudStatus.textContent = "同步失败";
-  } finally {
-    state.syncInFlight = false;
-  }
+  return syncCloud({ manual: !options.silent, silent: Boolean(options.silent), forcePush: true });
 }
 
 async function pullCloud() {
+  return syncCloud({ manual: true });
+}
+
+function readSyncMeta() {
+  try {
+    return JSON.parse(localStorage.getItem(storageKeys.syncMeta) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function writeSyncMeta(patch) {
+  const next = { ...readSyncMeta(), ...patch };
+  localStorage.setItem(storageKeys.syncMeta, JSON.stringify(next));
+  return next;
+}
+
+function markSyncPending() {
+  if (!getSyncToken()) {
+    renderSyncMeta();
+    return;
+  }
+  writeSyncMeta({ pending: true, lastError: "" });
+  renderSyncMeta();
+}
+
+function clearSyncPending(remoteUpdatedAt = Date.now()) {
+  const now = Date.now();
+  localStorage.setItem(storageKeys.lastSyncAt, String(now));
+  writeSyncMeta({
+    pending: false,
+    lastError: "",
+    remoteUpdatedAt: Number(remoteUpdatedAt) || now,
+    lastSyncedAt: now
+  });
+}
+
+function startCloudSync() {
+  stopCloudSync();
+  if (!getSyncToken() || !elements.autoSyncToggle.checked) {
+    renderSyncMeta();
+    return;
+  }
+  renderSyncMeta();
+  state.syncStartupTimer = window.setTimeout(() => syncCloud({ silent: true }), 300);
+  state.syncPollTimer = window.setInterval(() => {
+    if (!document.hidden) syncCloud({ silent: true });
+  }, SYNC_POLL_INTERVAL);
+}
+
+function stopCloudSync() {
+  clearTimeout(state.autoSyncTimer);
+  clearTimeout(state.syncStartupTimer);
+  state.syncStartupTimer = null;
+  if (state.syncPollTimer) {
+    clearInterval(state.syncPollTimer);
+    state.syncPollTimer = null;
+  }
+}
+
+function cloudHeaders(token, includeBody = false) {
+  const headers = { authorization: `Bearer ${token}` };
+  if (includeBody) headers["content-type"] = "application/json";
+  return headers;
+}
+
+async function fetchCloudState(token) {
+  const response = await fetch("./api/notes", {
+    cache: "no-store",
+    headers: cloudHeaders(token)
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+}
+
+async function putCloudState(token) {
+  const response = await fetch("./api/notes", {
+    method: "PUT",
+    cache: "no-store",
+    headers: cloudHeaders(token, true),
+    body: JSON.stringify({ notes: syncableNotes(), updatedAt: Date.now() })
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+}
+
+function replaceNotesFromCloud(notes) {
+  state.notes = notes.map(normalizeNote).sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
+  state.activeId = firstVisibleNote()?.id || null;
+  ensureActiveNote();
+  saveNotes();
+  renderAll();
+}
+
+async function syncCloud(options = {}) {
   const token = getSyncToken();
+  const manual = Boolean(options.manual);
+  const silent = Boolean(options.silent);
+  const forcePush = Boolean(options.forcePush);
+
   if (!token) {
-    showSyncMessage("请先填写同步 Token。");
+    if (manual) showSyncMessage("请先填写同步 Token。");
+    renderSyncMeta();
+    return;
+  }
+  if (!manual && !elements.autoSyncToggle.checked) return;
+  if (state.syncInFlight) {
+    state.syncQueued = true;
     return;
   }
 
+  clearTimeout(state.autoSyncTimer);
   localStorage.setItem(storageKeys.syncToken, token);
+  const localWasDefault = state.localStateSource === "default";
+  const pendingBefore = Boolean(readSyncMeta().pending || forcePush);
   state.syncInFlight = true;
-  showSyncMessage("正在从云端拉取...");
-  elements.cloudStatus.textContent = "正在同步...";
+  renderSyncMeta();
+  if (!silent) showSyncMessage("正在自动合并云端和本地...");
 
   try {
-    const response = await fetch("./api/notes", {
-      headers: { authorization: `Bearer ${token}` }
-    });
-    if (!response.ok) throw new Error(await response.text());
-    const payload = await response.json();
-    mergeNotes((payload.notes || []).map(normalizeNote));
-    localStorage.setItem(storageKeys.lastSyncAt, String(Date.now()));
+    const remotePayload = await fetchCloudState(token);
+    const remoteNotes = Array.isArray(remotePayload.notes) ? remotePayload.notes.map(normalizeNote) : [];
+    const remoteSignature = notesSignature(remoteNotes);
+    const hasRemoteVisibleNotes = remoteNotes.some((note) => !isDeletedNote(note));
+
+    if ((localWasDefault || isDefaultSeedState()) && hasRemoteVisibleNotes && !pendingBefore) {
+      replaceNotesFromCloud(remoteNotes);
+    } else {
+      mergeNotes(remoteNotes, { silent: true, scheduleSync: false });
+    }
+
+    const shouldPush = forcePush || readSyncMeta().pending || notesSignature() !== remoteSignature;
+    let remoteUpdatedAt = Number(remotePayload.updatedAt) || Date.now();
+    if (shouldPush) {
+      const pushResult = await putCloudState(token);
+      remoteUpdatedAt = Number(pushResult.updatedAt) || Date.now();
+    }
+
+    clearSyncPending(remoteUpdatedAt);
     renderSyncMeta();
-    showSyncMessage("已从云端拉取并合并。");
-    showToast("云同步拉取完成");
+    if (manual) showToast("同步完成");
+    if (!silent) showSyncMessage("同步完成。后续会自动检查云端更新。");
   } catch (error) {
-    const message = `拉取失败：${cloudErrorText(error)}`;
-    showSyncMessage(message);
-    showToast(message);
-    elements.cloudStatus.textContent = "同步失败";
+    const message = `同步失败：${cloudErrorText(error)}`;
+    if (pendingBefore || forcePush) writeSyncMeta({ pending: true, lastError: message });
+    else writeSyncMeta({ lastError: message });
+    renderSyncMeta();
+    if (!silent) {
+      showSyncMessage(message);
+      showToast(message);
+    }
   } finally {
     state.syncInFlight = false;
+    renderSyncMeta();
+    if (state.syncQueued) {
+      state.syncQueued = false;
+      scheduleAutoSync();
+    }
   }
 }
 
 function clearSyncToken() {
   elements.syncTokenInput.value = "";
+  stopCloudSync();
   localStorage.removeItem(storageKeys.syncToken);
+  localStorage.removeItem(storageKeys.syncMeta);
+  localStorage.removeItem(storageKeys.lastSyncAt);
   localStorage.setItem(storageKeys.autoSync, "0");
   elements.autoSyncToggle.checked = false;
   renderSyncMeta();
@@ -1788,6 +1977,7 @@ function persistAndRender(message) {
   saveNotes();
   renderAll();
   setSaveStatus("已保存本地");
+  markSyncPending();
   scheduleAutoSync();
   if (message) showToast(message);
 }
