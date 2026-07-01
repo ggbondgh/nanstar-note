@@ -1,13 +1,14 @@
 {
   "name": "nanstar-note",
   "version": "1.0.0",
-  "description": "NanStar Note is a lightweight personal note platform for technical notes, client-site quick lookup, and browser-based access.",
+  "private": true,
+  "description": "NanStar Note - 个人技术笔记平台",
   "main": "electron.js",
   "scripts": {
-    "cap": "npx @capacitor/cli",
-    "cap:init": "npx @capacitor/cli init \"NanStar Note\" \"com.nanstar.note\" --web-dir=.",
-    "cap:add:android": "npx @capacitor/cli add android",
-    "cap:sync": "npx @capacitor/cli sync",
+    "build": "node tools/build-capacitor-web.js",
+    "cap:sync": "npm run build && cap sync android",
+    "android:debug": "npm run build && cap sync android && node tools/build-android-debug.js",
+    "android:open": "cap open android",
     "electron:start": "electron .",
     "electron:build": "electron-builder",
     "serve": "npx serve ."
@@ -24,12 +25,14 @@
   },
   "homepage": "https://github.com/ggbondgh/nanstar-note#readme",
   "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/browser": "^7.0.0",
+    "@capacitor/core": "^7.4.4",
     "puppeteer": "^25.2.1"
   },
   "devDependencies": {
-    "@capacitor/android": "^8.4.1",
-    "@capacitor/cli": "^8.4.1",
-    "@capacitor/core": "^8.4.1",
+    "@capacitor/cli": "^7.4.4",
     "electron": "^43.0.0",
     "electron-builder": "^26.15.3"
   }

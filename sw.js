@@ -1,11 +1,12 @@
-const CACHE = "nanstar-note-v1";
+const CACHE = "nanstar-note-v2";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./script.js",
   "./assets/icon.svg",
-  "./manifest.webmanifest"
+  "./manifest.webmanifest",
+  "./sw.js"
 ];
 
 self.addEventListener("install", (event) => {

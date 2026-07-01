@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NanStar Note</string>
+    <string name="title_activity_main">NanStar Note</string>
+    <string name="package_name">com.nanstar.note</string>
+    <string name="custom_url_scheme">com.nanstar.note</string>
+</resources>

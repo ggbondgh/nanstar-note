@@ -1,19 +1,22 @@
 {
   "name": "NanStar Note",
-  "short_name": "NanStar",
+  "short_name": "NanStar Note",
   "description": "个人技术笔记平台 - 纯文本速查、Markdown 预览、云同步",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "orientation": "any",
+  "lang": "zh-CN",
+  "categories": ["productivity", "utilities"],
   "background_color": "#eef2f6",
   "theme_color": "#2f5bea",
-  "categories": ["productivity", "utilities"],
   "icons": [
     {
       "src": "./assets/icon.svg",
-      "sizes": "192x192",
+      "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }
