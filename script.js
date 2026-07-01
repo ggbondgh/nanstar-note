@@ -595,6 +595,9 @@ function bindEvents() {
   elements.bodyInput.addEventListener("keyup", handleEditorCursorChange);
   elements.bodyInput.addEventListener("click", handleEditorCursorChange);
   elements.bodyInput.addEventListener("select", handleEditorCursorChange);
+  document.addEventListener("selectionchange", () => {
+    if (document.activeElement === elements.bodyInput) handleEditorCursorChange();
+  });
   elements.editorSection.addEventListener("toggle", handleEditorSectionToggle);
   elements.editorSearchInput.addEventListener("input", handleEditorSearchInput);
   elements.editorSearchInput.addEventListener("keydown", handleEditorSearchKeydown);
@@ -798,6 +801,7 @@ function updateActiveFromInputs() {
   note.updatedAt = Date.now();
 
   scheduleSave();
+  updateCurrentLineIndicator();
   updateLineNumbers();
   renderPreview();
   renderFloatingOutline();
@@ -855,6 +859,7 @@ function renderEditor() {
   });
 
   renderModeState();
+  updateCurrentLineIndicator();
   updateLineNumbers();
   handleEditorCursorChange();
 }
@@ -2173,6 +2178,7 @@ function jumpToLine(lineIndex, targetId) {
   textarea.setSelectionRange(start, start);
   const metrics = getEditorMetrics();
   textarea.scrollTop = Math.max(0, metrics.paddingTop + lineIndex * metrics.lineHeight - textarea.clientHeight / 3);
+  updateCurrentLineIndicator();
   syncLineNumberScroll();
 
   if (targetId) {
