@@ -1,4 +1,5 @@
 const DATA_KEY = "nanstar-note/default";
+const FOLDER_REGISTRY_KEY = "nanstar-note/folders";
 const TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS note_documents (
     key TEXT PRIMARY KEY,
@@ -21,8 +22,21 @@ export async function onRequestGet({ env, request }) {
   }
 
   await ensureTable(db);
-  const row = await db.prepare("SELECT data FROM note_documents WHERE key = ?").bind(DATA_KEY).first();
-  return json(row?.data ? JSON.parse(row.data) : { notes: [], updatedAt: 0 });
+  const rows = await db
+    .prepare("SELECT key, data FROM note_documents WHERE key IN (?, ?)")
+    .bind(DATA_KEY, FOLDER_REGISTRY_KEY)
+    .all();
+  const documents = rows?.results || [];
+  const mainDoc = documents.find((row) => row.key === DATA_KEY);
+  const folderDoc = documents.find((row) => row.key === FOLDER_REGISTRY_KEY);
+  const payload = mainDoc?.data ? JSON.parse(mainDoc.data) : { notes: [], updatedAt: 0 };
+  if (folderDoc?.data) {
+    try {
+      const parsedFolders = JSON.parse(folderDoc.data);
+      payload.folders = Array.isArray(parsedFolders) ? parsedFolders : Array.isArray(parsedFolders?.folders) ? parsedFolders.folders : [];
+    } catch {}
+  }
+  return json(payload);
 }
 
 export async function onRequestPut({ env, request }) {
@@ -37,6 +51,9 @@ export async function onRequestPut({ env, request }) {
   const payload = await request.json();
   if (!Array.isArray(payload.notes)) {
     return json({ error: "Invalid payload" }, 400);
+  }
+  if (payload.folders !== undefined && !Array.isArray(payload.folders)) {
+    return json({ error: "Invalid folders payload" }, 400);
   }
 
   const body = {
@@ -53,6 +70,17 @@ export async function onRequestPut({ env, request }) {
     )
     .bind(DATA_KEY, JSON.stringify(body), body.updatedAt)
     .run();
+
+  if (Array.isArray(payload.folders)) {
+    await db
+      .prepare(
+         `INSERT INTO note_documents (key, data, updated_at)
+          VALUES (?, ?, ?)
+          ON CONFLICT(key) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`
+      )
+      .bind(FOLDER_REGISTRY_KEY, JSON.stringify(payload.folders), body.updatedAt)
+      .run();
+  }
 
   return json({ ok: true, updatedAt: body.updatedAt });
 }

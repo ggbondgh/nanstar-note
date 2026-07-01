@@ -22,6 +22,23 @@ const i18n = {
     installDesktop: "安装到桌面",
     import: "导入",
     exportCurrent: "导出当前",
+    exportAllZip: "导出全部 ZIP",
+    exportFolder: "导出文件夹",
+    exportAllFolders: "导出全部 ZIP",
+    exportEmpty: "没有可导出的笔记",
+    exportDone: "已生成导出文件",
+    folderNewNote: "在此新建笔记",
+    moveTo: "移动到",
+    noOtherFolders: "无其他文件夹",
+    pinNote: "置顶",
+    unpinNote: "取消置顶",
+    favoriteNote: "星标",
+    unfavoriteNote: "取消星标",
+    folderCreated: "已创建文件夹「{name}」",
+    folderRenamed: "已重命名为「{name}」",
+    folderDeleted: "已删除文件夹「{name}」",
+    inboxLockedRename: "收件箱不能重命名。",
+    inboxLockedDelete: "收件箱是默认文件夹，不能删除。",
     share: "分享",
     delete: "删除",
     copyCurrent: "复制当前内容",
@@ -38,7 +55,7 @@ const i18n = {
     previewTitle: "预览",
     editorTools: "编辑工具",
     moreActions: "更多操作与状态",
-    backupAllJson: "备份全部 JSON",
+    backupAllJson: "导出全部 ZIP",
     noteCreated: "创建",
     noteUpdated: "更新",
     clearSearch: "清除搜索",
@@ -151,6 +168,23 @@ const i18n = {
     installDesktop: "Install App",
     import: "Import",
     exportCurrent: "Export Current",
+    exportAllZip: "Export All ZIP",
+    exportFolder: "Export Folder",
+    exportAllFolders: "Export All ZIP",
+    exportEmpty: "No notes to export",
+    exportDone: "Export file created",
+    folderNewNote: "New note here",
+    moveTo: "Move to",
+    noOtherFolders: "No other folders",
+    pinNote: "Pin",
+    unpinNote: "Unpin",
+    favoriteNote: "Favorite",
+    unfavoriteNote: "Remove Favorite",
+    folderCreated: "Folder created: {name}",
+    folderRenamed: "Renamed to: {name}",
+    folderDeleted: "Folder deleted: {name}",
+    inboxLockedRename: "Inbox cannot be renamed.",
+    inboxLockedDelete: "Inbox is the default folder and cannot be deleted.",
     share: "Share",
     delete: "Delete",
     copyCurrent: "Copy Current",
@@ -167,7 +201,7 @@ const i18n = {
     previewTitle: "Preview",
     editorTools: "Editor Tools",
     moreActions: "More Actions & Status",
-    backupAllJson: "Backup JSON",
+    backupAllJson: "Export All ZIP",
     noteCreated: "Created",
     noteUpdated: "Updated",
     clearSearch: "Clear Search",
@@ -519,6 +553,8 @@ const DEFAULT_SIDEBAR_WIDTH = 248;
 const SYNC_POLL_INTERVAL = 15000;
 const SYNC_PUSH_DELAY = 1200;
 const TRANSFER_NOTE_ID = "nanstar-transfer-assistant";
+const FOLDER_REGISTRY_NOTE_ID = "nanstar-folder-registry";
+const INBOX_FOLDER = "收件箱";
 const MAX_PASTE_IMAGE_BYTES = 900 * 1024;
 const MAX_TRANSFER_IMAGES = 4;
 
@@ -538,6 +574,7 @@ const elements = {
   folderSection: $("#folderSection"),
   folderList: $("#folderList"),
   folderAddButton: $("#folderAddButton"),
+  folderExportAllButton: $("#folderExportAllButton"),
   folderContextMenu: $("#folderContextMenu"),
   noteContextMenu: $("#noteContextMenu"),
   folderDatalist: $("#folderDatalist"),
@@ -681,9 +718,7 @@ function bindEvents() {
   });
 
   if (elements.folderAddButton) elements.folderAddButton.addEventListener("click", createFolder);
-  if (elements.folderSection) elements.folderSection.addEventListener("toggle", () => {
-    if (elements.folderSection.open) renderFolderDatalist();
-  });
+  if (elements.folderExportAllButton) elements.folderExportAllButton.addEventListener("click", () => exportAllNotesZip());
 
   // Folder context menu
   if (elements.folderContextMenu) {
@@ -696,6 +731,7 @@ function bindEvents() {
         if (action === "rename") renameFolder(folder);
         else if (action === "delete") deleteFolder(folder);
         else if (action === "new-note") createNoteInFolder(folder);
+        else if (action === "export") exportFolderZip(folder);
       });
     });
   }
@@ -773,7 +809,7 @@ function bindEvents() {
   // New note dialog
   if (elements.newNoteConfirmBtn) {
     elements.newNoteConfirmBtn.addEventListener("click", () => {
-      const folder = elements.newNoteFolderSelect?.value || "收件箱";
+      const folder = elements.newNoteFolderSelect?.value || INBOX_FOLDER;
       const tpl = document.querySelector('#newNoteTxtBtn.active, #newNoteMDBtn.active')?.dataset?.tpl || "txt";
       elements.newNoteDialog.close();
       createNote(tpl, folder);
@@ -790,7 +826,7 @@ function bindEvents() {
   elements.deleteButton.addEventListener("click", deleteActiveNote);
   if (elements.duplicateButton) elements.duplicateButton.addEventListener("click", duplicateActiveNote);
   if (elements.copyMarkdownButton) elements.copyMarkdownButton.addEventListener("click", copyActiveContent);
-  elements.downloadNoteButton.addEventListener("click", exportBackupJson);
+  elements.downloadNoteButton.addEventListener("click", exportAllNotesZip);
   elements.exportButton.addEventListener("click", exportCurrentNote);
   elements.importButton.addEventListener("click", () => elements.importFileInput.click());
   elements.importFileInput.addEventListener("change", importFile);
@@ -897,8 +933,25 @@ function loadNotes() {
     const raw = localStorage.getItem(storageKeys.notes);
     if (!raw) return withSystemNotes(defaultNotes.map(normalizeNote));
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return withSystemNotes(defaultNotes.map(normalizeNote));
-    return withSystemNotes(parsed.map(normalizeNote));
+    let notes;
+    let folders = null;
+    if (Array.isArray(parsed)) {
+      notes = parsed;
+    } else if (parsed && typeof parsed === "object") {
+      notes = Array.isArray(parsed.notes) ? parsed.notes : [];
+      folders = Array.isArray(parsed.folders) ? parsed.folders : null;
+    } else {
+      return withSystemNotes(defaultNotes.map(normalizeNote));
+    }
+    if (!Array.isArray(notes) || notes.length === 0) return withSystemNotes(defaultNotes.map(normalizeNote));
+    const merged = withSystemNotes(notes.map(normalizeNote));
+    if (folders) {
+      const registry = merged.find(isFolderRegistry);
+      if (registry) {
+        registry.body = JSON.stringify([...new Set(folders.map((name) => String(name || "").trim()).filter(Boolean).filter((name) => name !== INBOX_FOLDER))].sort((a, b) => a.localeCompare(b, "zh-CN")));
+      }
+    }
+    return merged;
   } catch {
     return withSystemNotes(defaultNotes.map(normalizeNote));
   }
@@ -910,7 +963,7 @@ function normalizeNote(note) {
     id: note.id || createId(),
     title: note.title || "未命名笔记",
     mode: normalizeMode(note.mode, body),
-    folder: String(note.folder || "收件箱").trim() || "收件箱",
+    folder: String(note.folder || INBOX_FOLDER).trim() || INBOX_FOLDER,
     body,
     pinned: Boolean(note.pinned),
     favorite: Boolean(note.favorite),
@@ -929,7 +982,7 @@ function createTransferAssistantNote() {
     id: TRANSFER_NOTE_ID,
     title: t("transferAssistantTitle"),
     mode: "md",
-    folder: t("inbox"),
+    folder: INBOX_FOLDER,
     body: t("transferAssistantBody"),
     pinned: true,
     favorite: false,
@@ -942,13 +995,39 @@ function createTransferAssistantNote() {
   });
 }
 
+function createFolderRegistryNote() {
+  const now = Date.now();
+  return normalizeNote({
+    id: FOLDER_REGISTRY_NOTE_ID,
+    title: "__folders__",
+    mode: "txt",
+    folder: INBOX_FOLDER,
+    body: "[]",
+    pinned: false,
+    favorite: false,
+    system: "folders",
+    editorSectionOpen: false,
+    previewVisible: false,
+    deletedAt: 0,
+    createdAt: now,
+    updatedAt: now
+  });
+}
+
 function isTransferAssistant(note) {
   return note?.id === TRANSFER_NOTE_ID || note?.system === "transfer";
+}
+
+function isFolderRegistry(note) {
+  return note?.id === FOLDER_REGISTRY_NOTE_ID || note?.system === "folders";
 }
 
 function withSystemNotes(notes) {
   const normalized = notes.map(normalizeNote);
   const transfer = normalized.find(isTransferAssistant);
+  const registry = normalized.find(isFolderRegistry);
+  let transferNote = transfer || null;
+  let registryNote = registry || null;
   if (transfer) {
     transfer.id = TRANSFER_NOTE_ID;
     transfer.system = "transfer";
@@ -956,15 +1035,54 @@ function withSystemNotes(notes) {
     transfer.pinned = true;
     transfer.favorite = false;
     transfer.deletedAt = 0;
-    transfer.folder = t("inbox");
+    transfer.folder = INBOX_FOLDER;
     transfer.previewVisible = true;
     transfer.editorSectionOpen = true;
     if (!transfer.title || transfer.title === "File Transfer" || transfer.title === "文件传输助手") {
       transfer.title = t("transferAssistantTitle");
     }
-    return normalized.filter((note) => !isTransferAssistant(note)).concat(transfer);
   }
-  return [createTransferAssistantNote(), ...normalized];
+  if (registry) {
+    registry.id = FOLDER_REGISTRY_NOTE_ID;
+    registry.system = "folders";
+    registry.title = "__folders__";
+    registry.mode = "txt";
+    registry.folder = INBOX_FOLDER;
+    registry.pinned = false;
+    registry.favorite = false;
+    registry.deletedAt = 0;
+    registry.previewVisible = false;
+    registry.editorSectionOpen = false;
+  }
+  const filtered = normalized.filter((note) => !isTransferAssistant(note) && !isFolderRegistry(note));
+  if (!registryNote) registryNote = createFolderRegistryNote();
+  if (!transferNote) transferNote = createTransferAssistantNote();
+  return [...filtered, registryNote, transferNote];
+}
+
+function folderRegistryNote(notes = state.notes) {
+  return notes.find(isFolderRegistry) || null;
+}
+
+function storedFolders(notes = state.notes) {
+  const registry = folderRegistryNote(notes);
+  if (!registry?.body) return [INBOX_FOLDER];
+  try {
+    const parsed = JSON.parse(registry.body);
+    const list = Array.isArray(parsed) ? parsed.map((item) => String(item || "").trim()).filter(Boolean) : [];
+    return [INBOX_FOLDER, ...list.filter((name, index, array) => array.indexOf(name) === index && name !== INBOX_FOLDER)];
+  } catch {
+    return [INBOX_FOLDER];
+  }
+}
+
+function setStoredFolders(names) {
+  const registry = state.notes.find(isFolderRegistry) || createFolderRegistryNote();
+  registry.body = JSON.stringify([...new Set((names || []).map((name) => String(name || "").trim()).filter(Boolean).filter((name) => name !== INBOX_FOLDER))].sort((a, b) => a.localeCompare(b, "zh-CN")));
+  registry.updatedAt = Date.now();
+  registry.deletedAt = 0;
+  if (!state.notes.some((note) => note.id === registry.id)) state.notes.unshift(registry);
+  return registry;
 }
 
 function isDeletedNote(note) {
@@ -972,7 +1090,11 @@ function isDeletedNote(note) {
 }
 
 function visibleNotes() {
-  return state.notes.filter((note) => !isDeletedNote(note));
+  return state.notes.filter((note) => !isDeletedNote(note) && !isFolderRegistry(note));
+}
+
+function regularNotes() {
+  return visibleNotes().filter((note) => !isTransferAssistant(note));
 }
 
 function firstVisibleNote() {
@@ -997,7 +1119,7 @@ function noteSignatureById(noteId) {
 }
 
 function isDefaultSeedState(notes = state.notes) {
-  const visible = notes.map(normalizeNote).filter((note) => !isDeletedNote(note) && !isTransferAssistant(note));
+  const visible = notes.map(normalizeNote).filter((note) => !isDeletedNote(note) && !isTransferAssistant(note) && !isFolderRegistry(note));
   if (visible.length !== defaultNotes.length) return false;
   return defaultNotes.every((seed) => visible.some((note) => note.title === seed.title && note.body === seed.body));
 }
@@ -1016,7 +1138,10 @@ function looksLikeMarkdown(body) {
 }
 
 function saveNotes() {
-  localStorage.setItem(storageKeys.notes, JSON.stringify(state.notes));
+  localStorage.setItem(storageKeys.notes, JSON.stringify({
+    notes: state.notes,
+    folders: storedFolders()
+  }));
   if (state.activeId) localStorage.setItem(storageKeys.activeNote, state.activeId);
   state.localStateSource = "stored";
 }
@@ -1131,7 +1256,7 @@ function updateActiveFromInputs() {
   const note = activeNote();
   if (!note) return;
   note.title = elements.titleInput.value.trimStart() || "未命名笔记";
-  if (elements.folderInput) note.folder = elements.folderInput.value.trim() || "收件箱";
+  if (elements.folderInput) note.folder = elements.folderInput.value.trim() || INBOX_FOLDER;
   note.body = elements.bodyInput.value;
   note.updatedAt = Date.now();
 
@@ -1180,13 +1305,13 @@ function renderEditor() {
 
   if (elements.pinButton) {
     elements.pinButton.classList.toggle("active", note.pinned);
-    elements.pinButton.textContent = note.pinned ? "📌 已置顶" : "📌 置顶";
-    elements.pinButton.title = note.pinned ? "取消置顶" : "置顶";
+    elements.pinButton.textContent = note.pinned ? `📌 ${t("unpinNote")}` : `📌 ${t("pinNote")}`;
+    elements.pinButton.title = note.pinned ? t("unpinNote") : t("pinNote");
   }
   if (elements.favoriteButton) {
     elements.favoriteButton.classList.toggle("active", note.favorite);
-    elements.favoriteButton.textContent = note.favorite ? "★ 已收藏" : "★ 收藏";
-    elements.favoriteButton.title = note.favorite ? "取消星标" : "星标";
+    elements.favoriteButton.textContent = note.favorite ? `★ ${t("unfavoriteNote")}` : `★ ${t("favoriteNote")}`;
+    elements.favoriteButton.title = note.favorite ? t("unfavoriteNote") : t("favoriteNote");
   }
 
   elements.modeButtons.forEach((button) => {
@@ -1337,15 +1462,20 @@ function setActiveOutlineHeading(idx) {
 /* ---- Folder Management ---- */
 
 function getFolderNames() {
-  const names = new Set(visibleNotes().map(n => n.folder));
+  const names = new Set(storedFolders());
+  regularNotes().forEach((note) => names.add(note.folder));
   return [...names].sort((a, b) => a.localeCompare(b, "zh-CN"));
 }
 
 function renderFolderDatalist() {
   if (!elements.folderDatalist) return;
   elements.folderDatalist.innerHTML = getFolderNames()
-    .map(name => `<option value="${escapeAttribute(name)}"></option>`)
+    .map(name => `<option value="${escapeAttribute(name)}">${escapeHtml(displayFolderLabel(name))}</option>`)
     .join("");
+}
+
+function displayFolderLabel(folder) {
+  return folder === INBOX_FOLDER ? t("inbox") : folder;
 }
 
 function createFolder() {
@@ -1355,13 +1485,20 @@ function createFolder() {
     showToast(t("folderExists"));
     return;
   }
+  const registry = setStoredFolders([...storedFolders(), name]);
+  saveNotes();
+  markSyncPending(registry.id);
   state.selectedFolder = name;
   renderLists();
   renderFolderDatalist();
-  showToast(`已创建文件夹「${name}」`);
+  showToast(t("folderCreated").replace("{name}", name));
 }
 
 function renameFolder(oldName) {
+  if (oldName === INBOX_FOLDER) {
+    showToast(t("inboxLockedRename"));
+    return;
+  }
   const newName = (window.prompt(t("folderRenamePrompt"), oldName) || "").trim();
   if (!newName || newName === oldName) return;
   const otherNames = getFolderNames().filter(n => n !== oldName);
@@ -1377,18 +1514,20 @@ function renameFolder(oldName) {
       changedIds.push(note.id);
     }
   });
+  const registry = setStoredFolders(storedFolders().filter((name) => name !== oldName).concat(newName));
   if (state.selectedFolder === oldName) state.selectedFolder = newName;
   saveNotes();
+  markSyncPending(registry.id);
   changedIds.forEach((id) => markSyncPending(id));
   renderLists();
   renderFolderDatalist();
   renderEditor();
-  showToast(`已重命名为「${newName}」`);
+  showToast(t("folderRenamed").replace("{name}", newName));
 }
 
 function deleteFolder(name) {
-  if (name === "收件箱") {
-    showToast("收件箱是默认文件夹，不能删除。");
+  if (name === INBOX_FOLDER) {
+    showToast(t("inboxLockedDelete"));
     return;
   }
   const confirmed = window.confirm(
@@ -1398,28 +1537,39 @@ function deleteFolder(name) {
   const changedIds = [];
   state.notes.forEach(note => {
     if (note.folder === name && !isDeletedNote(note)) {
-      note.folder = "收件箱";
+      note.folder = INBOX_FOLDER;
       note.updatedAt = Date.now();
       changedIds.push(note.id);
     }
   });
+  const registry = setStoredFolders(storedFolders().filter((folder) => folder !== name));
   if (state.selectedFolder === name) state.selectedFolder = "";
   saveNotes();
+  markSyncPending(registry.id);
   changedIds.forEach((id) => markSyncPending(id));
   renderAll();
   renderFolderDatalist();
-  showToast(`已删除文件夹「${name}」`);
+  showToast(t("folderDeleted").replace("{name}", name));
 }
 
 function showFolderContextMenu(x, y) {
   const menu = elements.folderContextMenu;
   if (!menu) return;
+  menu.querySelector('[data-action="new-note"]').textContent = t("folderNewNote");
+  menu.querySelector('[data-action="export"]').textContent = t("exportFolder");
+  menu.querySelector('[data-action="rename"]').textContent = t("renameFolder");
+  menu.querySelector('[data-action="delete"]').textContent = t("delete");
   menu.hidden = false;
   menu.style.left = `${Math.min(x, window.innerWidth - 160)}px`;
   menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`;
+  const renameBtn = menu.querySelector('[data-action="rename"]');
   const deleteBtn = menu.querySelector('[data-action="delete"]');
+  const isInbox = state.contextMenuFolder === INBOX_FOLDER;
+  if (renameBtn) {
+    renameBtn.disabled = isInbox;
+    renameBtn.style.opacity = isInbox ? "0.4" : "1";
+  }
   if (deleteBtn) {
-    const isInbox = state.contextMenuFolder === "收件箱";
     deleteBtn.disabled = isInbox;
     deleteBtn.style.opacity = isInbox ? "0.4" : "1";
   }
@@ -1434,15 +1584,21 @@ function hideFolderContextMenu() {
 function showNoteContextMenu(x, y) {
   const menu = elements.noteContextMenu;
   if (!menu) return;
+  menu.querySelector('[data-action="pin"]').textContent = `📌 ${t("pinNote")}`;
+  menu.querySelector('[data-action="favorite"]').textContent = `★ ${t("favoriteNote")}`;
+  menu.querySelector('.move-trigger').textContent = `${t("moveTo")} ▸`;
+  menu.querySelector('[data-action="duplicate"]').textContent = t("duplicate");
+  menu.querySelector('[data-action="export"]').textContent = t("exportCurrent");
+  menu.querySelector('[data-action="delete"]').textContent = t("delete");
   menu.hidden = false;
   menu.style.left = `${Math.min(x, window.innerWidth - 170)}px`;
   menu.style.top = `${Math.min(y, window.innerHeight - 260)}px`;
   const note = state.notes.find(n => n.id === state.contextMenuNoteId && !isDeletedNote(n));
   if (note) {
     const pinItem = menu.querySelector('[data-action="pin"]');
-    if (pinItem) pinItem.textContent = note.pinned ? '📌 取消置顶' : '📌 置顶';
+    if (pinItem) pinItem.textContent = note.pinned ? `📌 ${t("unpinNote")}` : `📌 ${t("pinNote")}`;
     const favItem = menu.querySelector('[data-action="favorite"]');
-    if (favItem) favItem.textContent = note.favorite ? '★ 取消星标' : '★ 星标';
+    if (favItem) favItem.textContent = note.favorite ? `★ ${t("unfavoriteNote")}` : `★ ${t("favoriteNote")}`;
   }
   // Populate move submenu
   const moveList = document.getElementById('noteMoveList');
@@ -1450,8 +1606,8 @@ function showNoteContextMenu(x, y) {
   if (moveList && moveTrigger) {
     const folders = getFolderNames().filter(f => note && f !== note.folder);
     moveList.innerHTML = folders.length
-      ? folders.map(f => `<button class="context-menu-item" data-action="move-to" data-folder="${escapeAttribute(f)}" type="button">📁 ${escapeHtml(f)}</button>`).join("")
-      : '<span style="padding:6px 12px;color:var(--muted);font-size:12px;">无其他文件夹</span>';
+      ? folders.map(f => `<button class="context-menu-item" data-action="move-to" data-folder="${escapeAttribute(f)}" type="button">📁 ${escapeHtml(displayFolderLabel(f))}</button>`).join("")
+      : `<span style="padding:6px 12px;color:var(--muted);font-size:12px;">${t("noOtherFolders")}</span>`;
     // Click trigger to toggle submenu
     moveTrigger.onclick = (e) => {
       e.stopPropagation();
@@ -1481,6 +1637,234 @@ function moveNoteToFolder(noteId, targetFolder) {
   note.folder = targetFolder;
   note.updatedAt = Date.now();
   persistAndRender(`已移至「${targetFolder}」`, { dirtyNoteId: note.id });
+}
+
+function exportableNotes() {
+  return visibleNotes().filter((note) => !isTransferAssistant(note));
+}
+
+function notesInFolder(folder) {
+  if (!folder) return exportableNotes();
+  return exportableNotes().filter((note) => note.folder === folder);
+}
+
+function uniqueExportPath(path, usedPaths) {
+  if (!usedPaths.has(path)) {
+    usedPaths.add(path);
+    return path;
+  }
+  const slashIndex = path.lastIndexOf("/");
+  const dir = slashIndex >= 0 ? path.slice(0, slashIndex + 1) : "";
+  const base = slashIndex >= 0 ? path.slice(slashIndex + 1) : path;
+  const dotIndex = base.lastIndexOf(".");
+  const stem = dotIndex >= 0 ? base.slice(0, dotIndex) : base;
+  const ext = dotIndex >= 0 ? base.slice(dotIndex) : "";
+  let index = 2;
+  let next = "";
+  do {
+    next = `${dir}${stem} (${index})${ext}`;
+    index += 1;
+  } while (usedPaths.has(next));
+  usedPaths.add(next);
+  return next;
+}
+
+function sanitizeZipSegment(value) {
+  return safeFileName(value).replace(/\s+/g, " ").trim() || "folder";
+}
+
+function fileNameForNote(note) {
+  const ext = note.mode === "md" ? "md" : "txt";
+  return `${sanitizeZipSegment(note.title)}.${ext}`;
+}
+
+function buildZipEntries(structure, rootPrefix = "") {
+  const entries = [];
+  const usedPaths = new Set();
+  const walk = (node, prefix = "") => {
+    if (!node) return;
+    if (Array.isArray(node)) {
+      node.forEach((item) => walk(item, prefix));
+      return;
+    }
+    if (node.type === "folder") {
+      const name = sanitizeZipSegment(node.name);
+      const nextPrefix = `${prefix}${name}/`;
+      if (node.includeDirectory !== false) {
+        const dirPath = uniqueExportPath(nextPrefix, usedPaths);
+        entries.push({ path: dirPath, directory: true, data: new Uint8Array(0) });
+      }
+      (node.children || []).forEach((child) => walk(child, nextPrefix));
+      return;
+    }
+    if (node.type === "file") {
+      const path = uniqueExportPath(`${prefix}${sanitizeZipSegment(node.name)}`, usedPaths);
+      const data = typeof node.data === "string"
+        ? new TextEncoder().encode(node.data)
+        : (node.data instanceof Uint8Array ? node.data : new Uint8Array(node.data || []));
+      entries.push({ path, directory: false, data });
+    }
+  };
+  walk(structure, rootPrefix);
+  return entries;
+}
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i += 1) {
+    crc ^= bytes[i];
+    for (let j = 0; j < 8; j += 1) {
+      const mask = -(crc & 1);
+      crc = (crc >>> 1) ^ (0xedb88320 & mask);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function getDosDateTime(date = new Date()) {
+  const year = Math.max(1980, date.getFullYear());
+  const dosTime = ((date.getHours() & 0x1f) << 11) | ((date.getMinutes() & 0x3f) << 5) | Math.floor(date.getSeconds() / 2);
+  const dosDate = (((year - 1980) & 0x7f) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+  return { dosTime, dosDate };
+}
+
+function concatUint8Arrays(chunks) {
+  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  chunks.forEach((chunk) => {
+    merged.set(chunk, offset);
+    offset += chunk.length;
+  });
+  return merged;
+}
+
+function createZipBlob(entries) {
+  const encoder = new TextEncoder();
+  const files = entries.filter((entry) => !entry.directory);
+  const directories = entries.filter((entry) => entry.directory);
+  const allEntries = [...directories, ...files];
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  const now = new Date();
+  const { dosTime, dosDate } = getDosDateTime(now);
+
+  allEntries.forEach((entry) => {
+    const name = entry.path.replace(/\\/g, "/");
+    const nameBytes = encoder.encode(name);
+    const data = entry.data instanceof Uint8Array ? entry.data : new Uint8Array(entry.data || []);
+    const crc = crc32(data);
+    const isDir = Boolean(entry.directory || name.endsWith("/"));
+    const localHeader = new ArrayBuffer(30);
+    const localView = new DataView(localHeader);
+    localView.setUint32(0, 0x04034b50, true);
+    localView.setUint16(4, 20, true);
+    localView.setUint16(6, 0x0800, true);
+    localView.setUint16(8, 0, true);
+    localView.setUint16(10, dosTime, true);
+    localView.setUint16(12, dosDate, true);
+    localView.setUint32(14, crc, true);
+    localView.setUint32(18, data.length, true);
+    localView.setUint32(22, data.length, true);
+    localView.setUint16(26, nameBytes.length, true);
+    localView.setUint16(28, 0, true);
+    localParts.push(new Uint8Array(localHeader), nameBytes, data);
+
+    const centralHeader = new ArrayBuffer(46);
+    const centralView = new DataView(centralHeader);
+    centralView.setUint32(0, 0x02014b50, true);
+    centralView.setUint16(4, 20, true);
+    centralView.setUint16(6, 20, true);
+    centralView.setUint16(8, 0x0800, true);
+    centralView.setUint16(10, 0, true);
+    centralView.setUint16(12, dosTime, true);
+    centralView.setUint16(14, dosDate, true);
+    centralView.setUint32(16, crc, true);
+    centralView.setUint32(20, data.length, true);
+    centralView.setUint32(24, data.length, true);
+    centralView.setUint16(28, nameBytes.length, true);
+    centralView.setUint16(30, 0, true);
+    centralView.setUint16(32, 0, true);
+    centralView.setUint16(34, 0, true);
+    centralView.setUint16(36, 0, true);
+    centralView.setUint32(38, isDir ? 0x10 : 0, true);
+    centralView.setUint32(42, offset, true);
+    centralParts.push(new Uint8Array(centralHeader), nameBytes);
+
+    offset += 30 + nameBytes.length + data.length;
+  });
+
+  const centralDir = concatUint8Arrays(centralParts);
+  const localDir = concatUint8Arrays(localParts);
+  const end = new ArrayBuffer(22);
+  const endView = new DataView(end);
+  endView.setUint32(0, 0x06054b50, true);
+  endView.setUint16(4, 0, true);
+  endView.setUint16(6, 0, true);
+  endView.setUint16(8, allEntries.length, true);
+  endView.setUint16(10, allEntries.length, true);
+  endView.setUint32(12, centralDir.length, true);
+  endView.setUint32(16, localDir.length, true);
+  endView.setUint16(20, 0, true);
+
+  return new Blob([localDir, centralDir, new Uint8Array(end)], { type: "application/zip" });
+}
+
+function downloadBlob(filename, blob) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportFolderZip(folder) {
+  const notes = notesInFolder(folder);
+  if (!notes.length) {
+    showToast(t("exportEmpty"));
+    return;
+  }
+  const folderName = folder || t("allNotes");
+  const root = sanitizeZipSegment(folderName);
+  const entries = notes.map((note) => ({
+    type: "file",
+    name: fileNameForNote(note),
+    data: note.mode === "md" ? formatMarkdownExport(note) : note.body
+  }));
+  const zip = createZipBlob(buildZipEntries([{ type: "folder", name: root, children: entries }]));
+  downloadBlob(`${safeFileName(folderName)}-${formatFileDate(Date.now())}.zip`, zip);
+  showToast(t("exportDone"));
+}
+
+function exportAllNotesZip() {
+  const notes = exportableNotes();
+  if (!notes.length) {
+    showToast(t("exportEmpty"));
+    return;
+  }
+  const folderMap = new Map();
+  notes.forEach((note) => {
+    const key = note.folder || INBOX_FOLDER;
+    if (!folderMap.has(key)) folderMap.set(key, []);
+    folderMap.get(key).push(note);
+  });
+  const children = [...folderMap.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], "zh-CN"))
+    .map(([folder, items]) => ({
+      type: "folder",
+      name: folder,
+      includeDirectory: true,
+      children: items.map((note) => ({
+        type: "file",
+        name: fileNameForNote(note),
+        data: note.mode === "md" ? formatMarkdownExport(note) : note.body
+      }))
+    }));
+  const zip = createZipBlob(buildZipEntries([{ type: "folder", name: `NanStar Note ${formatFileDate(Date.now())}`, children }]));
+  downloadBlob(`nanstar-note-${formatFileDate(Date.now())}.zip`, zip);
+  showToast(t("exportDone"));
 }
 
 function duplicateNoteById(id) {
@@ -1566,32 +1950,41 @@ function sortedNotes() {
 
 function renderFolders() {
   const counts = new Map();
-  visibleNotes().forEach((note) => {
+  regularNotes().forEach((note) => {
     counts.set(note.folder, (counts.get(note.folder) || 0) + 1);
   });
 
-  // 所有笔记 always first
-  const allTotal = visibleNotes().length;
-  let html = `<button class="folder-item ${!state.selectedFolder || state.selectedFolder === "所有笔记" ? "active" : ""}" type="button" data-folder="所有笔记">
-    <span>📋 所有笔记</span>
-    <strong>${allTotal}</strong>
-  </button>`;
-
-  // Other folders: sort by count desc, hide empty ones (but always show 收件箱)
-  const others = [...counts.entries()]
-    .filter(([name, count]) => count > 0 || name === "收件箱")
+  const allTotal = regularNotes().length;
+  const folderOrder = [INBOX_FOLDER, ...counts.keys()].filter((folder, index, array) => array.indexOf(folder) === index);
+  const folderItems = folderOrder
+    .map((folder) => [folder, counts.get(folder) || 0])
     .sort((a, b) => {
-      if (a[0] === "收件箱") return -1;
-      if (b[0] === "收件箱") return 1;
+      if (a[0] === INBOX_FOLDER) return -1;
+      if (b[0] === INBOX_FOLDER) return 1;
       return b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN");
     });
 
-  html += others
-    .map(([folder, count]) => `
-      <button class="folder-item ${folder === state.selectedFolder ? "active" : ""}" type="button" data-folder="${escapeAttribute(folder)}">
-        <span>${escapeHtml(folder)}</span>
-        <strong>${count}</strong>
+  let html = `
+    <div class="folder-row ${!state.selectedFolder ? "active" : ""}" data-folder="__all">
+      <button class="folder-item" type="button" data-folder="__all">
+        <span class="folder-dot" aria-hidden="true"></span>
+        <span class="folder-name">${t("allNotes")}</span>
+        <strong>${allTotal}</strong>
       </button>
+      <button class="folder-export-button" type="button" data-export-folder="__all" title="${t("exportAllFolders")}" aria-label="${t("exportAllFolders")}">⇩</button>
+    </div>
+  `;
+
+  html += folderItems
+    .map(([folder, count]) => `
+      <div class="folder-row ${folder === state.selectedFolder ? "active" : ""}" data-folder="${escapeAttribute(folder)}">
+        <button class="folder-item" type="button" data-folder="${escapeAttribute(folder)}">
+          <span class="folder-dot" aria-hidden="true"></span>
+          <span class="folder-name">${escapeHtml(displayFolderLabel(folder))}</span>
+          <strong>${count}</strong>
+        </button>
+        <button class="folder-export-button" type="button" data-export-folder="${escapeAttribute(folder)}" title="${t("exportFolder")}" aria-label="${t("exportFolder")}">⇩</button>
+      </div>
     `)
     .join("");
 
@@ -1600,13 +1993,23 @@ function renderFolders() {
   elements.folderList.querySelectorAll(".folder-item").forEach((button) => {
     button.addEventListener("click", () => {
       const f = button.dataset.folder || "";
-      state.selectedFolder = f === "所有笔记" ? "" : f;
+      state.selectedFolder = f === "__all" ? "" : f;
       renderLists();
     });
-    button.addEventListener("contextmenu", (event) => {
+  });
+  elements.folderList.querySelectorAll(".folder-export-button").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const folder = button.dataset.exportFolder || "";
+      if (folder === "__all") exportAllNotesZip();
+      else exportFolderZip(folder);
+    });
+  });
+  elements.folderList.querySelectorAll(".folder-row").forEach((row) => {
+    row.addEventListener("contextmenu", (event) => {
       event.preventDefault();
-      const f = button.dataset.folder || "";
-      if (f === "所有笔记") return; // no context menu for 所有笔记
+      const f = row.dataset.folder || "";
+      if (f === "__all") return;
       state.contextMenuFolder = f;
       showFolderContextMenu(event.clientX, event.clientY);
     });
@@ -1729,17 +2132,17 @@ function renderSyncMeta() {
 function openNewNoteDialog() {
   if (!elements.newNoteFolderSelect || !elements.newNoteDialog) return;
   const folders = getFolderNames();
-  const defaultFolder = (state.selectedFolder && state.selectedFolder !== "所有笔记") ? state.selectedFolder : "收件箱";
+  const defaultFolder = state.selectedFolder || INBOX_FOLDER;
   elements.newNoteFolderSelect.innerHTML = folders.length
-    ? folders.map(f => `<option value="${escapeAttribute(f)}" ${f === defaultFolder ? "selected" : ""}>${escapeHtml(f)}</option>`).join("")
-    : `<option value="收件箱">收件箱</option>`;
+    ? folders.map(f => `<option value="${escapeAttribute(f)}" ${f === defaultFolder ? "selected" : ""}>${escapeHtml(displayFolderLabel(f))}</option>`).join("")
+    : `<option value="${INBOX_FOLDER}">${INBOX_FOLDER}</option>`;
   elements.newNoteDialog.showModal();
 }
 
 function createNote(templateName, folder) {
   const note = createNoteObject(templateName);
   if (folder) note.folder = folder;
-  else if (state.selectedFolder && state.selectedFolder !== "所有笔记") note.folder = state.selectedFolder;
+  else if (state.selectedFolder) note.folder = state.selectedFolder;
   state.notes.unshift(note);
   state.activeId = note.id;
   persistAndRender("已创建笔记");
@@ -2024,9 +2427,11 @@ function mergeNotes(incoming, options = {}) {
   return changed;
 }
 
-function applyCloudNotes(remoteNotes, options = {}) {
+function applyCloudNotes(remotePayload, options = {}) {
   const before = notesSignature();
+  const remoteNotes = Array.isArray(remotePayload?.notes) ? remotePayload.notes : [];
   const incomingNotes = remoteNotes.map(normalizeNote);
+  const incomingFolders = Array.isArray(remotePayload?.folders) ? remotePayload.folders : null;
   const localWasDefault = state.localStateSource === "default";
   const hasRemoteVisibleNotes = incomingNotes.some((note) => !isDeletedNote(note));
   const allowReplace = options.allowReplace === true;
@@ -2034,11 +2439,13 @@ function applyCloudNotes(remoteNotes, options = {}) {
 
   if ((allowReplace || localWasDefault || isDefaultSeedState()) && hasRemoteVisibleNotes && !hasLocalDirty) {
     replaceNotesFromCloud(incomingNotes, { keepActiveId: true });
+    if (incomingFolders) setStoredFolders(incomingFolders);
     return { changed: before !== notesSignature(), blocked: false };
   } else if (hasLocalDirty) {
     return mergeCloudNotesSafely(incomingNotes);
   } else {
     mergeNotes(incomingNotes, { silent: true, scheduleSync: false });
+    if (incomingFolders) setStoredFolders(incomingFolders);
     return { changed: before !== notesSignature(), blocked: false };
   }
 }
@@ -2163,7 +2570,7 @@ async function putCloudState(token) {
     method: "PUT",
     cache: "no-store",
     headers: cloudHeaders(token, true),
-    body: JSON.stringify({ notes: syncableNotes(), updatedAt: Date.now() })
+    body: JSON.stringify({ notes: syncableNotes(), folders: storedFolders(), updatedAt: Date.now() })
   });
   if (!response.ok) throw new Error(await response.text());
   return response.json();
@@ -2172,6 +2579,7 @@ async function putCloudState(token) {
 function replaceNotesFromCloud(notes, options = {}) {
   const keepActiveId = options.keepActiveId !== false ? state.activeId : null;
   state.notes = notes.map(normalizeNote).sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
+  if (Array.isArray(options.folders)) setStoredFolders(options.folders);
   state.activeId = keepActiveId && state.notes.some((note) => note.id === keepActiveId && !isDeletedNote(note))
     ? keepActiveId
     : firstVisibleNote()?.id || null;
@@ -2212,6 +2620,7 @@ async function syncCloud(options = {}) {
   try {
     const remotePayload = await fetchCloudState(token);
     const remoteNotes = Array.isArray(remotePayload.notes) ? remotePayload.notes.map(normalizeNote) : [];
+    const remoteFolders = Array.isArray(remotePayload.folders) ? remotePayload.folders : null;
     const remoteSignature = notesSignature(remoteNotes);
     let remoteUpdatedAt = Number(remotePayload.updatedAt) || Date.now();
     let pulled = false;
@@ -2219,17 +2628,17 @@ async function syncCloud(options = {}) {
     let blocked = false;
 
     if (pullOnly) {
-      const result = applyCloudNotes(remoteNotes, { allowReplace: reason === "startup" || reason === "open-note" || reason === "manual-pull" });
+      const result = applyCloudNotes(remotePayload, { allowReplace: reason === "startup" || reason === "open-note" || reason === "manual-pull" });
       pulled = result.changed;
       blocked = result.blocked;
     } else if (!pendingBefore && notesSignature() !== remoteSignature) {
-      const result = applyCloudNotes(remoteNotes, { allowReplace: reason === "startup" || reason === "open-note" });
+      const result = applyCloudNotes(remotePayload, { allowReplace: reason === "startup" || reason === "open-note" });
       pulled = result.changed;
       blocked = result.blocked;
     }
 
     if (!pullOnly && !blocked && hasDirtyNotes()) {
-      const pulledBeforePush = applyCloudNotes(remoteNotes, { allowReplace: false });
+      const pulledBeforePush = applyCloudNotes(remotePayload, { allowReplace: false });
       blocked = pulledBeforePush.blocked;
       const pushResult = await putCloudState(token);
       remoteUpdatedAt = Number(pushResult.updatedAt) || Date.now();
@@ -2389,7 +2798,7 @@ function applyLanguage(language, initial = false) {
   setMenuItemLabel(elements.exportButton, t("exportCurrent"));
   setMenuItemLabel(elements.shareButton, t("share"));
   setMenuItemLabel(elements.deleteButton, t("delete"));
-  setMenuItemLabel(elements.downloadNoteButton, t("backupAllJson"));
+  setMenuItemLabel(elements.downloadNoteButton, t("exportAllZip"));
   setToolbarTitle('[data-command="undo"]', t("undo"));
   setToolbarTitle('[data-command="redo"]', t("redo"));
   setToolbarTitle('[data-wrap="**"]', t("bold"));
@@ -2412,6 +2821,14 @@ function applyLanguage(language, initial = false) {
   if (elements.listStatus) elements.listStatus.textContent = `${sortedNotes().length} ${t("items")}`;
   const folderTitle = document.getElementById("folderSectionTitle");
   if (folderTitle) folderTitle.textContent = t("files");
+  if (elements.folderAddButton) {
+    elements.folderAddButton.title = t("newFolder");
+    elements.folderAddButton.setAttribute("aria-label", t("newFolder"));
+  }
+  if (elements.folderExportAllButton) {
+    elements.folderExportAllButton.title = t("exportAllFolders");
+    elements.folderExportAllButton.setAttribute("aria-label", t("exportAllFolders"));
+  }
   const outlineHead = elements.outlinePanel?.querySelector(".outline-panel-head span");
   if (outlineHead) outlineHead.textContent = t("outlineTitle");
   const editorToolsTitle = document.getElementById("editorToolsTitle");
@@ -2446,6 +2863,8 @@ function applyLanguage(language, initial = false) {
   const autoSyncLabel = document.getElementById("autoSyncLabel");
   if (autoSyncLabel) autoSyncLabel.textContent = t("autoSync");
   if (elements.syncMessage && !getSyncToken()) elements.syncMessage.textContent = t("syncLocalReady");
+  renderFolderDatalist();
+  renderLists();
   renderSystemNoteTitles();
   if (!initial) {
     renderAll();

@@ -43,14 +43,18 @@
           <button class="search-clear" id="searchClearButton" type="button" title="清除搜索" aria-label="清除搜索" hidden>×</button>
         </div>
 
-        <details class="nav-section" id="folderSection">
-          <summary class="panel-summary">
+        <section class="folder-panel" id="folderSection" aria-labelledby="folderSectionTitle">
+          <div class="folder-panel-head">
             <span id="folderSectionTitle">文件夹</span>
-            <button class="icon-button folder-add-button" id="folderAddButton" type="button"
-                    title="新建文件夹" aria-label="新建文件夹">+</button>
-          </summary>
+            <div class="folder-summary-actions">
+              <button class="icon-button folder-export-all-button" id="folderExportAllButton" type="button"
+                      title="导出全部" aria-label="导出全部">⇩</button>
+              <button class="icon-button folder-add-button" id="folderAddButton" type="button"
+                      title="新建文件夹" aria-label="新建文件夹">+</button>
+            </div>
+          </div>
           <div class="folder-list" id="folderList"></div>
-        </details>
+        </section>
 
         <section class="note-list-panel" aria-labelledby="noteListTitle">
           <div class="note-list-header">
@@ -261,6 +265,7 @@
     <!-- 文件夹右键菜单 -->
     <div class="context-menu" id="folderContextMenu" hidden>
       <button class="context-menu-item" data-action="new-note" type="button">在此新建笔记</button>
+      <button class="context-menu-item" data-action="export" type="button">导出文件夹</button>
       <button class="context-menu-item" data-action="rename" type="button">重命名</button>
       <button class="context-menu-item danger" data-action="delete" type="button">删除</button>
     </div>
@@ -310,7 +315,7 @@
     <input id="importFileInput" type="file" accept=".json,.md,.txt" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./script.js?v=6"></script>
+    <script src="./script.js?v=7"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
