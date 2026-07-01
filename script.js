@@ -1419,7 +1419,7 @@ function applySidebarCollapsed(collapsed) {
   document.body.classList.toggle("sidebar-collapsed", isCollapsed);
   localStorage.setItem(storageKeys.sidebarCollapsed, isCollapsed ? "1" : "0");
   const toggleIcon = elements.sidebarToggleButton?.querySelector(".toggle-icon");
-  if (toggleIcon) toggleIcon.textContent = isCollapsed ? "›" : "‹";
+  if (toggleIcon) toggleIcon.textContent = isCollapsed ? "\u2630" : "\u25C0";
   if (elements.sidebarToggleButton) {
     elements.sidebarToggleButton.title = isCollapsed ? "展开侧栏" : "收起侧栏";
     elements.sidebarToggleButton.setAttribute("aria-label", isCollapsed ? "展开侧栏" : "收起侧栏");

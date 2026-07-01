@@ -70,24 +70,29 @@ body.sidebar-collapsed .brand { justify-content: center; }
 /* Toggle button: hangs off right edge of sidebar, vertically centered */
 .sidebar-toggle-button {
   position: absolute;
-  right: -16px;
+  right: -14px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 20;
-  display: inline-grid; place-items: center;
-  width: 26px; height: 48px;
-  border: 0;
-  border-radius: 0 var(--radius) var(--radius) 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0;
+  width: 30px; height: 52px;
+  border: 2px solid rgba(255,255,255,0.25);
+  border-radius: 0 8px 8px 0;
   background: var(--accent);
-  box-shadow: 0 4px 16px rgba(47,91,234,0.3);
+  box-shadow: 0 4px 20px rgba(47,91,234,0.35);
   cursor: pointer;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   color: #fff;
-  transition: background 150ms ease, box-shadow 150ms ease;
+  transition: background 150ms ease, box-shadow 150ms ease, width 120ms ease;
 }
-.sidebar-toggle-button:hover { background: var(--accent-strong); box-shadow: 0 6px 20px rgba(47,91,234,0.4); }
-body.sidebar-collapsed .sidebar-toggle-button { right: -16px; }
+.sidebar-toggle-button:hover {
+  background: var(--accent-strong);
+  box-shadow: 0 6px 28px rgba(47,91,234,0.5);
+  width: 34px;
+}
+.sidebar-toggle-button:active { transform: translateY(-50%) scale(0.95); }
+body.sidebar-collapsed .sidebar-toggle-button { right: -14px; }
 body.is-dragging-split, body.is-dragging-split * { cursor: col-resize !important; user-select: none; }
 
 button, input, textarea { font: inherit; }
@@ -488,7 +493,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   .pane-head h3 { font-size: 12px; }
   .editor-status-bar { padding: 6px 10px; font-size: 11px; gap: 6px; }
   .floating-outline { display: none !important; }
-  .sidebar-toggle-button { width: 22px; height: 38px; right: -12px; font-size: 16px; }
+  .sidebar-toggle-button { width: 26px; height: 42px; right: -12px; font-size: 14px; }
   body.sidebar-collapsed .sidebar-toggle-button { right: -12px; }
   .split-editor { --split-ratio: 100%; }
   .split-editor .splitter { display: none; }
