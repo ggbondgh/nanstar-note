@@ -456,6 +456,7 @@ const elements = {
   splitEditor: $("#splitEditor"),
   splitter: $("#splitter"),
   lineNumbers: $("#lineNumbers"),
+  lineNumbersTrack: $("#lineNumbersTrack"),
   editorLineHighlight: $("#editorLineHighlight"),
   textShell: $("#textShell"),
   bodyInput: $("#bodyInput"),
@@ -1883,7 +1884,7 @@ function updateCurrentLineIndicator() {
 }
 
 function updateLineNumberStyles() {
-  const items = elements.lineNumbers.querySelectorAll(".line-number");
+  const items = elements.lineNumbersTrack.querySelectorAll(".line-number");
   const hitLines = new Set(state.editorSearch.matches.map((match) => match.line));
   items.forEach((item) => {
     const line = Number(item.dataset.line || 0);
@@ -2096,19 +2097,20 @@ function replaceRange(from, to, text) {
 function updateLineNumbers() {
   const states = getLineStates();
   const total = Math.max(1, states.length);
-  elements.lineNumbers.innerHTML = Array.from({ length: total }, (_, index) => {
+  elements.lineNumbersTrack.innerHTML = Array.from({ length: total }, (_, index) => {
     const lineNumber = index + 1;
     const classes = ["line-number"];
     if (lineNumber === state.currentLine) classes.push("current");
     if (states[index]?.searchHit) classes.push("search-hit");
     return `<div class="${classes.join(" ")}" data-line="${lineNumber}">${lineNumber}</div>`;
   }).join("");
-  elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
+  syncLineNumberScroll();
   renderEditorSearchCount();
 }
 
 function syncLineNumberScroll() {
-  elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
+  const scrollTop = elements.bodyInput.scrollTop || 0;
+  elements.lineNumbersTrack.style.transform = `translateY(${-scrollTop}px)`;
   renderCurrentLineDecoration();
 }
 
