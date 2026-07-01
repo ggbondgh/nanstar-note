@@ -76,3 +76,16 @@ The stored document shape is:
 ```
 
 This first version is designed for a single owner. Do not store passwords, API keys, or customer secrets unless you later add end-to-end encryption.
+
+## Editor line-number alignment note
+
+If the editor gutter and the active line drift apart while scrolling, the root cause is usually a bad scroll-sync strategy between the textarea and the line-number rail.
+
+The fix used in this repo is:
+
+- keep the gutter as a fixed container
+- render line numbers inside an inner track element
+- move that track with `transform: translateY(-textarea.scrollTop)`
+- keep the textarea and gutter on the same line-height and padding values
+
+This avoids relying on `scrollTop` for the gutter itself, which was the source of the drift on wheel scroll. The fix was verified by scrolling a long note to the lower half and checking that the visible line numbers still matched the text rows exactly.
