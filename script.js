@@ -1628,7 +1628,7 @@ function renderNoteList() {
   elements.noteList.innerHTML = notes
     .map((note) => {
       const mode = note.mode === "md" ? "MD" : "TXT";
-      const flags = isTransferAssistant(note) ? "⇄" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
+      const flags = isTransferAssistant(note) ? "" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
       const title = isTransferAssistant(note) ? t("transferAssistantTitle") : note.title;
       const body = isTransferAssistant(note) && !note.body.trim() ? t("transferAssistantExcerpt") : excerpt(note.body);
       const classes = ["note-item"];
