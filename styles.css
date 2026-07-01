@@ -115,6 +115,14 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .brand h1 { font-size: 16px; line-height: 1.1; }
 .brand p { margin-top: 4px; color: var(--muted); font-size: 12px; }
 
+.topbar-install-button {
+  display: none;
+  font-size: 18px;
+}
+.topbar-install-button:not([hidden]) {
+  display: inline-grid;
+}
+
 .sidebar-actions, .topbar-actions, .sync-grid, .utility-grid { gap: 8px; }
 .sidebar-actions > * { min-width: 0; }
 .primary-button, .ghost-button, .danger-button, .icon-button, .text-button, .quick-chip, .toolbar button, .mode-button, .flag-button, .filter-item, .folder-item, .outline-item {
