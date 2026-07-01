@@ -1874,13 +1874,7 @@ function updateCurrentLineIndicator() {
   const text = elements.bodyInput.value;
   const position = elements.bodyInput.selectionStart || 0;
   state.currentLine = getLineFromIndex(text, position);
-  const lineHeight = parseFloat(getComputedStyle(elements.bodyInput).lineHeight) || 22;
-  const paddingTop = parseFloat(getComputedStyle(elements.bodyInput).paddingTop) || 0;
-  const offset = Math.max(0, paddingTop + (state.currentLine - 1) * lineHeight - elements.bodyInput.scrollTop);
-  elements.editorLineHighlight.style.transform = `translateY(${offset}px)`;
-  elements.editorLineHighlight.style.height = `${Math.max(lineHeight, 22)}px`;
-  elements.editorLineHighlight.style.display = text ? "block" : "none";
-  updateLineNumberStyles();
+  renderCurrentLineDecoration();
 }
 
 function updateLineNumberStyles() {
@@ -2110,18 +2104,7 @@ function updateLineNumbers() {
 
 function syncLineNumberScroll() {
   elements.lineNumbers.scrollTop = elements.bodyInput.scrollTop;
-  // Keep highlight visible at top of viewport during scroll
-  const lineHeight = 24;
-  const paddingTop = 14;
-  const lineNum = Math.max(1, Math.floor(elements.bodyInput.scrollTop / lineHeight) + 1);
-  if (state.currentLine !== lineNum) {
-    state.currentLine = lineNum;
-    updateLineNumberStyles();
-  }
-  const offset = Math.max(0, paddingTop + (lineNum - 1) * lineHeight - elements.bodyInput.scrollTop);
-  elements.editorLineHighlight.style.transform = `translateY(${offset}px)`;
-  elements.editorLineHighlight.style.height = `${lineHeight}px`;
-  elements.editorLineHighlight.style.display = "block";
+  renderCurrentLineDecoration();
 }
 
 function syncScrollState() {
@@ -2188,14 +2171,31 @@ function jumpToLine(lineIndex, targetId) {
   const start = lines.slice(0, lineIndex).join("\n").length + (lineIndex > 0 ? 1 : 0);
   textarea.focus();
   textarea.setSelectionRange(start, start);
-  const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight) || 22;
-  textarea.scrollTop = Math.max(0, lineIndex * lineHeight - textarea.clientHeight / 3);
+  const metrics = getEditorMetrics();
+  textarea.scrollTop = Math.max(0, metrics.paddingTop + lineIndex * metrics.lineHeight - textarea.clientHeight / 3);
   syncLineNumberScroll();
 
   if (targetId) {
     const target = document.getElementById(targetId);
     if (target) target.scrollIntoView({ block: "center", behavior: "smooth" });
   }
+}
+
+function getEditorMetrics() {
+  const style = getComputedStyle(elements.bodyInput);
+  const lineHeight = parseFloat(style.lineHeight) || 24;
+  const paddingTop = parseFloat(style.paddingTop) || 0;
+  const paddingBottom = parseFloat(style.paddingBottom) || 0;
+  return { lineHeight, paddingTop, paddingBottom };
+}
+
+function renderCurrentLineDecoration() {
+  const metrics = getEditorMetrics();
+  const offset = Math.max(0, metrics.paddingTop + (state.currentLine - 1) * metrics.lineHeight - elements.bodyInput.scrollTop);
+  elements.editorLineHighlight.style.transform = `translateY(${offset}px)`;
+  elements.editorLineHighlight.style.height = `${metrics.lineHeight}px`;
+  elements.editorLineHighlight.style.display = elements.bodyInput.value ? "block" : "none";
+  updateLineNumberStyles();
 }
 
 function extractHeadings(markdown) {
