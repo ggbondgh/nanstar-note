@@ -1,4 +1,4 @@
-const CACHE = "nanstar-note-v2";
+const CACHE = "nanstar-note-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -27,6 +27,38 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  const requestUrl = new URL(event.request.url);
+  const isCoreAsset = requestUrl.origin === self.location.origin && (
+    event.request.mode === "navigate"
+    || event.request.destination === "document"
+    || requestUrl.pathname === "/"
+    || requestUrl.pathname.endsWith(".html")
+    || requestUrl.pathname.endsWith(".css")
+    || requestUrl.pathname.endsWith(".js")
+    || requestUrl.pathname.endsWith(".webmanifest")
+  );
+
+  if (isCoreAsset) {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(event.request);
+        if (response.ok) {
+          const cache = await caches.open(CACHE);
+          cache.put(event.request, response.clone());
+        }
+        return response;
+      } catch (error) {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        const fallback = await caches.match("./index.html");
+        if (fallback) return fallback;
+        throw error;
+      }
+    })());
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cached) =>
       cached || fetch(event.request).then((response) => {

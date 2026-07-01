@@ -282,7 +282,7 @@
     <script src="./script.js?v=4"></script>
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js");
+        navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
       }
       let deferredPrompt;
       const installButton = document.getElementById("topInstallButton");
