@@ -261,8 +261,8 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .note-list::-webkit-scrollbar-thumb:hover, textarea::-webkit-scrollbar-thumb:hover, .preview-content::-webkit-scrollbar-thumb:hover, .outline-list::-webkit-scrollbar-thumb:hover {
   border: 1px solid transparent; background: rgba(102, 115, 133, 0.6);
 }
-.note-list::-webkit-scrollbar-horizontal, textarea::-webkit-scrollbar-horizontal, .preview-content::-webkit-scrollbar-horizontal { height: 8px; }
-.note-list::-webkit-scrollbar-horizontal:hover, textarea::-webkit-scrollbar-horizontal:hover, .preview-content::-webkit-scrollbar-horizontal:hover { height: 10px; }
+.note-list::-webkit-scrollbar:horizontal, textarea::-webkit-scrollbar:horizontal, .preview-content::-webkit-scrollbar:horizontal { height: 8px; }
+.note-list::-webkit-scrollbar:horizontal:hover, textarea::-webkit-scrollbar:horizontal:hover, .preview-content::-webkit-scrollbar:horizontal:hover { height: 10px; }
 .note-list::-webkit-scrollbar-thumb:horizontal, textarea::-webkit-scrollbar-thumb:horizontal, .preview-content::-webkit-scrollbar-thumb:horizontal {
   border: 2px solid transparent; border-radius: 999px; background: rgba(102, 115, 133, 0.35); background-clip: padding-box;
 }
