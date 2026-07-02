@@ -25,13 +25,13 @@
 }
 
 * { box-sizing: border-box; letter-spacing: 0; }
-html, body { min-height: 100%; }
+html, body { width: 100%; height: 100%; min-height: 100%; }
 body {
   margin: 0;
   color: var(--text);
   background: #f6f8fb;
   font-family: var(--font-ui);
-  overflow-x: hidden;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -110,7 +110,7 @@ button { border: 0; color: inherit; cursor: pointer; }
 input, textarea { min-width: 0; border: 0; color: inherit; background: transparent; outline: none; }
 input::placeholder, textarea::placeholder { color: #9aa5b6; }
 
-.app-shell { display: grid; grid-template-columns: var(--sidebar-width, 280px) 10px minmax(0, 1fr); min-height: 100vh; }
+.app-shell { display: grid; grid-template-columns: var(--sidebar-width, 280px) 10px minmax(0, 1fr); height: 100vh; min-height: 0; overflow: hidden; }
 .sidebar {
   position: sticky; top: 0; display: flex; flex-direction: column; gap: 8px;
   height: 100vh; padding: 12px 10px; border-right: 1px solid var(--line);
@@ -455,11 +455,21 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .note-select-spacer {
   display: grid;
   place-items: center;
+  width: 22px;
+  min-width: 22px;
   min-height: 58px;
+}
+.note-select {
+  position: relative;
+  cursor: pointer;
 }
 .note-select-spacer { opacity: 0; }
 .note-select input {
   position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   opacity: 0;
   pointer-events: none;
 }
@@ -785,7 +795,8 @@ body.preview-focus-mode .preview-content {
 }
 
 @media (max-width: 1020px) {
-  .app-shell { grid-template-columns: 1fr; }
+  body { overflow: auto; overflow-x: hidden; }
+  .app-shell { grid-template-columns: 1fr; height: auto; min-height: 100vh; overflow: visible; }
   .sidebar-resizer { display: none; }
   .sidebar { position: static; height: auto; overflow: visible; max-height: 50vh; }
   .main { padding: 10px; }
