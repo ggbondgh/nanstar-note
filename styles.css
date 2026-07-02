@@ -265,6 +265,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   padding: 0 2px 6px;
 }
 .note-list-count { color: var(--muted); font-size: 11px; font-weight: 650; }
+.note-list-tools { display: inline-flex; align-items: center; gap: 8px; }
 .note-list-tabs { display: flex; gap: 2px; }
 .filter-tab {
   padding: 4px 12px;
@@ -278,6 +279,14 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 }
 .filter-tab:hover { border-color: var(--line-strong); color: var(--soft); }
 .filter-tab.active { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 700; }
+.note-multi-select-button {
+  color: var(--muted);
+  font-size: 12px;
+}
+.note-multi-select-button.active {
+  color: var(--accent);
+}
+.note-multi-select-button[hidden] { display: none !important; }
 
 .folder-panel {
   display: grid;
@@ -399,7 +408,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 }
 .bulk-action-bar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 4px;
   min-height: 34px;
@@ -418,11 +427,19 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   padding: 0 7px;
   font-size: 11px;
 }
+.bulk-action-bar button:disabled {
+  cursor: default;
+  opacity: 0.45;
+  transform: none;
+}
 .note-row {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   gap: 5px;
+}
+.note-row.selection-mode {
+  grid-template-columns: 22px minmax(0, 1fr);
 }
 .note-row.selected .note-item {
   border-color: rgba(47,91,234,0.28);

@@ -64,10 +64,14 @@
               <button class="filter-tab active" data-filter="all" type="button">全部</button>
               <button class="filter-tab" data-filter="favorite" type="button">★ 收藏</button>
             </div>
-            <span class="note-list-count" id="listStatus">0 条</span>
+            <div class="note-list-tools">
+              <span class="note-list-count" id="listStatus">0 条</span>
+              <button class="text-button note-multi-select-button" id="multiSelectButton" type="button">多选</button>
+            </div>
           </div>
           <div class="bulk-action-bar" id="bulkActionBar" hidden>
             <span id="bulkSelectionCount">已选 0</span>
+            <button class="ghost-button bulk-select-all-button" id="bulkSelectAllButton" type="button">全选</button>
             <button class="danger-button bulk-delete-button" id="bulkDeleteButton" type="button">删除</button>
             <button class="ghost-button bulk-clear-button" id="bulkClearButton" type="button">取消</button>
           </div>
@@ -353,7 +357,7 @@
     <input id="importFileInput" type="file" accept=".json,.md,.txt" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./script.js?v=10"></script>
+    <script src="./script.js?v=11"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })

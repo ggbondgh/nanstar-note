@@ -53,6 +53,9 @@ const i18n = {
     delete: "删除",
     selectedCount: "已选 {count}",
     selectNote: "选择笔记",
+    multiSelect: "多选",
+    exitMultiSelect: "退出多选",
+    selectAll: "全选",
     clearSelectionAction: "取消",
     confirmDeleteSelected: "确定要删除选中的 {count} 条笔记吗？",
     selectedDeleted: "已删除 {count} 条笔记",
@@ -213,6 +216,9 @@ const i18n = {
     delete: "Delete",
     selectedCount: "{count} selected",
     selectNote: "Select note",
+    multiSelect: "Select",
+    exitMultiSelect: "Exit Select",
+    selectAll: "Select All",
     clearSelectionAction: "Clear",
     confirmDeleteSelected: "Delete {count} selected notes?",
     selectedDeleted: "{count} notes deleted",
@@ -548,6 +554,7 @@ const state = {
   notes: [],
   activeId: null,
   selectedFolder: "",
+  selectionMode: false,
   selectedNoteIds: new Set(),
   query: "",
   viewFilter: localStorage.getItem("nanstar-note-view") || "all",
@@ -668,8 +675,10 @@ const elements = {
   outlinePanelBody: $("#outlinePanelBody"),
   noteList: $("#noteList"),
   listStatus: $("#listStatus"),
+  multiSelectButton: $("#multiSelectButton"),
   bulkActionBar: $("#bulkActionBar"),
   bulkSelectionCount: $("#bulkSelectionCount"),
+  bulkSelectAllButton: $("#bulkSelectAllButton"),
   bulkDeleteButton: $("#bulkDeleteButton"),
   bulkClearButton: $("#bulkClearButton"),
   editorCard: $("#editorCard"),
@@ -802,6 +811,8 @@ function bindEvents() {
     button.addEventListener("click", () => {
       state.viewFilter = button.dataset.filter || "all";
       state.selectedFolder = "";
+      state.selectionMode = false;
+      state.selectedNoteIds.clear();
       localStorage.setItem("nanstar-note-view", state.viewFilter);
       renderFilterState();
       renderLists();
@@ -816,8 +827,10 @@ function bindEvents() {
   });
 
   if (elements.folderAddButton) elements.folderAddButton.addEventListener("click", createFolder);
+  if (elements.multiSelectButton) elements.multiSelectButton.addEventListener("click", toggleSelectionMode);
+  if (elements.bulkSelectAllButton) elements.bulkSelectAllButton.addEventListener("click", selectAllVisibleNotes);
   if (elements.bulkDeleteButton) elements.bulkDeleteButton.addEventListener("click", deleteSelectedNotes);
-  if (elements.bulkClearButton) elements.bulkClearButton.addEventListener("click", clearNoteSelection);
+  if (elements.bulkClearButton) elements.bulkClearButton.addEventListener("click", exitSelectionMode);
 
   // Folder context menu
   if (elements.folderContextMenu) {
@@ -2141,6 +2154,8 @@ function renderFolders() {
     elements.folderList.querySelectorAll(".folder-item").forEach((button) => {
       button.addEventListener("click", () => {
         state.selectedFolder = "";
+        state.selectionMode = false;
+        state.selectedNoteIds.clear();
         renderLists();
       });
     });
@@ -2185,6 +2200,8 @@ function renderFolders() {
     button.addEventListener("click", () => {
       const f = canonicalSelectedFolder(button.dataset.folder || "");
       state.selectedFolder = f;
+      state.selectionMode = false;
+      state.selectedNoteIds.clear();
       renderLists();
     });
   });
@@ -2224,15 +2241,16 @@ function renderNoteList() {
       const selected = selectable && state.selectedNoteIds.has(note.id);
       if (note.id === state.activeId) classes.push("active");
       if (isTransferAssistant(note)) classes.push("transfer-assistant");
+      if (state.selectionMode) rowClasses.push("selection-mode");
       if (selected) rowClasses.push("selected");
       return `
         <div class="${rowClasses.join(" ")}">
-          ${selectable ? `
+          ${state.selectionMode && selectable ? `
             <label class="note-select" title="${t("selectNote")}">
               <input class="note-select-checkbox" type="checkbox" data-select-note="${note.id}" ${selected ? "checked" : ""} />
               <span aria-hidden="true"></span>
             </label>
-          ` : `<span class="note-select-spacer" aria-hidden="true"></span>`}
+          ` : state.selectionMode ? `<span class="note-select-spacer" aria-hidden="true"></span>` : ""}
           <button class="${classes.join(" ")}" type="button" data-id="${note.id}">
             <span class="note-item-head">
               <h3>${escapeHtml(title)}</h3>
@@ -2257,7 +2275,17 @@ function renderNoteList() {
   });
 
   elements.noteList.querySelectorAll(".note-item").forEach((button) => {
-    button.addEventListener("click", () => switchToNote(button.dataset.id));
+    button.addEventListener("click", () => {
+      if (state.selectionMode) {
+        const noteId = button.dataset.id;
+        const note = state.notes.find((item) => item.id === noteId && !isDeletedNote(item));
+        if (note && !isTransferAssistant(note)) {
+          toggleNoteSelection(noteId, !state.selectedNoteIds.has(noteId));
+        }
+        return;
+      }
+      switchToNote(button.dataset.id);
+    });
     button.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       state.contextMenuNoteId = button.dataset.id;
@@ -2275,12 +2303,46 @@ function pruneNoteSelection() {
 
 function renderBulkActionBar() {
   const count = state.selectedNoteIds.size;
-  if (elements.bulkActionBar) elements.bulkActionBar.hidden = count === 0;
+  const selectableCount = sortedNotes().filter((note) => !isTransferAssistant(note)).length;
+  if (elements.bulkActionBar) elements.bulkActionBar.hidden = !state.selectionMode;
   if (elements.bulkSelectionCount) {
     elements.bulkSelectionCount.textContent = t("selectedCount").replace("{count}", count);
   }
+  if (elements.multiSelectButton) {
+    elements.multiSelectButton.textContent = state.selectionMode ? t("exitMultiSelect") : t("multiSelect");
+    elements.multiSelectButton.classList.toggle("active", state.selectionMode);
+    elements.multiSelectButton.hidden = selectableCount === 0;
+  }
+  if (elements.bulkSelectAllButton) {
+    elements.bulkSelectAllButton.textContent = t("selectAll");
+    elements.bulkSelectAllButton.disabled = selectableCount === 0 || count === selectableCount;
+  }
   if (elements.bulkDeleteButton) elements.bulkDeleteButton.textContent = t("delete");
+  if (elements.bulkDeleteButton) elements.bulkDeleteButton.disabled = count === 0;
   if (elements.bulkClearButton) elements.bulkClearButton.textContent = t("clearSelectionAction");
+}
+
+function toggleSelectionMode() {
+  if (state.selectionMode) exitSelectionMode();
+  else {
+    state.selectionMode = true;
+    state.selectedNoteIds.clear();
+    renderLists();
+  }
+}
+
+function exitSelectionMode() {
+  state.selectionMode = false;
+  state.selectedNoteIds.clear();
+  renderLists();
+}
+
+function selectAllVisibleNotes() {
+  state.selectionMode = true;
+  sortedNotes().forEach((note) => {
+    if (!isTransferAssistant(note)) state.selectedNoteIds.add(note.id);
+  });
+  renderLists();
 }
 
 function toggleNoteSelection(noteId, selected) {
@@ -2310,6 +2372,7 @@ function deleteSelectedNotes() {
     if (note) markNoteDeleted(note);
   });
   if (ids.includes(state.activeId)) state.activeId = firstVisibleNote()?.id || null;
+  state.selectionMode = false;
   state.selectedNoteIds.clear();
   ensureActiveNote();
   saveNotes();
