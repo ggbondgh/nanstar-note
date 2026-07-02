@@ -38,8 +38,8 @@ const i18n = {
     folderCreated: "已创建文件夹「{name}」",
     folderRenamed: "已重命名为「{name}」",
     folderDeleted: "已删除文件夹「{name}」",
-    inboxLockedRename: "收件箱不能重命名。",
-    inboxLockedDelete: "收件箱是默认文件夹，不能删除。",
+    inboxLockedRename: "默认文件夹不能重命名。",
+    inboxLockedDelete: "默认文件夹不能删除。",
     share: "分享",
     delete: "删除",
     copyCurrent: "复制当前内容",
@@ -141,13 +141,13 @@ const i18n = {
     modeTxt: "TXT",
     modeMd: "MD",
     items: "条",
-    inbox: "收件箱",
+    inbox: "默认文件夹",
     newFolder: "新建文件夹",
     renameFolder: "重命名文件夹",
     deleteFolder: "删除",
     folderNamePrompt: "输入文件夹名称",
     folderRenamePrompt: "输入新名称",
-    confirmDeleteFolder: "确定要删除文件夹「{name}」吗？其中的笔记将移回收件箱。",
+    confirmDeleteFolder: "确定要删除文件夹「{name}」吗？其中的笔记将移回默认文件夹。",
     folderExists: "文件夹已存在",
     outlineTitle: "目录",
     outlineEmpty: "暂无标题",
@@ -184,8 +184,8 @@ const i18n = {
     folderCreated: "Folder created: {name}",
     folderRenamed: "Renamed to: {name}",
     folderDeleted: "Folder deleted: {name}",
-    inboxLockedRename: "Inbox cannot be renamed.",
-    inboxLockedDelete: "Inbox is the default folder and cannot be deleted.",
+    inboxLockedRename: "Default Folder cannot be renamed.",
+    inboxLockedDelete: "Default Folder cannot be deleted.",
     share: "Share",
     delete: "Delete",
     copyCurrent: "Copy Current",
@@ -287,13 +287,13 @@ const i18n = {
     modeTxt: "TXT",
     modeMd: "MD",
     items: "items",
-    inbox: "Inbox",
+    inbox: "Default Folder",
     newFolder: "New Folder",
     renameFolder: "Rename Folder",
     deleteFolder: "Delete",
     folderNamePrompt: "Enter folder name",
     folderRenamePrompt: "Enter new name",
-    confirmDeleteFolder: 'Delete folder "{name}"? Notes will move to Inbox.',
+    confirmDeleteFolder: 'Delete folder "{name}"? Notes will move to Default Folder.',
     folderExists: "Folder already exists",
     outlineTitle: "Outline",
     outlineEmpty: "No headings",
@@ -311,7 +311,7 @@ const templates = {
   txt: {
     title: "未命名 TXT",
     mode: "txt",
-    folder: "收件箱",
+    folder: "默认文件夹",
     body: ""
   },
   md: {
@@ -556,7 +556,23 @@ const SYNC_POLL_INTERVAL = 15000;
 const SYNC_PUSH_DELAY = 1200;
 const TRANSFER_NOTE_ID = "nanstar-transfer-assistant";
 const FOLDER_REGISTRY_NOTE_ID = "nanstar-folder-registry";
-const INBOX_FOLDER = "收件箱";
+const INBOX_FOLDER = "默认文件夹";
+const DEFAULT_FOLDER_ALIASES = new Set([
+  INBOX_FOLDER,
+  "收件箱",
+  "Inbox",
+  "inbox",
+  "Default",
+  "default",
+  "Default Folder",
+  "default folder",
+  "默认",
+  "未分类",
+  "Uncategorized",
+  "uncategorized",
+  "Import",
+  "import"
+]);
 const MAX_PASTE_IMAGE_BYTES = 900 * 1024;
 const MAX_TRANSFER_IMAGES = 4;
 
@@ -564,8 +580,31 @@ function folderManagementEnabled() {
   return Boolean(getSyncToken());
 }
 
+function canonicalFolderName(folder) {
+  const value = String(folder || "").trim();
+  if (!value || DEFAULT_FOLDER_ALIASES.has(value)) return INBOX_FOLDER;
+  return value;
+}
+
+function canonicalSelectedFolder(folder) {
+  const value = String(folder || "").trim();
+  return value ? canonicalFolderName(value) : "";
+}
+
+function normalizedStoredFolderNames(names) {
+  const seen = new Set();
+  const folders = [];
+  (names || []).forEach((name) => {
+    const folder = canonicalFolderName(name);
+    if (!folder || folder === INBOX_FOLDER || seen.has(folder)) return;
+    seen.add(folder);
+    folders.push(folder);
+  });
+  return folders.sort((a, b) => a.localeCompare(b, "zh-CN"));
+}
+
 function normalizeFolderName(folder) {
-  const value = String(folder || "").trim() || INBOX_FOLDER;
+  const value = canonicalFolderName(folder);
   return folderManagementEnabled() ? value : INBOX_FOLDER;
 }
 
@@ -659,6 +698,8 @@ function init() {
   restoreDirtyNotes();
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
   elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) !== "0";
+  migrateFolderState();
+  saveNotes();
   applyLanguage(state.language, true);
   applySidebarWidth(readSidebarWidth());
   applySplitRatio(readSplitRatio());
@@ -724,6 +765,7 @@ function bindEvents() {
   elements.filterTabs.forEach((button) => {
     button.addEventListener("click", () => {
       state.viewFilter = button.dataset.filter || "all";
+      state.selectedFolder = "";
       localStorage.setItem("nanstar-note-view", state.viewFilter);
       renderFilterState();
       renderLists();
@@ -971,7 +1013,7 @@ function loadNotes() {
     if (folders) {
       const registry = merged.find(isFolderRegistry);
       if (registry) {
-        registry.body = JSON.stringify([...new Set(folders.map((name) => String(name || "").trim()).filter(Boolean).filter((name) => name !== INBOX_FOLDER))].sort((a, b) => a.localeCompare(b, "zh-CN")));
+        registry.body = JSON.stringify(normalizedStoredFolderNames(folders));
       }
     }
     return merged;
@@ -986,7 +1028,7 @@ function normalizeNote(note) {
     id: note.id || createId(),
     title: note.title || "未命名笔记",
     mode: normalizeMode(note.mode, body),
-    folder: String(note.folder || INBOX_FOLDER).trim() || INBOX_FOLDER,
+    folder: canonicalFolderName(note.folder),
     body,
     pinned: Boolean(note.pinned),
     favorite: Boolean(note.favorite),
@@ -1092,8 +1134,7 @@ function storedFolders(notes = state.notes) {
   if (!registry?.body) return [INBOX_FOLDER];
   try {
     const parsed = JSON.parse(registry.body);
-    const list = Array.isArray(parsed) ? parsed.map((item) => String(item || "").trim()).filter(Boolean) : [];
-    return [INBOX_FOLDER, ...list.filter((name, index, array) => array.indexOf(name) === index && name !== INBOX_FOLDER)];
+    return [INBOX_FOLDER, ...normalizedStoredFolderNames(Array.isArray(parsed) ? parsed : [])];
   } catch {
     return [INBOX_FOLDER];
   }
@@ -1101,11 +1142,58 @@ function storedFolders(notes = state.notes) {
 
 function setStoredFolders(names) {
   const registry = state.notes.find(isFolderRegistry) || createFolderRegistryNote();
-  registry.body = JSON.stringify([...new Set((names || []).map((name) => String(name || "").trim()).filter(Boolean).filter((name) => name !== INBOX_FOLDER))].sort((a, b) => a.localeCompare(b, "zh-CN")));
-  registry.updatedAt = Date.now();
-  registry.deletedAt = 0;
+  const nextBody = JSON.stringify(normalizedStoredFolderNames(names));
+  if (registry.body !== nextBody || registry.deletedAt) {
+    registry.body = nextBody;
+    registry.updatedAt = Date.now();
+    registry.deletedAt = 0;
+  }
   if (!state.notes.some((note) => note.id === registry.id)) state.notes.unshift(registry);
   return registry;
+}
+
+function migrateFolderState() {
+  let changed = false;
+  const registry = folderRegistryNote() || createFolderRegistryNote();
+  const registryFolders = (() => {
+    try {
+      const parsed = JSON.parse(registry.body || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  state.notes.forEach((note) => {
+    if (isFolderRegistry(note)) return;
+    const nextFolder = isTransferAssistant(note) ? INBOX_FOLDER : canonicalFolderName(note.folder);
+    if (note.folder !== nextFolder) {
+      note.folder = nextFolder;
+      changed = true;
+    }
+  });
+
+  const noteFolders = state.notes
+    .filter((note) => !isDeletedNote(note) && !isTransferAssistant(note) && !isFolderRegistry(note))
+    .map((note) => note.folder);
+  const nextRegistryBody = JSON.stringify(normalizedStoredFolderNames([...registryFolders, ...noteFolders]));
+  if (registry.body !== nextRegistryBody || registry.deletedAt) {
+    registry.body = nextRegistryBody;
+    registry.updatedAt = Date.now();
+    registry.deletedAt = 0;
+    changed = true;
+  }
+  if (!state.notes.some((note) => note.id === registry.id)) {
+    state.notes.unshift(registry);
+    changed = true;
+  }
+
+  const nextSelectedFolder = canonicalSelectedFolder(state.selectedFolder);
+  if (state.selectedFolder !== nextSelectedFolder) {
+    state.selectedFolder = nextSelectedFolder;
+  }
+  if (changed) saveNotes();
+  return changed;
 }
 
 function isDeletedNote(note) {
@@ -1279,7 +1367,7 @@ function updateActiveFromInputs() {
   const note = activeNote();
   if (!note) return;
   note.title = elements.titleInput.value.trimStart() || "未命名笔记";
-  if (elements.folderInput) note.folder = elements.folderInput.value.trim() || INBOX_FOLDER;
+  if (elements.folderInput) note.folder = normalizeFolderName(elements.folderInput.value);
   note.body = elements.bodyInput.value;
   note.updatedAt = Date.now();
 
@@ -1323,7 +1411,10 @@ function renderEditor() {
   if (note.mode !== "md") state.previewFocus = false;
 
   elements.titleInput.value = note.title;
-  if (elements.folderInput) elements.folderInput.value = note.folder;
+  if (elements.folderInput) {
+    elements.folderInput.value = folderManagementEnabled() ? canonicalFolderName(note.folder) : INBOX_FOLDER;
+    elements.folderInput.disabled = !folderManagementEnabled();
+  }
   elements.bodyInput.value = note.body;
 
   if (elements.pinButton) {
@@ -1486,9 +1577,10 @@ function setActiveOutlineHeading(idx) {
 
 function getFolderNames() {
   if (!folderManagementEnabled()) return [INBOX_FOLDER];
-  const names = new Set(storedFolders());
-  regularNotes().forEach((note) => names.add(note.folder));
-  return [...names].sort((a, b) => a.localeCompare(b, "zh-CN"));
+  const names = new Set([INBOX_FOLDER, ...storedFolders()]);
+  regularNotes().forEach((note) => names.add(canonicalFolderName(note.folder)));
+  const custom = [...names].filter((name) => name !== INBOX_FOLDER);
+  return [INBOX_FOLDER, ...custom.sort((a, b) => a.localeCompare(b, "zh-CN"))];
 }
 
 function renderFolderDatalist() {
@@ -1503,12 +1595,12 @@ function renderFolderDatalist() {
 }
 
 function displayFolderLabel(folder) {
-  return folder === INBOX_FOLDER ? t("inbox") : folder;
+  return canonicalFolderName(folder) === INBOX_FOLDER ? t("inbox") : folder;
 }
 
 function createFolder() {
   if (!folderManagementEnabled()) return;
-  let name = (window.prompt(t("folderNamePrompt"), "") || "").trim();
+  let name = canonicalFolderName(window.prompt(t("folderNamePrompt"), "") || "");
   if (!name) return;
   if (getFolderNames().includes(name)) {
     showToast(t("folderExists"));
@@ -1525,26 +1617,27 @@ function createFolder() {
 
 function renameFolder(oldName) {
   if (!folderManagementEnabled()) return;
+  oldName = canonicalFolderName(oldName);
   if (oldName === INBOX_FOLDER) {
     showToast(t("inboxLockedRename"));
     return;
   }
-  const newName = (window.prompt(t("folderRenamePrompt"), oldName) || "").trim();
+  const newName = canonicalFolderName(window.prompt(t("folderRenamePrompt"), oldName) || "");
   if (!newName || newName === oldName) return;
-  const otherNames = getFolderNames().filter(n => n !== oldName);
+  const otherNames = getFolderNames().filter(n => canonicalFolderName(n) !== oldName);
   if (otherNames.includes(newName)) {
     showToast(t("folderExists"));
     return;
   }
   const changedIds = [];
   state.notes.forEach(note => {
-    if (note.folder === oldName && !isDeletedNote(note)) {
+    if (canonicalFolderName(note.folder) === oldName && !isDeletedNote(note)) {
       note.folder = newName;
       note.updatedAt = Date.now();
       changedIds.push(note.id);
     }
   });
-  const registry = setStoredFolders(storedFolders().filter((name) => name !== oldName).concat(newName));
+  const registry = setStoredFolders(storedFolders().filter((name) => canonicalFolderName(name) !== oldName).concat(newName));
   if (state.selectedFolder === oldName) state.selectedFolder = newName;
   saveNotes();
   markSyncPending(registry.id);
@@ -1557,6 +1650,7 @@ function renameFolder(oldName) {
 
 function deleteFolder(name) {
   if (!folderManagementEnabled()) return;
+  name = canonicalFolderName(name);
   if (name === INBOX_FOLDER) {
     showToast(t("inboxLockedDelete"));
     return;
@@ -1567,13 +1661,13 @@ function deleteFolder(name) {
   if (!confirmed) return;
   const changedIds = [];
   state.notes.forEach(note => {
-    if (note.folder === name && !isDeletedNote(note)) {
+    if (canonicalFolderName(note.folder) === name && !isDeletedNote(note)) {
       note.folder = INBOX_FOLDER;
       note.updatedAt = Date.now();
       changedIds.push(note.id);
     }
   });
-  const registry = setStoredFolders(storedFolders().filter((folder) => folder !== name));
+  const registry = setStoredFolders(storedFolders().filter((folder) => canonicalFolderName(folder) !== name));
   if (state.selectedFolder === name) state.selectedFolder = "";
   saveNotes();
   markSyncPending(registry.id);
@@ -1596,7 +1690,7 @@ function showFolderContextMenu(x, y) {
   menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`;
   const renameBtn = menu.querySelector('[data-action="rename"]');
   const deleteBtn = menu.querySelector('[data-action="delete"]');
-  const isInbox = state.contextMenuFolder === INBOX_FOLDER;
+  const isInbox = canonicalFolderName(state.contextMenuFolder) === INBOX_FOLDER;
   if (renameBtn) {
     renameBtn.disabled = isInbox;
     renameBtn.style.opacity = isInbox ? "0.4" : "1";
@@ -1636,7 +1730,7 @@ function showNoteContextMenu(x, y) {
   const moveList = document.getElementById('noteMoveList');
   const moveTrigger = document.querySelector('.move-trigger');
   if (moveList && moveTrigger) {
-    const folders = getFolderNames().filter(f => note && f !== note.folder);
+    const folders = getFolderNames().filter(f => note && f !== canonicalFolderName(note.folder));
     moveList.innerHTML = folders.length
       ? folders.map(f => `<button class="context-menu-item" data-action="move-to" data-folder="${escapeAttribute(f)}" type="button">📁 ${escapeHtml(displayFolderLabel(f))}</button>`).join("")
       : `<span style="padding:6px 12px;color:var(--muted);font-size:12px;">${t("noOtherFolders")}</span>`;
@@ -1665,10 +1759,11 @@ function hideNoteContextMenu() {
 
 function moveNoteToFolder(noteId, targetFolder) {
   const note = state.notes.find(n => n.id === noteId && !isDeletedNote(n));
-  if (!note || note.folder === targetFolder) return;
-  note.folder = targetFolder;
+  const folder = normalizeFolderName(targetFolder);
+  if (!note || canonicalFolderName(note.folder) === folder) return;
+  note.folder = folder;
   note.updatedAt = Date.now();
-  persistAndRender(`已移至「${targetFolder}」`, { dirtyNoteId: note.id });
+  persistAndRender(`已移至「${displayFolderLabel(folder)}」`, { dirtyNoteId: note.id });
 }
 
 function exportableNotes() {
@@ -1677,7 +1772,8 @@ function exportableNotes() {
 
 function notesInFolder(folder) {
   if (!folder) return exportableNotes();
-  return exportableNotes().filter((note) => note.folder === folder);
+  const targetFolder = canonicalFolderName(folder);
+  return exportableNotes().filter((note) => canonicalFolderName(note.folder) === targetFolder);
 }
 
 function uniqueExportPath(path, usedPaths) {
@@ -1853,12 +1949,13 @@ function downloadBlob(filename, blob) {
 }
 
 function exportFolderZip(folder) {
-  const notes = notesInFolder(folder);
+  const targetFolder = canonicalSelectedFolder(folder);
+  const notes = notesInFolder(targetFolder);
   if (!notes.length) {
     showToast(t("exportEmpty"));
     return;
   }
-  const folderName = folder || t("allNotes");
+  const folderName = targetFolder ? displayFolderLabel(targetFolder) : t("allNotes");
   const root = sanitizeZipSegment(folderName);
   const entries = notes.map((note) => ({
     type: "file",
@@ -1878,12 +1975,16 @@ function exportAllNotesZip() {
   }
   const folderMap = new Map();
   notes.forEach((note) => {
-    const key = note.folder || INBOX_FOLDER;
+    const key = canonicalFolderName(note.folder);
     if (!folderMap.has(key)) folderMap.set(key, []);
     folderMap.get(key).push(note);
   });
   const children = [...folderMap.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0], "zh-CN"))
+    .sort((a, b) => {
+      if (a[0] === INBOX_FOLDER) return -1;
+      if (b[0] === INBOX_FOLDER) return 1;
+      return a[0].localeCompare(b[0], "zh-CN");
+    })
     .map(([folder, items]) => ({
       type: "folder",
       name: folder,
@@ -1965,9 +2066,9 @@ function sortedNotes() {
   return visibleNotes()
     .filter((note) => {
       if (state.viewFilter === "favorite" && !note.favorite) return false;
-      if (state.selectedFolder && note.folder !== state.selectedFolder) return false;
+      if (state.selectedFolder && canonicalFolderName(note.folder) !== state.selectedFolder) return false;
       if (!state.query) return true;
-      const haystack = `${note.title}\n${note.folder}\n${note.body}`.toLowerCase();
+      const haystack = `${note.title}\n${displayFolderLabel(note.folder)}\n${note.body}`.toLowerCase();
       return haystack.includes(state.query);
     })
     .sort((a, b) => {
@@ -1984,8 +2085,8 @@ function renderFolders() {
   if (!folderManagementEnabled()) {
     if (elements.folderSectionCount) elements.folderSectionCount.textContent = "1";
     elements.folderList.innerHTML = `
-      <div class="folder-row active" data-folder="__all">
-        <button class="folder-item" type="button" data-folder="__all">
+      <div class="folder-row active" data-folder="${escapeAttribute(INBOX_FOLDER)}">
+        <button class="folder-item" type="button" data-folder="${escapeAttribute(INBOX_FOLDER)}">
           <span class="folder-dot" aria-hidden="true"></span>
           <span class="folder-name">${escapeHtml(displayFolderLabel(INBOX_FOLDER))}</span>
           <strong>${regularNotes().length}</strong>
@@ -2002,12 +2103,11 @@ function renderFolders() {
   }
   const counts = new Map();
   regularNotes().forEach((note) => {
-    counts.set(note.folder, (counts.get(note.folder) || 0) + 1);
+    const folder = canonicalFolderName(note.folder);
+    counts.set(folder, (counts.get(folder) || 0) + 1);
   });
 
-  const allTotal = regularNotes().length;
-  const folderOrder = [INBOX_FOLDER, ...counts.keys()].filter((folder, index, array) => array.indexOf(folder) === index);
-  const folderItems = folderOrder
+  const folderItems = getFolderNames()
     .map((folder) => [folder, counts.get(folder) || 0])
     .sort((a, b) => {
       if (a[0] === INBOX_FOLDER) return -1;
@@ -2015,18 +2115,11 @@ function renderFolders() {
       return b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN");
     });
 
-  let html = `
-    <div class="folder-row ${!state.selectedFolder ? "active" : ""}" data-folder="__all">
-      <button class="folder-item" type="button" data-folder="__all">
-        <span class="folder-dot" aria-hidden="true"></span>
-        <span class="folder-name">${t("allNotes")}</span>
-        <strong>${allTotal}</strong>
-      </button>
-      <button class="folder-export-button" type="button" data-export-folder="__all" title="${t("exportAllFolders")}" aria-label="${t("exportAllFolders")}">⇩</button>
-    </div>
-  `;
+  if (state.selectedFolder && !folderItems.some(([folder]) => folder === state.selectedFolder)) {
+    state.selectedFolder = "";
+  }
 
-  html += folderItems
+  const html = folderItems
     .map(([folder, count]) => `
       <div class="folder-row ${folder === state.selectedFolder ? "active" : ""}" data-folder="${escapeAttribute(folder)}">
         <button class="folder-item" type="button" data-folder="${escapeAttribute(folder)}">
@@ -2046,24 +2139,22 @@ function renderFolders() {
 
   elements.folderList.querySelectorAll(".folder-item").forEach((button) => {
     button.addEventListener("click", () => {
-      const f = button.dataset.folder || "";
-      state.selectedFolder = f === "__all" ? "" : f;
+      const f = canonicalSelectedFolder(button.dataset.folder || "");
+      state.selectedFolder = f;
       renderLists();
     });
   });
   elements.folderList.querySelectorAll(".folder-export-button").forEach((button) => {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
-      const folder = button.dataset.exportFolder || "";
-      if (folder === "__all") exportAllNotesZip();
-      else exportFolderZip(folder);
+      const folder = canonicalSelectedFolder(button.dataset.exportFolder || "");
+      exportFolderZip(folder);
     });
   });
   elements.folderList.querySelectorAll(".folder-row").forEach((row) => {
     row.addEventListener("contextmenu", (event) => {
       event.preventDefault();
-      const f = row.dataset.folder || "";
-      if (f === "__all") return;
+      const f = canonicalSelectedFolder(row.dataset.folder || "");
       state.contextMenuFolder = f;
       showFolderContextMenu(event.clientX, event.clientY);
     });
@@ -2186,7 +2277,7 @@ function renderSyncMeta() {
 function openNewNoteDialog() {
   if (!elements.newNoteFolderSelect || !elements.newNoteDialog) return;
   const folders = getFolderNames();
-  const defaultFolder = state.selectedFolder || INBOX_FOLDER;
+  const defaultFolder = canonicalSelectedFolder(state.selectedFolder) || INBOX_FOLDER;
   elements.newNoteFolderSelect.innerHTML = folders.length
     ? folders.map(f => `<option value="${escapeAttribute(f)}" ${f === defaultFolder ? "selected" : ""}>${escapeHtml(displayFolderLabel(f))}</option>`).join("")
     : `<option value="${INBOX_FOLDER}">${INBOX_FOLDER}</option>`;
@@ -2485,6 +2576,7 @@ function mergeNotes(incoming, options = {}) {
     }
   });
   state.notes = [...map.values()].sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
+  if (Array.isArray(options.folders)) setStoredFolders(options.folders);
   if (!activeNote()) state.activeId = firstVisibleNote()?.id || null;
   ensureActiveNote();
   const changed = before !== notesSignature();
@@ -2511,14 +2603,12 @@ function applyCloudNotes(remotePayload, options = {}) {
   const hasLocalDirty = hasDirtyNotes();
 
   if ((allowReplace || localWasDefault || isDefaultSeedState()) && hasRemoteVisibleNotes && !hasLocalDirty) {
-    replaceNotesFromCloud(incomingNotes, { keepActiveId: true });
-    if (incomingFolders) setStoredFolders(incomingFolders);
+    replaceNotesFromCloud(incomingNotes, { keepActiveId: true, folders: incomingFolders });
     return { changed: before !== notesSignature(), blocked: false };
   } else if (hasLocalDirty) {
     return mergeCloudNotesSafely(incomingNotes);
   } else {
-    mergeNotes(incomingNotes, { silent: true, scheduleSync: false });
-    if (incomingFolders) setStoredFolders(incomingFolders);
+    mergeNotes(incomingNotes, { silent: true, scheduleSync: false, folders: incomingFolders });
     return { changed: before !== notesSignature(), blocked: false };
   }
 }
@@ -2793,7 +2883,8 @@ function applyFolderSectionVisibility() {
   }
   if (elements.folderAddButton) elements.folderAddButton.hidden = !enabled;
   if (elements.folderExportAllButton) elements.folderExportAllButton.hidden = !enabled;
-  state.selectedFolder = enabled ? state.selectedFolder : "";
+  if (elements.folderInput) elements.folderInput.disabled = !enabled;
+  state.selectedFolder = enabled ? canonicalSelectedFolder(state.selectedFolder) : "";
 }
 
 function getSyncToken() {
