@@ -251,7 +251,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .editor-section[open] .summary-mark { transform: rotate(90deg); }
 .editor-summary { min-height: 40px; }
 .editor-header { display: grid; gap: 0; border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.55); }
-.editor-header .note-meta { padding-bottom: 10px; }
+.editor-header .note-meta { padding: 10px 12px; }
 .note-flags .flag-button { white-space: nowrap; }
 
 .note-list { display: grid; gap: 5px; min-height: 0; }
@@ -569,14 +569,9 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .editor-section { border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.62); }
 .editor-summary { border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.72); }
 .editor-section-body { display: grid; gap: 0; padding-top: 0; }
-.editor-meta-strip {
-  display: flex; align-items: center; justify-content: flex-start;
-  padding: 6px 12px 8px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(255,255,255,0.58);
-}
 .note-meta { justify-content: space-between; gap: 12px; padding: 10px 12px 6px; }
-.title-input { width: 100%; height: 36px; font-size: 20px; font-weight: 760; font-family: var(--font-ui); }
+.title-input { width: 100%; min-width: 0; height: 36px; flex: 1 1 auto; font-size: 20px; font-weight: 760; font-family: var(--font-ui); }
+.note-mode-switch { display: inline-flex; flex: 0 0 auto; justify-content: flex-end; }
 .note-flags { display: flex; gap: 8px; }
 .flag-button, .mode-button { display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; font-weight: 700; }
 .flag-button { min-width: 54px; }
@@ -615,7 +610,6 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .toolbar-menu-panel button span:first-child { color: var(--muted); text-align: center; }
 .icon-tool-button { font-size: 15px; }
 .editor-card[data-mode="txt"] .md-tool, .editor-card[data-mode="txt"] [data-insert], .editor-card[data-mode="txt"] #togglePreviewButton, .editor-card[data-mode="txt"] #previewFocusButton { display: none; }
-.editor-card[data-mode="txt"] .editor-meta-strip { padding-bottom: 10px; }
 .editor-status-bar {
   justify-content: flex-end; gap: 10px; padding: 8px 12px 0;
   color: var(--muted); background: transparent; font-size: 12px; white-space: nowrap;
@@ -805,6 +799,8 @@ body.preview-focus-mode .preview-content {
   .topbar, .topbar-actions { align-items: stretch; flex-direction: column; }
   .topbar-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .editor-card { height: auto; min-height: 400px; }
+  .note-meta { flex-wrap: wrap; }
+  .note-mode-switch { margin-left: auto; }
   .meta-row { flex-wrap: wrap; }
   .folder-input { flex: 1 1 220px; }
   .find-bar { grid-template-columns: minmax(0, 1fr) auto auto auto auto; }
@@ -826,6 +822,7 @@ body.preview-focus-mode .preview-content {
   .toolbar button { min-width: 32px; padding: 0 8px; font-size: 12px; }
   .toolbar-separator { margin: 4px 0; }
   .note-meta { align-items: flex-start; flex-direction: column; }
+  .note-mode-switch { margin-left: 0; }
   .meta-row { gap: 6px; }
   .folder-input { flex: 1 1 100%; }
   .find-bar { grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px; }
