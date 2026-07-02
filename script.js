@@ -147,6 +147,7 @@ const i18n = {
     imageTooLarge: "图片太大，已跳过。建议单张图片小于 900KB。",
     imagePasteFailed: "图片粘贴失败",
     imagePasted: "已插入图片",
+    inputComposing: "正在确认中文输入，确认后再同步。",
     codeCopy: "复制",
     markdownEmpty: "开始写 Markdown 后，这里会实时预览。",
     syncSettings: "同步设置",
@@ -312,6 +313,7 @@ const i18n = {
     imageTooLarge: "Image is too large and was skipped. Keep each image under 900KB.",
     imagePasteFailed: "Failed to paste image",
     imagePasted: "Image inserted",
+    inputComposing: "Finish IME input before syncing.",
     codeCopy: "Copy",
     markdownEmpty: "Start writing Markdown to preview it here.",
     syncSettings: "Sync Settings",
@@ -590,6 +592,7 @@ const state = {
   crdtApplying: false,
   crdtSeedIsDefault: false,
   crdtPendingUpdates: [],
+  noteInputComposing: false,
   lastCloudPullAt: 0,
   dirtyNoteIds: new Set(),
   contextMenuFolder: null,
@@ -892,9 +895,9 @@ function bindEvents() {
     section.open = false;
   });
 
-  elements.titleInput.addEventListener("input", updateActiveFromInputs);
-  elements.folderInput?.addEventListener("input", updateActiveFromInputs);
-  elements.bodyInput.addEventListener("input", updateActiveFromInputs);
+  bindNoteInput(elements.titleInput);
+  bindNoteInput(elements.folderInput);
+  bindNoteInput(elements.bodyInput);
   elements.bodyInput.addEventListener("paste", handleEditorPaste);
   elements.bodyInput.addEventListener("scroll", syncLineNumberScroll);
   elements.bodyInput.addEventListener("keyup", handleEditorCursorChange);
@@ -1056,6 +1059,10 @@ function bindEvents() {
     }
     if ((event.ctrlKey || event.metaKey) && key === "s") {
       event.preventDefault();
+      if (state.noteInputComposing || event.isComposing) {
+        showToast(t("inputComposing"));
+        return;
+      }
       syncCurrentNoteNow();
       return;
     }
@@ -1066,6 +1073,37 @@ function bindEvents() {
   });
 
   window.addEventListener("beforeunload", () => flushPendingSave(state.activeId));
+}
+
+function bindNoteInput(input) {
+  if (!input) return;
+  input.addEventListener("compositionstart", () => {
+    state.noteInputComposing = true;
+  });
+  input.addEventListener("compositionend", () => {
+    state.noteInputComposing = false;
+    window.setTimeout(() => updateActiveFromInputs({ force: true }), 0);
+  });
+  input.addEventListener("blur", () => {
+    if (!state.noteInputComposing) return;
+    state.noteInputComposing = false;
+    window.setTimeout(() => updateActiveFromInputs({ force: true }), 0);
+  });
+  input.addEventListener("input", handleNoteInput);
+}
+
+function handleNoteInput(event) {
+  if (event?.isComposing || event?.inputType === "insertCompositionText" || state.noteInputComposing) {
+    updateDraftInputUi();
+    return;
+  }
+  updateActiveFromInputs();
+}
+
+function updateDraftInputUi() {
+  updateCurrentLineIndicator();
+  updateLineNumbers();
+  syncEditorSearchState();
 }
 
 function loadNotes() {
@@ -1634,7 +1672,11 @@ function syncCloudInBackground(options = {}) {
   }, 0);
 }
 
-function updateActiveFromInputs() {
+function updateActiveFromInputs(options = {}) {
+  if (state.noteInputComposing && !options.force) {
+    updateDraftInputUi();
+    return;
+  }
   const note = activeNote();
   if (!note) return;
   note.title = elements.titleInput.value.trimStart() || "未命名笔记";

@@ -99,6 +99,7 @@ Important sync pitfalls:
 - Do not seed a new cloud database with only an incremental edit update. Yjs needs the missing base structures, so the first cloud write must be `encodeStateAsUpdate(doc)`.
 - Do not merge bundled default notes into a real remote notebook on a new device. If the local state is still the default seed and remote CRDT updates exist, reset the local Yjs doc from remote updates instead of merging.
 - UI-only render events must not create CRDT updates. For example, changing the editor section `open` property during render should be ignored when the note already has the same `editorSectionOpen` value.
+- IME composition text must not be saved or synced. During Chinese input, browsers may expose temporary pinyin such as `shi'a`; only save after `compositionend`, otherwise another device can receive the unconfirmed pinyin instead of the final Chinese characters.
 
 This first version is designed for a single owner. Do not store passwords, API keys, or customer secrets unless you later add end-to-end encryption.
 
