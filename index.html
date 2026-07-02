@@ -51,14 +51,10 @@
             </span>
             <span class="summary-meta">
               <span class="folder-summary-count" id="folderSectionCount">0</span>
+              <button class="icon-button folder-add-button" id="folderAddButton" type="button"
+                      title="新建文件夹" aria-label="新建文件夹">+</button>
             </span>
           </summary>
-          <div class="folder-panel-actions">
-            <button class="icon-button folder-export-all-button" id="folderExportAllButton" type="button"
-                    title="导出全部" aria-label="导出全部">⇩</button>
-            <button class="icon-button folder-add-button" id="folderAddButton" type="button"
-                    title="新建文件夹" aria-label="新建文件夹">+</button>
-          </div>
           <div class="folder-list" id="folderList"></div>
         </details>
 
@@ -69,6 +65,11 @@
               <button class="filter-tab" data-filter="favorite" type="button">★ 收藏</button>
             </div>
             <span class="note-list-count" id="listStatus">0 条</span>
+          </div>
+          <div class="bulk-action-bar" id="bulkActionBar" hidden>
+            <span id="bulkSelectionCount">已选 0</span>
+            <button class="danger-button bulk-delete-button" id="bulkDeleteButton" type="button">删除</button>
+            <button class="ghost-button bulk-clear-button" id="bulkClearButton" type="button">取消</button>
           </div>
           <div class="note-list" id="noteList" aria-live="polite"></div>
         </section>
@@ -99,7 +100,7 @@
                 </button>
                 <button class="menu-item" id="exportButton" type="button">
                   <span aria-hidden="true">⇡</span>
-                  <span>导出当前</span>
+                  <span>导出</span>
                 </button>
                 <button class="menu-item" id="shareButton" type="button">
                   <span aria-hidden="true">↗</span>
@@ -108,11 +109,6 @@
                 <button class="menu-item danger-menu-item" id="deleteButton" type="button">
                   <span aria-hidden="true">×</span>
                   <span>删除</span>
-                </button>
-                <div class="menu-divider" aria-hidden="true"></div>
-                <button class="menu-item" id="downloadNoteButton" type="button">
-                  <span aria-hidden="true">⎘</span>
-                  <span>备份全部 JSON</span>
                 </button>
                 <div class="menu-meta" aria-live="polite">
                   <span id="createdAt">创建 -</span>
@@ -268,10 +264,46 @@
       </form>
     </dialog>
 
+    <dialog class="modal" id="exportDialog">
+      <form method="dialog" class="modal-card export-modal-card">
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow" id="exportModalEyebrow">Export</p>
+            <h2 id="exportDialogTitle">导出</h2>
+          </div>
+          <button class="icon-button" value="cancel" type="submit" aria-label="关闭">×</button>
+        </div>
+        <div class="export-options">
+          <button class="export-option" id="exportCurrentButton" type="button">
+            <span class="export-option-icon" aria-hidden="true">⇡</span>
+            <span>
+              <strong id="exportCurrentTitle">导出当前笔记</strong>
+              <small id="exportCurrentCopy">下载当前打开的 TXT/MD 文件</small>
+            </span>
+          </button>
+          <div class="export-option export-folder-option">
+            <span class="export-option-icon" aria-hidden="true">▣</span>
+            <span>
+              <strong id="exportFolderTitle">导出文件夹</strong>
+              <small id="exportFolderCopy">选择一个文件夹并下载 ZIP</small>
+            </span>
+            <select id="exportFolderSelect" aria-label="选择导出文件夹"></select>
+            <button class="ghost-button export-folder-confirm" id="exportFolderButton" type="button">导出</button>
+          </div>
+          <button class="export-option" id="exportAllButton" type="button">
+            <span class="export-option-icon" aria-hidden="true">⎘</span>
+            <span>
+              <strong id="exportAllTitle">导出全部笔记</strong>
+              <small id="exportAllCopy">按文件夹打包下载 ZIP</small>
+            </span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+
     <!-- 文件夹右键菜单 -->
     <div class="context-menu" id="folderContextMenu" hidden>
       <button class="context-menu-item" data-action="new-note" type="button">在此新建笔记</button>
-      <button class="context-menu-item" data-action="export" type="button">导出文件夹</button>
       <button class="context-menu-item" data-action="rename" type="button">重命名</button>
       <button class="context-menu-item danger" data-action="delete" type="button">删除</button>
     </div>
@@ -321,7 +353,7 @@
     <input id="importFileInput" type="file" accept=".json,.md,.txt" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./script.js?v=9"></script>
+    <script src="./script.js?v=10"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })

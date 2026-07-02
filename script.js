@@ -23,6 +23,15 @@ const i18n = {
     installDesktop: "安装到桌面",
     import: "导入",
     exportCurrent: "导出当前",
+    exportMenu: "导出",
+    exportDialogTitle: "导出",
+    exportCurrentTitle: "导出当前笔记",
+    exportCurrentCopy: "下载当前打开的 TXT/MD 文件",
+    exportFolderTitle: "导出文件夹",
+    exportFolderCopy: "选择一个文件夹并下载 ZIP",
+    exportAllTitle: "导出全部笔记",
+    exportAllCopy: "按文件夹打包下载 ZIP",
+    exportFolderConfirm: "导出",
     exportAllZip: "导出全部 ZIP",
     exportFolder: "导出文件夹",
     exportAllFolders: "导出全部 ZIP",
@@ -42,6 +51,11 @@ const i18n = {
     inboxLockedDelete: "默认文件夹不能删除。",
     share: "分享",
     delete: "删除",
+    selectedCount: "已选 {count}",
+    selectNote: "选择笔记",
+    clearSelectionAction: "取消",
+    confirmDeleteSelected: "确定要删除选中的 {count} 条笔记吗？",
+    selectedDeleted: "已删除 {count} 条笔记",
     copyCurrent: "复制当前内容",
     backupAll: "备份全部 JSON",
     duplicate: "复制为新笔记",
@@ -169,6 +183,15 @@ const i18n = {
     installDesktop: "Install App",
     import: "Import",
     exportCurrent: "Export Current",
+    exportMenu: "Export",
+    exportDialogTitle: "Export",
+    exportCurrentTitle: "Export Current Note",
+    exportCurrentCopy: "Download the current TXT/MD file",
+    exportFolderTitle: "Export Folder",
+    exportFolderCopy: "Choose a folder and download a ZIP",
+    exportAllTitle: "Export All Notes",
+    exportAllCopy: "Download a folder-based ZIP",
+    exportFolderConfirm: "Export",
     exportAllZip: "Export All ZIP",
     exportFolder: "Export Folder",
     exportAllFolders: "Export All ZIP",
@@ -188,6 +211,11 @@ const i18n = {
     inboxLockedDelete: "Default Folder cannot be deleted.",
     share: "Share",
     delete: "Delete",
+    selectedCount: "{count} selected",
+    selectNote: "Select note",
+    clearSelectionAction: "Clear",
+    confirmDeleteSelected: "Delete {count} selected notes?",
+    selectedDeleted: "{count} notes deleted",
     copyCurrent: "Copy Current",
     backupAll: "Backup JSON",
     duplicate: "Duplicate Note",
@@ -520,6 +548,7 @@ const state = {
   notes: [],
   activeId: null,
   selectedFolder: "",
+  selectedNoteIds: new Set(),
   query: "",
   viewFilter: localStorage.getItem("nanstar-note-view") || "all",
   language: localStorage.getItem(storageKeys.language) === "en" ? "en" : "zh",
@@ -551,7 +580,7 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 const DEFAULT_SPLIT_RATIO = 52;
-const DEFAULT_SIDEBAR_WIDTH = 248;
+const DEFAULT_SIDEBAR_WIDTH = 280;
 const SYNC_POLL_INTERVAL = 15000;
 const SYNC_PUSH_DELAY = 1200;
 const TRANSFER_NOTE_ID = "nanstar-transfer-assistant";
@@ -626,7 +655,6 @@ const elements = {
   folderSectionCount: $("#folderSectionCount"),
   folderList: $("#folderList"),
   folderAddButton: $("#folderAddButton"),
-  folderExportAllButton: $("#folderExportAllButton"),
   folderContextMenu: $("#folderContextMenu"),
   noteContextMenu: $("#noteContextMenu"),
   folderDatalist: $("#folderDatalist"),
@@ -640,6 +668,10 @@ const elements = {
   outlinePanelBody: $("#outlinePanelBody"),
   noteList: $("#noteList"),
   listStatus: $("#listStatus"),
+  bulkActionBar: $("#bulkActionBar"),
+  bulkSelectionCount: $("#bulkSelectionCount"),
+  bulkDeleteButton: $("#bulkDeleteButton"),
+  bulkClearButton: $("#bulkClearButton"),
   editorCard: $("#editorCard"),
   editorSection: $("#editorSection"),
   editorSectionState: $("#editorSectionState"),
@@ -674,10 +706,14 @@ const elements = {
   updatedAt: $("#updatedAt"),
   importButton: $("#importButton"),
   exportButton: $("#exportButton"),
+  exportDialog: $("#exportDialog"),
+  exportCurrentButton: $("#exportCurrentButton"),
+  exportFolderSelect: $("#exportFolderSelect"),
+  exportFolderButton: $("#exportFolderButton"),
+  exportAllButton: $("#exportAllButton"),
   shareButton: $("#shareButton"),
   deleteButton: $("#deleteButton"),
   copyMarkdownButton: $("#copyMarkdownButton"),
-  downloadNoteButton: $("#downloadNoteButton"),
   duplicateButton: $("#duplicateButton"),
   importFileInput: $("#importFileInput"),
   syncDialog: $("#syncDialog"),
@@ -780,7 +816,8 @@ function bindEvents() {
   });
 
   if (elements.folderAddButton) elements.folderAddButton.addEventListener("click", createFolder);
-  if (elements.folderExportAllButton) elements.folderExportAllButton.addEventListener("click", () => exportAllNotesZip());
+  if (elements.bulkDeleteButton) elements.bulkDeleteButton.addEventListener("click", deleteSelectedNotes);
+  if (elements.bulkClearButton) elements.bulkClearButton.addEventListener("click", clearNoteSelection);
 
   // Folder context menu
   if (elements.folderContextMenu) {
@@ -793,7 +830,6 @@ function bindEvents() {
         if (action === "rename") renameFolder(folder);
         else if (action === "delete") deleteFolder(folder);
         else if (action === "new-note") createNoteInFolder(folder);
-        else if (action === "export") exportFolderZip(folder);
       });
     });
   }
@@ -888,8 +924,16 @@ function bindEvents() {
   elements.deleteButton.addEventListener("click", deleteActiveNote);
   if (elements.duplicateButton) elements.duplicateButton.addEventListener("click", duplicateActiveNote);
   if (elements.copyMarkdownButton) elements.copyMarkdownButton.addEventListener("click", copyActiveContent);
-  elements.downloadNoteButton.addEventListener("click", exportAllNotesZip);
-  elements.exportButton.addEventListener("click", exportCurrentNote);
+  elements.exportButton.addEventListener("click", openExportDialog);
+  elements.exportCurrentButton?.addEventListener("click", () => {
+    exportCurrentNote();
+    elements.exportDialog?.close();
+  });
+  elements.exportFolderButton?.addEventListener("click", exportSelectedFolderFromDialog);
+  elements.exportAllButton?.addEventListener("click", () => {
+    exportAllNotesZip();
+    elements.exportDialog?.close();
+  });
   elements.importButton.addEventListener("click", () => elements.importFileInput.click());
   elements.importFileInput.addEventListener("change", importFile);
   elements.shareButton.addEventListener("click", createShareLink);
@@ -1402,6 +1446,7 @@ function renderAll() {
   renderFloatingOutline();
   renderLists();
   renderFolderDatalist();
+  renderExportFolderSelect();
   renderSyncMeta();
 }
 
@@ -2127,7 +2172,6 @@ function renderFolders() {
           <span class="folder-name">${escapeHtml(displayFolderLabel(folder))}</span>
           <strong>${count}</strong>
         </button>
-        <button class="folder-export-button" type="button" data-export-folder="${escapeAttribute(folder)}" title="${t("exportFolder")}" aria-label="${t("exportFolder")}">⇩</button>
       </div>
     `)
     .join("");
@@ -2144,13 +2188,6 @@ function renderFolders() {
       renderLists();
     });
   });
-  elements.folderList.querySelectorAll(".folder-export-button").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const folder = canonicalSelectedFolder(button.dataset.exportFolder || "");
-      exportFolderZip(folder);
-    });
-  });
   elements.folderList.querySelectorAll(".folder-row").forEach((row) => {
     row.addEventListener("contextmenu", (event) => {
       event.preventDefault();
@@ -2164,6 +2201,8 @@ function renderFolders() {
 function renderNoteList() {
   const notes = sortedNotes();
   if (elements.listStatus) elements.listStatus.textContent = `${notes.length} ${t("items")}`;
+  pruneNoteSelection();
+  renderBulkActionBar();
 
   if (!notes.length) {
     elements.noteList.innerHTML = `<div class="empty-state">
@@ -2180,23 +2219,42 @@ function renderNoteList() {
       const title = isTransferAssistant(note) ? t("transferAssistantTitle") : note.title;
       const body = isTransferAssistant(note) && !note.body.trim() ? t("transferAssistantExcerpt") : excerpt(note.body);
       const classes = ["note-item"];
+      const rowClasses = ["note-row"];
+      const selectable = !isTransferAssistant(note);
+      const selected = selectable && state.selectedNoteIds.has(note.id);
       if (note.id === state.activeId) classes.push("active");
       if (isTransferAssistant(note)) classes.push("transfer-assistant");
+      if (selected) rowClasses.push("selected");
       return `
-        <button class="${classes.join(" ")}" type="button" data-id="${note.id}">
-          <span class="note-item-head">
-            <h3>${escapeHtml(title)}</h3>
-            <span class="note-flags-text">${flags}</span>
-          </span>
-          <p>${escapeHtml(body)}</p>
-          <span class="note-item-meta">
-            <span class="note-item-mode">${mode}</span>
-            <time>${formatShortDate(note.updatedAt)}</time>
-          </span>
-        </button>
+        <div class="${rowClasses.join(" ")}">
+          ${selectable ? `
+            <label class="note-select" title="${t("selectNote")}">
+              <input class="note-select-checkbox" type="checkbox" data-select-note="${note.id}" ${selected ? "checked" : ""} />
+              <span aria-hidden="true"></span>
+            </label>
+          ` : `<span class="note-select-spacer" aria-hidden="true"></span>`}
+          <button class="${classes.join(" ")}" type="button" data-id="${note.id}">
+            <span class="note-item-head">
+              <h3>${escapeHtml(title)}</h3>
+              <span class="note-flags-text">${flags}</span>
+            </span>
+            <p>${escapeHtml(body)}</p>
+            <span class="note-item-meta">
+              <span class="note-item-mode">${mode}</span>
+              <time>${formatShortDate(note.updatedAt)}</time>
+            </span>
+          </button>
+        </div>
       `;
     })
     .join("");
+
+  elements.noteList.querySelectorAll(".note-select-checkbox").forEach((checkbox) => {
+    checkbox.addEventListener("click", (event) => event.stopPropagation());
+    checkbox.addEventListener("change", () => {
+      toggleNoteSelection(checkbox.dataset.selectNote, checkbox.checked);
+    });
+  });
 
   elements.noteList.querySelectorAll(".note-item").forEach((button) => {
     button.addEventListener("click", () => switchToNote(button.dataset.id));
@@ -2206,6 +2264,59 @@ function renderNoteList() {
       showNoteContextMenu(event.clientX, event.clientY);
     });
   });
+}
+
+function pruneNoteSelection() {
+  const selectableIds = new Set(visibleNotes().filter((note) => !isTransferAssistant(note)).map((note) => note.id));
+  state.selectedNoteIds.forEach((id) => {
+    if (!selectableIds.has(id)) state.selectedNoteIds.delete(id);
+  });
+}
+
+function renderBulkActionBar() {
+  const count = state.selectedNoteIds.size;
+  if (elements.bulkActionBar) elements.bulkActionBar.hidden = count === 0;
+  if (elements.bulkSelectionCount) {
+    elements.bulkSelectionCount.textContent = t("selectedCount").replace("{count}", count);
+  }
+  if (elements.bulkDeleteButton) elements.bulkDeleteButton.textContent = t("delete");
+  if (elements.bulkClearButton) elements.bulkClearButton.textContent = t("clearSelectionAction");
+}
+
+function toggleNoteSelection(noteId, selected) {
+  if (!noteId) return;
+  const note = state.notes.find((item) => item.id === noteId && !isDeletedNote(item));
+  if (!note || isTransferAssistant(note)) return;
+  if (selected) state.selectedNoteIds.add(noteId);
+  else state.selectedNoteIds.delete(noteId);
+  renderLists();
+}
+
+function clearNoteSelection() {
+  state.selectedNoteIds.clear();
+  renderLists();
+}
+
+function deleteSelectedNotes() {
+  const ids = [...state.selectedNoteIds].filter((id) => {
+    const note = state.notes.find((item) => item.id === id && !isDeletedNote(item));
+    return note && !isTransferAssistant(note);
+  });
+  if (!ids.length) return;
+  const confirmed = window.confirm(t("confirmDeleteSelected").replace("{count}", ids.length));
+  if (!confirmed) return;
+  ids.forEach((id) => {
+    const note = state.notes.find((item) => item.id === id && !isDeletedNote(item));
+    if (note) markNoteDeleted(note);
+  });
+  if (ids.includes(state.activeId)) state.activeId = firstVisibleNote()?.id || null;
+  state.selectedNoteIds.clear();
+  ensureActiveNote();
+  saveNotes();
+  ids.forEach((id) => markSyncPending(id));
+  renderAll();
+  setSaveStatus(getSyncToken() ? t("syncPending") : t("savedLocal"));
+  showToast(t("selectedDeleted").replace("{count}", ids.length));
 }
 
 async function switchToNote(nextId) {
@@ -2418,11 +2529,11 @@ function applyFolderSectionCollapsed(collapsed) {
 function readSidebarWidth() {
   const stored = Number(localStorage.getItem(storageKeys.sidebarWidth));
   if (!stored || Number.isNaN(stored)) return DEFAULT_SIDEBAR_WIDTH;
-  return Math.max(200, Math.min(360, stored));
+  return Math.max(240, Math.min(420, stored));
 }
 
 function applySidebarWidth(value) {
-  const width = Math.max(200, Math.min(360, Number(value) || DEFAULT_SIDEBAR_WIDTH));
+  const width = Math.max(240, Math.min(420, Number(value) || DEFAULT_SIDEBAR_WIDTH));
   if (elements.appShell) {
     elements.appShell.style.setProperty("--sidebar-width", `${width}px`);
   }
@@ -2524,6 +2635,28 @@ function exportCurrentNote() {
   const type = isMarkdown ? "text/markdown" : "text/plain";
   const content = isMarkdown ? formatMarkdownExport(note) : note.body;
   downloadText(`${safeFileName(note.title)}.${extension}`, content, type);
+}
+
+function openExportDialog() {
+  renderExportFolderSelect();
+  elements.exportDialog?.showModal();
+}
+
+function renderExportFolderSelect() {
+  if (!elements.exportFolderSelect) return;
+  const folders = getFolderNames();
+  const current = canonicalSelectedFolder(state.selectedFolder) || canonicalFolderName(activeNote()?.folder);
+  elements.exportFolderSelect.innerHTML = folders
+    .map((folder) => `<option value="${escapeAttribute(folder)}" ${folder === current ? "selected" : ""}>${escapeHtml(displayFolderLabel(folder))}</option>`)
+    .join("");
+  if (elements.exportFolderButton) elements.exportFolderButton.disabled = folders.length === 0;
+}
+
+function exportSelectedFolderFromDialog() {
+  const folder = canonicalSelectedFolder(elements.exportFolderSelect?.value || "");
+  if (!folder) return;
+  exportFolderZip(folder);
+  elements.exportDialog?.close();
 }
 
 function importFile(event) {
@@ -2871,6 +3004,7 @@ function clearSyncToken() {
   elements.autoSyncToggle.checked = false;
   applyFolderSectionVisibility();
   renderFolderDatalist();
+  renderExportFolderSelect();
   renderLists();
   renderSyncMeta();
   showSyncMessage(t("tokenCleared"));
@@ -2882,7 +3016,6 @@ function applyFolderSectionVisibility() {
     elements.folderSection.hidden = false;
   }
   if (elements.folderAddButton) elements.folderAddButton.hidden = !enabled;
-  if (elements.folderExportAllButton) elements.folderExportAllButton.hidden = !enabled;
   if (elements.folderInput) elements.folderInput.disabled = !enabled;
   state.selectedFolder = enabled ? canonicalSelectedFolder(state.selectedFolder) : "";
 }
@@ -2972,10 +3105,9 @@ function applyLanguage(language, initial = false) {
   applySidebarCollapsed(state.sidebarCollapsed);
   setMenuItemLabel(document.getElementById("topInstallButton"), t("installDesktop"));
   setMenuItemLabel(elements.importButton, t("import"));
-  setMenuItemLabel(elements.exportButton, t("exportCurrent"));
+  setMenuItemLabel(elements.exportButton, t("exportMenu"));
   setMenuItemLabel(elements.shareButton, t("share"));
   setMenuItemLabel(elements.deleteButton, t("delete"));
-  setMenuItemLabel(elements.downloadNoteButton, t("exportAllZip"));
   setToolbarTitle('[data-command="undo"]', t("undo"));
   setToolbarTitle('[data-command="redo"]', t("redo"));
   setToolbarTitle('[data-wrap="**"]', t("bold"));
@@ -3002,10 +3134,8 @@ function applyLanguage(language, initial = false) {
     elements.folderAddButton.title = t("newFolder");
     elements.folderAddButton.setAttribute("aria-label", t("newFolder"));
   }
-  if (elements.folderExportAllButton) {
-    elements.folderExportAllButton.title = t("exportAllFolders");
-    elements.folderExportAllButton.setAttribute("aria-label", t("exportAllFolders"));
-  }
+  updateExportDialogText();
+  renderBulkActionBar();
   const outlineHead = elements.outlinePanel?.querySelector(".outline-panel-head span");
   if (outlineHead) outlineHead.textContent = t("outlineTitle");
   const editorToolsTitle = document.getElementById("editorToolsTitle");
@@ -3057,6 +3187,24 @@ function renderSystemNoteTitles() {
 
 function toggleLanguage() {
   applyLanguage(state.language === "zh" ? "en" : "zh");
+}
+
+function updateExportDialogText() {
+  const exportDialogTitle = document.getElementById("exportDialogTitle");
+  if (exportDialogTitle) exportDialogTitle.textContent = t("exportDialogTitle");
+  const exportCurrentTitle = document.getElementById("exportCurrentTitle");
+  if (exportCurrentTitle) exportCurrentTitle.textContent = t("exportCurrentTitle");
+  const exportCurrentCopy = document.getElementById("exportCurrentCopy");
+  if (exportCurrentCopy) exportCurrentCopy.textContent = t("exportCurrentCopy");
+  const exportFolderTitle = document.getElementById("exportFolderTitle");
+  if (exportFolderTitle) exportFolderTitle.textContent = t("exportFolderTitle");
+  const exportFolderCopy = document.getElementById("exportFolderCopy");
+  if (exportFolderCopy) exportFolderCopy.textContent = t("exportFolderCopy");
+  const exportAllTitle = document.getElementById("exportAllTitle");
+  if (exportAllTitle) exportAllTitle.textContent = t("exportAllTitle");
+  const exportAllCopy = document.getElementById("exportAllCopy");
+  if (exportAllCopy) exportAllCopy.textContent = t("exportAllCopy");
+  if (elements.exportFolderButton) elements.exportFolderButton.textContent = t("exportFolderConfirm");
 }
 
 function setMenuItemLabel(button, label) {
