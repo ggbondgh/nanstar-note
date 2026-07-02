@@ -1420,6 +1420,14 @@ function scheduleAutoSync() {
   }, SYNC_PUSH_DELAY);
 }
 
+function syncCloudInBackground(options = {}) {
+  window.setTimeout(() => {
+    syncCloud(options).catch((error) => {
+      console.error("Background sync failed", error);
+    });
+  }, 0);
+}
+
 function updateActiveFromInputs() {
   const note = activeNote();
   if (!note) return;
@@ -2384,23 +2392,24 @@ function deleteSelectedNotes() {
   showToast(t("selectedDeleted").replace("{count}", ids.length));
 }
 
-async function switchToNote(nextId) {
+function switchToNote(nextId) {
   if (!nextId || nextId === state.activeId) {
-    if (nextId) await syncCloud({ silent: true, pullOnly: true, reason: "open-note", noteId: nextId });
+    if (nextId) syncCloudInBackground({ silent: true, pullOnly: true, reason: "open-note", noteId: nextId });
     return;
   }
 
   const previousId = state.activeId;
   flushPendingSave(previousId);
-  if (isDirtyNoteId(previousId)) {
-    await syncCloud({ silent: false, forcePush: true, reason: "leave-note", noteId: previousId });
-  }
+  const shouldPushPrevious = isDirtyNoteId(previousId);
 
   state.activeId = nextId;
   saveNotes();
   renderAll();
   elements.bodyInput.focus();
-  await syncCloud({ silent: true, pullOnly: true, reason: "open-note", noteId: nextId });
+  if (shouldPushPrevious) {
+    syncCloudInBackground({ silent: false, forcePush: true, reason: "leave-note", noteId: previousId });
+  }
+  syncCloudInBackground({ silent: true, pullOnly: true, reason: "open-note", noteId: nextId });
 }
 
 async function syncCurrentNoteNow() {
