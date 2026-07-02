@@ -8,6 +8,7 @@ const storageKeys = {
   splitRatio: "nanstar-note-split-ratio",
   sidebarWidth: "nanstar-note-sidebar-width",
   sidebarCollapsed: "nanstar-note-sidebar-collapsed",
+  folderSectionCollapsed: "nanstar-note-folder-section-collapsed",
   language: "nanstar-note-language"
 };
 
@@ -531,6 +532,7 @@ const state = {
   },
   currentLine: 1,
   sidebarCollapsed: localStorage.getItem(storageKeys.sidebarCollapsed) === "1",
+  folderSectionCollapsed: localStorage.getItem(storageKeys.folderSectionCollapsed) !== "0",
   localStateSource: localStorage.getItem(storageKeys.notes) ? "stored" : "default",
   saveTimer: null,
   savePendingNoteId: null,
@@ -558,6 +560,15 @@ const INBOX_FOLDER = "收件箱";
 const MAX_PASTE_IMAGE_BYTES = 900 * 1024;
 const MAX_TRANSFER_IMAGES = 4;
 
+function folderManagementEnabled() {
+  return Boolean(getSyncToken());
+}
+
+function normalizeFolderName(folder) {
+  const value = String(folder || "").trim() || INBOX_FOLDER;
+  return folderManagementEnabled() ? value : INBOX_FOLDER;
+}
+
 const elements = {
   appShell: $(".app-shell"),
   sidebar: $(".sidebar"),
@@ -572,6 +583,8 @@ const elements = {
   searchClearButton: $("#searchClearButton"),
   languageToggleButton: $("#languageToggleButton"),
   folderSection: $("#folderSection"),
+  folderSectionSummary: $("#folderSectionSummary"),
+  folderSectionCount: $("#folderSectionCount"),
   folderList: $("#folderList"),
   folderAddButton: $("#folderAddButton"),
   folderExportAllButton: $("#folderExportAllButton"),
@@ -650,6 +663,8 @@ function init() {
   applySidebarWidth(readSidebarWidth());
   applySplitRatio(readSplitRatio());
   applySidebarCollapsed(state.sidebarCollapsed);
+  applyFolderSectionCollapsed(state.folderSectionCollapsed);
+  applyFolderSectionVisibility();
 
   decodeSharedNote();
   bindEvents();
@@ -664,6 +679,11 @@ function bindEvents() {
   elements.sidebarToggleButton.addEventListener("click", toggleSidebar);
   elements.sidebarQuickNewButton?.addEventListener("click", () => openNewNoteDialog());
   elements.languageToggleButton?.addEventListener("click", toggleLanguage);
+  elements.folderSectionSummary?.addEventListener("click", (event) => {
+    if (event.target.closest("button")) return;
+    event.preventDefault();
+    toggleFolderSection();
+  });
   let searchComposing = false;
   const updateSearchClearButton = () => {
     if (elements.searchClearButton) elements.searchClearButton.hidden = !(elements.searchInput.value || searchComposing);
@@ -879,6 +899,9 @@ function bindEvents() {
     const token = elements.syncTokenInput.value.trim();
     if (token) localStorage.setItem(storageKeys.syncToken, token);
     else localStorage.removeItem(storageKeys.syncToken);
+    applyFolderSectionVisibility();
+    renderFolderDatalist();
+    renderLists();
     renderSyncMeta();
     startCloudSync();
   });
@@ -1462,6 +1485,7 @@ function setActiveOutlineHeading(idx) {
 /* ---- Folder Management ---- */
 
 function getFolderNames() {
+  if (!folderManagementEnabled()) return [INBOX_FOLDER];
   const names = new Set(storedFolders());
   regularNotes().forEach((note) => names.add(note.folder));
   return [...names].sort((a, b) => a.localeCompare(b, "zh-CN"));
@@ -1469,6 +1493,10 @@ function getFolderNames() {
 
 function renderFolderDatalist() {
   if (!elements.folderDatalist) return;
+  if (!folderManagementEnabled()) {
+    elements.folderDatalist.innerHTML = `<option value="${INBOX_FOLDER}">${escapeHtml(displayFolderLabel(INBOX_FOLDER))}</option>`;
+    return;
+  }
   elements.folderDatalist.innerHTML = getFolderNames()
     .map(name => `<option value="${escapeAttribute(name)}">${escapeHtml(displayFolderLabel(name))}</option>`)
     .join("");
@@ -1479,6 +1507,7 @@ function displayFolderLabel(folder) {
 }
 
 function createFolder() {
+  if (!folderManagementEnabled()) return;
   let name = (window.prompt(t("folderNamePrompt"), "") || "").trim();
   if (!name) return;
   if (getFolderNames().includes(name)) {
@@ -1495,6 +1524,7 @@ function createFolder() {
 }
 
 function renameFolder(oldName) {
+  if (!folderManagementEnabled()) return;
   if (oldName === INBOX_FOLDER) {
     showToast(t("inboxLockedRename"));
     return;
@@ -1526,6 +1556,7 @@ function renameFolder(oldName) {
 }
 
 function deleteFolder(name) {
+  if (!folderManagementEnabled()) return;
   if (name === INBOX_FOLDER) {
     showToast(t("inboxLockedDelete"));
     return;
@@ -1553,6 +1584,7 @@ function deleteFolder(name) {
 }
 
 function showFolderContextMenu(x, y) {
+  if (!folderManagementEnabled()) return;
   const menu = elements.folderContextMenu;
   if (!menu) return;
   menu.querySelector('[data-action="new-note"]').textContent = t("folderNewNote");
@@ -1949,6 +1981,25 @@ function sortedNotes() {
 }
 
 function renderFolders() {
+  if (!folderManagementEnabled()) {
+    if (elements.folderSectionCount) elements.folderSectionCount.textContent = "1";
+    elements.folderList.innerHTML = `
+      <div class="folder-row active" data-folder="__all">
+        <button class="folder-item" type="button" data-folder="__all">
+          <span class="folder-dot" aria-hidden="true"></span>
+          <span class="folder-name">${escapeHtml(displayFolderLabel(INBOX_FOLDER))}</span>
+          <strong>${regularNotes().length}</strong>
+        </button>
+      </div>
+    `;
+    elements.folderList.querySelectorAll(".folder-item").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.selectedFolder = "";
+        renderLists();
+      });
+    });
+    return;
+  }
   const counts = new Map();
   regularNotes().forEach((note) => {
     counts.set(note.folder, (counts.get(note.folder) || 0) + 1);
@@ -1989,6 +2040,9 @@ function renderFolders() {
     .join("");
 
   elements.folderList.innerHTML = html;
+  if (elements.folderSectionCount) {
+    elements.folderSectionCount.textContent = String(folderItems.length);
+  }
 
   elements.folderList.querySelectorAll(".folder-item").forEach((button) => {
     button.addEventListener("click", () => {
@@ -2136,13 +2190,13 @@ function openNewNoteDialog() {
   elements.newNoteFolderSelect.innerHTML = folders.length
     ? folders.map(f => `<option value="${escapeAttribute(f)}" ${f === defaultFolder ? "selected" : ""}>${escapeHtml(displayFolderLabel(f))}</option>`).join("")
     : `<option value="${INBOX_FOLDER}">${INBOX_FOLDER}</option>`;
+  elements.newNoteFolderSelect.disabled = !folderManagementEnabled();
   elements.newNoteDialog.showModal();
 }
 
 function createNote(templateName, folder) {
   const note = createNoteObject(templateName);
-  if (folder) note.folder = folder;
-  else if (state.selectedFolder) note.folder = state.selectedFolder;
+  note.folder = folderManagementEnabled() ? normalizeFolderName(folder || state.selectedFolder || note.folder) : INBOX_FOLDER;
   state.notes.unshift(note);
   state.activeId = note.id;
   persistAndRender("已创建笔记");
@@ -2157,11 +2211,12 @@ function createNoteInFolder(folder) {
 function createNoteObject(templateName) {
   const template = templates[templateName] || templates.txt;
   const now = Date.now();
+  const isBaseTemplate = templateName === "txt" || templateName === "md" || templateName === "blank";
   return normalizeNote({
     id: createId(),
     title: template.title,
     mode: template.mode,
-    folder: template.folder,
+    folder: isBaseTemplate ? INBOX_FOLDER : normalizeFolderName(template.folder),
     body: template.body,
     pinned: false,
     favorite: false,
@@ -2237,6 +2292,10 @@ function toggleSidebar() {
   applySidebarCollapsed(state.sidebarCollapsed);
 }
 
+function toggleFolderSection() {
+  applyFolderSectionCollapsed(!state.folderSectionCollapsed);
+}
+
 function applySidebarCollapsed(collapsed) {
   const isCollapsed = Boolean(collapsed);
   state.sidebarCollapsed = isCollapsed;
@@ -2248,6 +2307,20 @@ function applySidebarCollapsed(collapsed) {
     const label = isCollapsed ? t("expandSidebar") : t("collapseSidebar");
     elements.sidebarToggleButton.title = label;
     elements.sidebarToggleButton.setAttribute("aria-label", label);
+  }
+}
+
+function applyFolderSectionCollapsed(collapsed) {
+  const isCollapsed = Boolean(collapsed);
+  state.folderSectionCollapsed = isCollapsed;
+  if (elements.folderSection) {
+    elements.folderSection.open = !isCollapsed;
+  }
+  localStorage.setItem(storageKeys.folderSectionCollapsed, isCollapsed ? "1" : "0");
+  const mark = elements.folderSectionSummary?.querySelector(".summary-mark");
+  if (mark) mark.textContent = isCollapsed ? "▶" : "▼";
+  if (elements.folderSectionSummary) {
+    elements.folderSectionSummary.setAttribute("aria-expanded", String(!isCollapsed));
   }
 }
 
@@ -2706,8 +2779,21 @@ function clearSyncToken() {
   localStorage.removeItem(storageKeys.lastSyncAt);
   localStorage.setItem(storageKeys.autoSync, "0");
   elements.autoSyncToggle.checked = false;
+  applyFolderSectionVisibility();
+  renderFolderDatalist();
+  renderLists();
   renderSyncMeta();
   showSyncMessage(t("tokenCleared"));
+}
+
+function applyFolderSectionVisibility() {
+  const enabled = folderManagementEnabled();
+  if (elements.folderSection) {
+    elements.folderSection.hidden = false;
+  }
+  if (elements.folderAddButton) elements.folderAddButton.hidden = !enabled;
+  if (elements.folderExportAllButton) elements.folderExportAllButton.hidden = !enabled;
+  state.selectedFolder = enabled ? state.selectedFolder : "";
 }
 
 function getSyncToken() {
