@@ -132,6 +132,8 @@ const i18n = {
     syncPendingShort: "待同步",
     saving: "保存中...",
     savedLocal: "已保存本地",
+    syncRefreshing: "正在从云端刷新并覆盖本地...",
+    syncRefreshedAt: "已从云端刷新 {time}",
     syncPushedAt: "已同步到云端 {time}",
     syncPulledAt: "已从云端更新 {time}",
     syncCheckedAt: "已检查云端 {time}",
@@ -295,6 +297,8 @@ const i18n = {
     syncPendingShort: "Pending sync",
     saving: "Saving...",
     savedLocal: "Saved locally",
+    syncRefreshing: "Refreshing from cloud and overwriting local...",
+    syncRefreshedAt: "Refreshed from cloud {time}",
     syncPushedAt: "Synced to cloud {time}",
     syncPulledAt: "Updated from cloud {time}",
     syncCheckedAt: "Checked cloud {time}",
@@ -576,7 +580,7 @@ const state = {
   syncStartupTimer: null,
   syncPollTimer: null,
   syncInFlight: false,
-  syncQueued: null,
+  syncQueue: [],
   syncAction: "",
   lastCloudPullAt: 0,
   dirtyNoteIds: new Set(),
@@ -652,6 +656,7 @@ const elements = {
   sidebarToggleButton: $("#sidebarToggleButton"),
   sidebarQuickNewButton: $("#sidebarQuickNewButton"),
   newNoteButton: $("#newNoteButton"),
+  syncRefreshButton: $("#syncRefreshButton"),
   topSyncButton: $("#topSyncButton"),
   topbarMenu: $(".topbar-menu"),
   searchInput: $("#searchInput"),
@@ -993,6 +998,9 @@ function bindEvents() {
 
   elements.pushCloudButton.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "manual-push" }));
   elements.pullCloudButton.addEventListener("click", () => syncCloud({ manual: true, pullOnly: true, reason: "manual-pull" }));
+  elements.syncRefreshButton?.addEventListener("click", () => {
+    forcePullCloud();
+  });
   elements.logoutCloudButton.addEventListener("click", clearSyncToken);
   elements.syncTokenInput.addEventListener("input", () => {
     const token = elements.syncTokenInput.value.trim();
@@ -2859,6 +2867,55 @@ async function pullCloud() {
   return syncCloud({ manual: true, pullOnly: true, reason: "pull" });
 }
 
+async function forcePullCloud() {
+  const token = getSyncToken();
+  if (!token) {
+    showSyncMessage("请先填写同步 Token。");
+    return false;
+  }
+  if (state.saveTimer) {
+    clearTimeout(state.saveTimer);
+    state.saveTimer = null;
+  }
+  state.savePendingNoteId = null;
+  state.dirtyNoteIds.clear();
+  writeSyncMeta({ pending: false, dirtyNoteIds: [], lastError: "" });
+  if (!elements.autoSyncToggle.checked && !state.syncInFlight) {
+    clearTimeout(state.autoSyncTimer);
+  }
+  localStorage.setItem(storageKeys.syncToken, token);
+  state.syncInFlight = true;
+  state.syncAction = "pulling";
+  renderSyncMeta();
+  showSyncMessage(t("syncRefreshing"));
+  try {
+    const remotePayload = await fetchCloudState(token);
+    const remoteNotes = Array.isArray(remotePayload.notes) ? remotePayload.notes.map(normalizeNote) : [];
+    const remoteFolders = Array.isArray(remotePayload.folders) ? remotePayload.folders : null;
+    replaceNotesFromCloud(remoteNotes, { keepActiveId: true, folders: remoteFolders });
+    const now = Date.now();
+    clearSyncPending(Number(remotePayload.updatedAt) || now, { lastPullAt: now, lastCheckedAt: now });
+    showSyncMessage(t("syncRefreshedAt").replace("{time}", formatTime(now)));
+    showToast(t("syncRefreshedAt").replace("{time}", formatTime(now)));
+    return true;
+  } catch (error) {
+    const message = `${t("syncFailed")}：${cloudErrorText(error)}`;
+    writeSyncMeta({ lastError: message });
+    renderSyncMeta();
+    showSyncMessage(message);
+    showToast(message);
+    return false;
+  } finally {
+    state.syncInFlight = false;
+    state.syncAction = "";
+    renderSyncMeta();
+    if (state.syncQueue.length) {
+      const queued = state.syncQueue.shift();
+      window.setTimeout(() => syncCloud(queued), 120);
+    }
+  }
+}
+
 function readSyncMeta() {
   try {
     return JSON.parse(localStorage.getItem(storageKeys.syncMeta) || "{}") || {};
@@ -2973,7 +3030,7 @@ async function syncCloud(options = {}) {
   }
   if (!manual && !elements.autoSyncToggle.checked) return;
   if (state.syncInFlight) {
-    state.syncQueued = options;
+    state.syncQueue.push(options);
     return;
   }
 
@@ -3060,9 +3117,8 @@ async function syncCloud(options = {}) {
     state.syncInFlight = false;
     state.syncAction = "";
     renderSyncMeta();
-    if (state.syncQueued) {
-      const queued = state.syncQueued;
-      state.syncQueued = null;
+    if (state.syncQueue.length) {
+      const queued = state.syncQueue.shift();
       window.setTimeout(() => syncCloud(queued), 120);
     }
   }
@@ -3170,6 +3226,10 @@ function applyLanguage(language, initial = false) {
   if (elements.bodyInput) elements.bodyInput.placeholder = t("editorPlaceholder");
   if (elements.sidebarQuickNewButton) elements.sidebarQuickNewButton.title = t("newNote");
   if (elements.sidebarQuickNewButton) elements.sidebarQuickNewButton.setAttribute("aria-label", t("newNote"));
+  if (elements.syncRefreshButton) {
+    elements.syncRefreshButton.title = next === "en" ? "Refresh and overwrite local" : "从云端刷新并覆盖本地";
+    elements.syncRefreshButton.setAttribute("aria-label", next === "en" ? "Refresh and overwrite local" : "从云端刷新并覆盖本地");
+  }
   if (elements.topSyncButton) elements.topSyncButton.textContent = t("sync");
   const topbarMenuButton = document.querySelector(".topbar-menu-button");
   if (topbarMenuButton) {

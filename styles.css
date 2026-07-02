@@ -158,6 +158,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 
 .sidebar-actions, .topbar-actions, .sync-grid, .utility-grid { gap: 8px; }
 .sidebar-actions > * { min-width: 0; }
+.sidebar-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 .primary-button, .ghost-button, .danger-button, .icon-button, .text-button, .quick-chip, .toolbar button, .toolbar-menu > summary, .mode-button, .flag-button, .filter-item, .folder-item, .outline-item, .menu-item {
   min-height: 34px; border-radius: var(--radius); transition: transform 150ms ease, border-color 150ms ease, background 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
@@ -175,6 +176,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 }
 .danger-button { color: var(--red); background: #fff7f7; }
 .icon-button { display: inline-grid; width: 36px; min-width: 36px; place-items: center; font-size: 17px; line-height: 1; }
+.sync-refresh-button { width: 36px; min-width: 36px; padding: 0; font-size: 16px; font-weight: 800; }
 .icon-toggle-button { font-size: 15px; }
 .toggle-icon { display: inline-block; transition: transform 180ms ease; }
 .topbar-new-button { font-size: 20px; font-weight: 700; }

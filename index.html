@@ -35,6 +35,7 @@
             <span aria-hidden="true">+</span>
             <span>新建笔记</span>
           </button>
+          <button class="icon-button sync-refresh-button" id="syncRefreshButton" type="button" title="刷新并覆盖本地" aria-label="刷新并覆盖本地">↻</button>
         </div>
 
         <div class="search-box" role="search">
@@ -357,7 +358,7 @@
     <input id="importFileInput" type="file" accept=".json,.md,.txt" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="./script.js?v=15"></script>
+    <script src="./script.js?v=16"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
