@@ -1739,15 +1739,17 @@ function showFolderContextMenu(x, y) {
   if (!folderManagementEnabled()) return;
   const menu = elements.folderContextMenu;
   if (!menu) return;
-  menu.querySelector('[data-action="new-note"]').textContent = t("folderNewNote");
-  menu.querySelector('[data-action="export"]').textContent = t("exportFolder");
-  menu.querySelector('[data-action="rename"]').textContent = t("renameFolder");
-  menu.querySelector('[data-action="delete"]').textContent = t("delete");
+  const newNoteBtn = menu.querySelector('[data-action="new-note"]');
+  const exportBtn = menu.querySelector('[data-action="export"]');
+  const renameBtn = menu.querySelector('[data-action="rename"]');
+  const deleteBtn = menu.querySelector('[data-action="delete"]');
+  if (newNoteBtn) newNoteBtn.textContent = t("folderNewNote");
+  if (exportBtn) exportBtn.textContent = t("exportFolder");
+  if (renameBtn) renameBtn.textContent = t("renameFolder");
+  if (deleteBtn) deleteBtn.textContent = t("delete");
   menu.hidden = false;
   menu.style.left = `${Math.min(x, window.innerWidth - 160)}px`;
   menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`;
-  const renameBtn = menu.querySelector('[data-action="rename"]');
-  const deleteBtn = menu.querySelector('[data-action="delete"]');
   const isInbox = canonicalFolderName(state.contextMenuFolder) === INBOX_FOLDER;
   if (renameBtn) {
     renameBtn.disabled = isInbox;
