@@ -46,6 +46,13 @@ Variable name: NANSTAR_NOTES_DB
 D1 database id: a636c1f4-d4db-4122-91a8-167be59a3e82
 ```
 
+Add an R2 bucket binding for the file-transfer module:
+
+```txt
+Variable name: NANSTAR_NOTE_FILES
+R2 bucket: nanstar-note-files
+```
+
 Add an environment variable:
 
 ```txt
@@ -53,6 +60,23 @@ NOTE_SYNC_TOKEN=choose-a-long-private-token
 ```
 
 After deployment, open the sync dialog in NanStar Note and enter the same token.
+
+## File transfer module
+
+The file-transfer assistant is separate from TXT/MD notes. It stores file bytes in Cloudflare R2 and stores only file metadata in D1. Current limits are 5 files, 20 MB per file, and 50 MB total.
+
+The Pages Functions route is `GET/POST/DELETE /api/files`. It uses the same `NOTE_SYNC_TOKEN` bearer token as note sync and creates this D1 table automatically:
+
+```sql
+CREATE TABLE IF NOT EXISTS note_transfer_files (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  r2_key TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+```
 
 ## Sync model
 

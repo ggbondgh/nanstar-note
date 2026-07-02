@@ -142,8 +142,32 @@ const i18n = {
     syncBlockedDirty: "云端有更新，本地正在编辑，已保留本地",
     syncNoChange: "云端暂无更新",
     transferAssistantTitle: "文件传输助手",
-    transferAssistantBody: "# 文件传输助手\n\n这里可以临时放文字、路径、截图和小图片。直接在编辑区粘贴图片即可插入，所有设备会跟随笔记同步。\n\n",
-    transferAssistantExcerpt: "临时传文字、路径、截图和小图片",
+    transferAssistantBody: "",
+    transferAssistantExcerpt: "跨设备临时传文件",
+    transferPanelTitle: "文件传输",
+    transferPanelMeta: "最多 {count} 个文件，单文件 {fileSize}，总量 {totalSize}。",
+    transferDropTitle: "拖放文件到这里，或点击上传。",
+    transferDropHint: "文件会保存到 Cloudflare R2，不占用笔记正文空间。",
+    transferNoToken: "配置同步 Token 后可使用文件传输。",
+    transferEmpty: "暂无文件。",
+    transferLoading: "正在读取文件列表...",
+    transferUpload: "上传文件",
+    transferRefresh: "刷新",
+    transferDownload: "下载",
+    transferCopyImage: "复制图片",
+    transferDelete: "删除",
+    transferUploading: "正在上传...",
+    transferUploaded: "文件已上传",
+    transferDeleted: "文件已删除",
+    transferTooLarge: "文件太大，单文件上限 {size}。",
+    transferCountLimit: "最多保存 {count} 个文件。",
+    transferTotalLimit: "文件总量不能超过 {size}。",
+    transferMissingBinding: "Cloudflare R2 绑定 NANSTAR_NOTE_FILES 还未生效，请重新部署。",
+    transferFailed: "文件传输失败",
+    transferCopiedImage: "图片已复制",
+    transferBadToken: "Token 不正确。",
+    transferApiUnavailable: "文件接口不可用，部署到 Cloudflare 后才能使用。",
+    transferClipboardDenied: "当前浏览器不允许复制图片。",
     imageTooLarge: "图片太大，已跳过。建议单张图片小于 900KB。",
     imagePasteFailed: "图片粘贴失败",
     imagePasted: "已插入图片",
@@ -308,8 +332,32 @@ const i18n = {
     syncBlockedDirty: "Cloud changed, local edit kept",
     syncNoChange: "No cloud changes",
     transferAssistantTitle: "File Transfer",
-    transferAssistantBody: "# File Transfer\n\nDrop temporary text, paths, screenshots, and small images here. Paste an image in the editor to insert it, and it will sync with this note across devices.\n\n",
-    transferAssistantExcerpt: "Temporary text, paths, screenshots, and small images",
+    transferAssistantBody: "",
+    transferAssistantExcerpt: "Temporary cross-device files",
+    transferPanelTitle: "File Transfer",
+    transferPanelMeta: "Up to {count} files, {fileSize} each, {totalSize} total.",
+    transferDropTitle: "Drop files here, or click upload.",
+    transferDropHint: "Files are stored in Cloudflare R2, not inside note content.",
+    transferNoToken: "Configure the sync token to use file transfer.",
+    transferEmpty: "No files yet.",
+    transferLoading: "Loading files...",
+    transferUpload: "Upload File",
+    transferRefresh: "Refresh",
+    transferDownload: "Download",
+    transferCopyImage: "Copy Image",
+    transferDelete: "Delete",
+    transferUploading: "Uploading...",
+    transferUploaded: "File uploaded",
+    transferDeleted: "File deleted",
+    transferTooLarge: "File is too large. Limit: {size}.",
+    transferCountLimit: "Keep at most {count} files.",
+    transferTotalLimit: "Total files cannot exceed {size}.",
+    transferMissingBinding: "Cloudflare R2 binding NANSTAR_NOTE_FILES is not active. Redeploy the Pages project.",
+    transferFailed: "File transfer failed",
+    transferCopiedImage: "Image copied",
+    transferBadToken: "Token is incorrect.",
+    transferApiUnavailable: "File API is unavailable. It works after Cloudflare deployment.",
+    transferClipboardDenied: "This browser does not allow copying images.",
     imageTooLarge: "Image is too large and was skipped. Keep each image under 900KB.",
     imagePasteFailed: "Failed to paste image",
     imagePasted: "Image inserted",
@@ -593,6 +641,12 @@ const state = {
   crdtSeedIsDefault: false,
   crdtPendingUpdates: [],
   noteInputComposing: false,
+  transferFiles: [],
+  transferUploads: [],
+  transferLoading: false,
+  transferError: "",
+  transferLastFetchAt: 0,
+  transferLimits: null,
   lastCloudPullAt: 0,
   dirtyNoteIds: new Set(),
   contextMenuFolder: null,
@@ -626,6 +680,9 @@ const DEFAULT_FOLDER_ALIASES = new Set([
 ]);
 const MAX_PASTE_IMAGE_BYTES = 900 * 1024;
 const MAX_TRANSFER_IMAGES = 4;
+const TRANSFER_MAX_FILES = 5;
+const TRANSFER_MAX_FILE_BYTES = 20 * 1024 * 1024;
+const TRANSFER_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 
 function folderManagementEnabled() {
   return Boolean(getSyncToken());
@@ -724,6 +781,16 @@ const elements = {
   previewContent: $("#previewContent"),
   previewFocusButton: $("#previewFocusButton"),
   modeHint: $("#modeHint"),
+  transferPanel: $("#transferPanel"),
+  transferPanelTitle: $("#transferPanelTitle"),
+  transferPanelMeta: $("#transferPanelMeta"),
+  transferDropzone: $("#transferDropzone"),
+  transferDropTitle: $("#transferDropTitle"),
+  transferDropHint: $("#transferDropHint"),
+  transferRefreshButton: $("#transferRefreshButton"),
+  transferUploadButton: $("#transferUploadButton"),
+  transferFileInput: $("#transferFileInput"),
+  transferFileList: $("#transferFileList"),
   saveStatus: $("#saveStatus"),
   syncState: $("#syncState"),
   wordCount: $("#wordCount"),
@@ -971,6 +1038,7 @@ function bindEvents() {
   [elements.importButton, elements.exportButton, elements.shareButton, elements.deleteButton].forEach((button) => {
     button?.addEventListener("click", () => elements.topbarMenu?.removeAttribute("open"));
   });
+  bindTransferPanelEvents();
 
   elements.previewContent.addEventListener("click", (event) => {
     const button = event.target.closest(".code-copy");
@@ -1019,9 +1087,11 @@ function bindEvents() {
     const token = elements.syncTokenInput.value.trim();
     if (token) localStorage.setItem(storageKeys.syncToken, token);
     else localStorage.removeItem(storageKeys.syncToken);
+    resetTransferState();
     applyFolderSectionVisibility();
     renderFolderDatalist();
     renderLists();
+    renderTransferPanel();
     renderSyncMeta();
     startCloudSync();
   });
@@ -1104,6 +1174,336 @@ function updateDraftInputUi() {
   updateCurrentLineIndicator();
   updateLineNumbers();
   syncEditorSearchState();
+}
+
+function bindTransferPanelEvents() {
+  elements.transferUploadButton?.addEventListener("click", () => {
+    if (!transferEnabled()) {
+      showToast(t("transferNoToken"));
+      return;
+    }
+    elements.transferFileInput?.click();
+  });
+  elements.transferRefreshButton?.addEventListener("click", () => fetchTransferFiles({ manual: true }));
+  elements.transferFileInput?.addEventListener("change", () => {
+    uploadTransferFiles(Array.from(elements.transferFileInput.files || []));
+    elements.transferFileInput.value = "";
+  });
+  elements.transferDropzone?.addEventListener("click", () => {
+    if (!transferEnabled()) {
+      showToast(t("transferNoToken"));
+      return;
+    }
+    elements.transferFileInput?.click();
+  });
+  elements.transferDropzone?.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    elements.transferDropzone.classList.add("dragging");
+  });
+  elements.transferDropzone?.addEventListener("dragleave", () => {
+    elements.transferDropzone.classList.remove("dragging");
+  });
+  elements.transferDropzone?.addEventListener("drop", (event) => {
+    event.preventDefault();
+    elements.transferDropzone.classList.remove("dragging");
+    uploadTransferFiles(Array.from(event.dataTransfer?.files || []));
+  });
+  elements.transferFileList?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-transfer-action]");
+    if (!button) return;
+    const id = button.dataset.id || "";
+    const action = button.dataset.transferAction;
+    if (action === "download") downloadTransferFile(id);
+    if (action === "copy-image") copyTransferImage(id);
+    if (action === "delete") deleteTransferFile(id);
+  });
+}
+
+function transferEnabled() {
+  return Boolean(getSyncToken());
+}
+
+function resetTransferState() {
+  state.transferFiles = [];
+  state.transferUploads = [];
+  state.transferLoading = false;
+  state.transferError = "";
+  state.transferLastFetchAt = 0;
+  state.transferLimits = null;
+}
+
+function transferLimits() {
+  const limits = state.transferLimits || {};
+  return {
+    maxFiles: Number(limits.maxFiles) || TRANSFER_MAX_FILES,
+    maxFileBytes: Number(limits.maxFileBytes) || TRANSFER_MAX_FILE_BYTES,
+    maxTotalBytes: Number(limits.maxTotalBytes) || TRANSFER_MAX_TOTAL_BYTES
+  };
+}
+
+function renderTransferPanel() {
+  if (!elements.transferPanel) return;
+  const activeTransfer = isTransferAssistant(activeNote());
+  elements.transferPanel.hidden = !activeTransfer;
+  if (!activeTransfer) return;
+
+  const limits = transferLimits();
+  if (elements.transferPanelTitle) elements.transferPanelTitle.textContent = t("transferPanelTitle");
+  if (elements.transferPanelMeta) {
+    elements.transferPanelMeta.textContent = t("transferPanelMeta")
+      .replace("{count}", String(limits.maxFiles))
+      .replace("{fileSize}", formatBytes(limits.maxFileBytes))
+      .replace("{totalSize}", formatBytes(limits.maxTotalBytes));
+  }
+  if (elements.transferDropTitle) elements.transferDropTitle.textContent = t("transferDropTitle");
+  if (elements.transferDropHint) elements.transferDropHint.textContent = t("transferDropHint");
+  if (elements.transferUploadButton) elements.transferUploadButton.textContent = t("transferUpload");
+  if (elements.transferRefreshButton) elements.transferRefreshButton.textContent = t("transferRefresh");
+
+  const enabled = transferEnabled();
+  const uploading = state.transferUploads.some((item) => item.status === "uploading");
+  if (elements.transferUploadButton) elements.transferUploadButton.disabled = !enabled || uploading;
+  if (elements.transferRefreshButton) elements.transferRefreshButton.disabled = !enabled || state.transferLoading;
+  elements.transferDropzone?.classList.toggle("disabled", !enabled);
+
+  if (!enabled) {
+    elements.transferFileList.innerHTML = `<div class="transfer-empty">${t("transferNoToken")}</div>`;
+    return;
+  }
+
+  if (!state.transferLastFetchAt && !state.transferLoading) {
+    fetchTransferFiles({ silent: true });
+  }
+
+  const uploadRows = state.transferUploads.map(renderTransferUploadRow);
+  const fileRows = state.transferFiles.map(renderTransferFileRow);
+  const rows = [...uploadRows, ...fileRows];
+
+  if (state.transferLoading && !rows.length) {
+    elements.transferFileList.innerHTML = `<div class="transfer-empty">${t("transferLoading")}</div>`;
+    return;
+  }
+  if (state.transferError && !rows.length) {
+    elements.transferFileList.innerHTML = `<div class="transfer-error">${escapeHtml(state.transferError)}</div>`;
+    return;
+  }
+  elements.transferFileList.innerHTML = rows.length
+    ? rows.join("")
+    : `<div class="transfer-empty">${t("transferEmpty")}</div>`;
+}
+
+function renderTransferUploadRow(upload) {
+  const failed = upload.status === "error";
+  const status = failed ? upload.error || t("transferFailed") : t("transferUploading");
+  return `
+    <div class="transfer-file ${failed ? "failed" : "uploading"}" ${failed ? "" : 'aria-busy="true"'}>
+      <div>
+        <div class="transfer-file-name">${escapeHtml(upload.name)}</div>
+        <div class="transfer-file-meta">${formatBytes(upload.size)} · ${escapeHtml(status)}</div>
+      </div>
+      <div class="transfer-upload-status">${failed ? t("transferFailed") : t("transferUploading")}</div>
+    </div>
+  `;
+}
+
+function renderTransferFileRow(file) {
+  const image = isTransferImage(file);
+  return `
+    <div class="transfer-file" data-file-id="${escapeAttribute(file.id)}">
+      <div>
+        <div class="transfer-file-name">${escapeHtml(file.name)}</div>
+        <div class="transfer-file-meta">${escapeHtml(file.mimeType || "file")} · ${formatBytes(file.size)} · ${formatShortDate(file.createdAt)}</div>
+      </div>
+      <div class="transfer-file-actions">
+        <button class="ghost-button" type="button" data-transfer-action="download" data-id="${escapeAttribute(file.id)}">${t("transferDownload")}</button>
+        ${image ? `<button class="ghost-button" type="button" data-transfer-action="copy-image" data-id="${escapeAttribute(file.id)}">${t("transferCopyImage")}</button>` : ""}
+        <button class="danger-button" type="button" data-transfer-action="delete" data-id="${escapeAttribute(file.id)}">${t("transferDelete")}</button>
+      </div>
+    </div>
+  `;
+}
+
+async function fetchTransferFiles(options = {}) {
+  if (!transferEnabled()) {
+    state.transferFiles = [];
+    state.transferError = "";
+    renderTransferPanel();
+    return;
+  }
+  state.transferLoading = true;
+  state.transferError = "";
+  state.transferLastFetchAt = Date.now();
+  renderTransferPanel();
+  try {
+    const payload = await fetchTransferJson("./api/files");
+    state.transferFiles = Array.isArray(payload.files) ? payload.files.map(normalizeTransferFile) : [];
+    state.transferLimits = payload.limits || state.transferLimits;
+    state.transferLastFetchAt = Date.now();
+  } catch (error) {
+    state.transferError = transferErrorText(error);
+    if (options.manual) showToast(state.transferError);
+  } finally {
+    state.transferLoading = false;
+    renderTransferPanel();
+  }
+}
+
+async function uploadTransferFiles(files) {
+  if (!files.length) return;
+  if (!transferEnabled()) {
+    showToast(t("transferNoToken"));
+    return;
+  }
+  const limits = transferLimits();
+  let count = state.transferFiles.length + state.transferUploads.filter((item) => item.status !== "error").length;
+  let total = state.transferFiles.reduce((sum, file) => sum + Number(file.size || 0), 0)
+    + state.transferUploads.filter((item) => item.status !== "error").reduce((sum, file) => sum + Number(file.size || 0), 0);
+
+  for (const file of files) {
+    if (count >= limits.maxFiles) {
+      showToast(t("transferCountLimit").replace("{count}", String(limits.maxFiles)));
+      break;
+    }
+    if (file.size > limits.maxFileBytes) {
+      showToast(t("transferTooLarge").replace("{size}", formatBytes(limits.maxFileBytes)));
+      continue;
+    }
+    if (total + file.size > limits.maxTotalBytes) {
+      showToast(t("transferTotalLimit").replace("{size}", formatBytes(limits.maxTotalBytes)));
+      continue;
+    }
+    count += 1;
+    total += file.size;
+    uploadSingleTransferFile(file);
+  }
+}
+
+async function uploadSingleTransferFile(file) {
+  const upload = {
+    id: createId(),
+    name: file.name || "file",
+    size: file.size || 0,
+    status: "uploading",
+    error: ""
+  };
+  state.transferUploads.unshift(upload);
+  renderTransferPanel();
+  try {
+    const formData = new FormData();
+    formData.append("file", file, file.name || "file");
+    const result = await fetchTransferJson("./api/files", {
+      method: "POST",
+      body: formData
+    });
+    state.transferUploads = state.transferUploads.filter((item) => item.id !== upload.id);
+    if (result.file) {
+      state.transferFiles = [normalizeTransferFile(result.file), ...state.transferFiles.filter((item) => item.id !== result.file.id)];
+    }
+    state.transferLastFetchAt = Date.now();
+    showToast(t("transferUploaded"));
+  } catch (error) {
+    upload.status = "error";
+    upload.error = transferErrorText(error);
+    showToast(upload.error);
+  } finally {
+    renderTransferPanel();
+  }
+}
+
+async function downloadTransferFile(id) {
+  const file = state.transferFiles.find((item) => item.id === id);
+  if (!file) return;
+  try {
+    const blob = await fetchTransferBlob(`./api/files?id=${encodeURIComponent(id)}`);
+    downloadBlob(file.name, blob);
+  } catch (error) {
+    showToast(transferErrorText(error));
+  }
+}
+
+async function copyTransferImage(id) {
+  const file = state.transferFiles.find((item) => item.id === id);
+  if (!file || !isTransferImage(file)) return;
+  try {
+    const blob = await fetchTransferBlob(`./api/files?id=${encodeURIComponent(id)}`);
+    if (!navigator.clipboard?.write || !globalThis.ClipboardItem) throw new Error("clipboard");
+    await navigator.clipboard.write([new ClipboardItem({ [blob.type || file.mimeType || "image/png"]: blob })]);
+    showToast(t("transferCopiedImage"));
+  } catch (error) {
+    showToast(transferErrorText(error));
+  }
+}
+
+async function deleteTransferFile(id) {
+  const file = state.transferFiles.find((item) => item.id === id);
+  if (!file) return;
+  if (!window.confirm(`${t("transferDelete")}「${file.name}」？`)) return;
+  try {
+    await fetchTransferJson(`./api/files?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    state.transferFiles = state.transferFiles.filter((item) => item.id !== id);
+    showToast(t("transferDeleted"));
+    renderTransferPanel();
+  } catch (error) {
+    showToast(transferErrorText(error));
+  }
+}
+
+async function fetchTransferJson(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    cache: "no-store",
+    headers: {
+      ...(options.headers || {}),
+      authorization: `Bearer ${getSyncToken()}`
+    }
+  });
+  const contentType = response.headers.get("content-type") || "";
+  const text = await response.text();
+  if (!response.ok) throw new Error(text);
+  if (!contentType.includes("application/json")) throw new Error("Not found");
+  return text ? JSON.parse(text) : {};
+}
+
+async function fetchTransferBlob(url) {
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      authorization: `Bearer ${getSyncToken()}`
+    }
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return response.blob();
+}
+
+function normalizeTransferFile(file) {
+  return {
+    id: String(file.id || ""),
+    name: String(file.name || "file"),
+    mimeType: String(file.mimeType || "application/octet-stream"),
+    size: Number(file.size) || 0,
+    createdAt: Number(file.createdAt) || Date.now()
+  };
+}
+
+function isTransferImage(file) {
+  return /^image\//i.test(file?.mimeType || "");
+}
+
+function transferErrorText(error) {
+  const raw = String(error?.message || error || "");
+  let text = raw;
+  try {
+    const parsed = JSON.parse(raw);
+    text = parsed.error || raw;
+  } catch {}
+  if (text.includes("Missing R2") || text.includes("NANSTAR_NOTE_FILES")) return t("transferMissingBinding");
+  if (text.includes("Unauthorized")) return t("transferBadToken");
+  if (text.includes("Too many files")) return t("transferCountLimit").replace("{count}", String(transferLimits().maxFiles));
+  if (text.includes("Total file size")) return t("transferTotalLimit").replace("{size}", formatBytes(transferLimits().maxTotalBytes));
+  if (text.includes("File is too large")) return t("transferTooLarge").replace("{size}", formatBytes(transferLimits().maxFileBytes));
+  if (text.includes("Failed to fetch") || text.includes("Not found")) return t("transferApiUnavailable");
+  if (text.includes("clipboard")) return t("transferClipboardDenied");
+  return `${t("transferFailed")}：${text.slice(0, 120)}`;
 }
 
 function loadNotes() {
@@ -1214,6 +1614,7 @@ function withSystemNotes(notes) {
     transfer.favorite = false;
     transfer.deletedAt = 0;
     transfer.folder = INBOX_FOLDER;
+    transfer.body = "";
     transfer.previewVisible = true;
     transfer.editorSectionOpen = true;
     if (!transfer.title || transfer.title === "File Transfer" || transfer.title === "文件传输助手") {
@@ -1722,6 +2123,17 @@ function renderAll() {
 function renderEditor() {
   const note = activeNote();
   if (!note) return;
+  const transferMode = isTransferAssistant(note);
+  elements.editorCard.classList.toggle("transfer-mode", transferMode);
+  if (elements.transferPanel) elements.transferPanel.hidden = !transferMode;
+  if (transferMode) {
+    state.previewFocus = false;
+    document.body.classList.remove("preview-focus-mode");
+    document.body.dataset.noteMode = "transfer";
+    elements.editorCard.dataset.mode = "transfer";
+    renderTransferPanel();
+    return;
+  }
   if (note.mode !== "md") state.previewFocus = false;
 
   elements.titleInput.value = note.title;
@@ -1795,6 +2207,11 @@ function renderModeState() {
 function renderPreview() {
   const note = activeNote();
   const body = note?.body || "";
+  if (note && isTransferAssistant(note)) {
+    if (elements.wordCount) elements.wordCount.textContent = "";
+    elements.previewContent.innerHTML = "";
+    return;
+  }
   if (elements.wordCount) elements.wordCount.textContent = `${countWords(body)} ${t("characters")} / ${countLines(body)} ${t("lines")}`;
 
   if (!note || note.mode !== "md") {
@@ -2489,16 +2906,17 @@ function renderNoteList() {
 
   elements.noteList.innerHTML = notes
     .map((note) => {
+      const transfer = isTransferAssistant(note);
       const mode = note.mode === "md" ? "MD" : "TXT";
-      const flags = isTransferAssistant(note) ? "" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
-      const title = isTransferAssistant(note) ? t("transferAssistantTitle") : note.title;
-      const body = isTransferAssistant(note) ? "" : excerpt(note.body);
+      const flags = transfer ? "" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
+      const title = transfer ? t("transferAssistantTitle") : note.title;
+      const body = transfer ? "" : excerpt(note.body);
       const classes = ["note-item"];
       const rowClasses = ["note-row"];
-      const selectable = !isTransferAssistant(note);
+      const selectable = !transfer;
       const selected = selectable && state.selectedNoteIds.has(note.id);
       if (note.id === state.activeId) classes.push("active");
-      if (isTransferAssistant(note)) classes.push("transfer-assistant");
+      if (transfer) classes.push("transfer-assistant");
       if (state.selectionMode) rowClasses.push("selection-mode");
       if (selected) rowClasses.push("selected");
       return `
@@ -2514,11 +2932,11 @@ function renderNoteList() {
               <h3>${escapeHtml(title)}</h3>
               <span class="note-flags-text">${flags}</span>
             </span>
-            ${isTransferAssistant(note) ? "" : `<p>${escapeHtml(body)}</p>`}
-            <span class="note-item-meta">
+            ${transfer ? "" : `<p>${escapeHtml(body)}</p>`}
+            ${transfer ? "" : `<span class="note-item-meta">
               <span class="note-item-mode">${mode}</span>
               <time>${formatShortDate(note.updatedAt)}</time>
-            </span>
+            </span>`}
           </button>
         </div>
       `;
@@ -4611,6 +5029,20 @@ function formatTime(value) {
     minute: "2-digit",
     second: "2-digit"
   }).format(new Date(value));
+}
+
+function formatBytes(value) {
+  const bytes = Math.max(0, Number(value) || 0);
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let size = bytes / 1024;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  const digits = size >= 10 || Number.isInteger(size) ? 0 : 1;
+  return `${size.toFixed(digits)} ${units[unitIndex]}`;
 }
 
 function formatShortDate(value) {
