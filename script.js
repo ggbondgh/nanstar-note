@@ -2234,7 +2234,7 @@ function renderNoteList() {
       const mode = note.mode === "md" ? "MD" : "TXT";
       const flags = isTransferAssistant(note) ? "" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
       const title = isTransferAssistant(note) ? t("transferAssistantTitle") : note.title;
-      const body = isTransferAssistant(note) && !note.body.trim() ? t("transferAssistantExcerpt") : excerpt(note.body);
+      const body = isTransferAssistant(note) ? "" : excerpt(note.body);
       const classes = ["note-item"];
       const rowClasses = ["note-row"];
       const selectable = !isTransferAssistant(note);
@@ -2256,7 +2256,7 @@ function renderNoteList() {
               <h3>${escapeHtml(title)}</h3>
               <span class="note-flags-text">${flags}</span>
             </span>
-            <p>${escapeHtml(body)}</p>
+            ${isTransferAssistant(note) ? "" : `<p>${escapeHtml(body)}</p>`}
             <span class="note-item-meta">
               <span class="note-item-mode">${mode}</span>
               <time>${formatShortDate(note.updatedAt)}</time>

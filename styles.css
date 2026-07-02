@@ -152,6 +152,8 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .brand h1 { font-size: 16px; line-height: 1.1; }
 .brand p { margin-top: 4px; color: var(--muted); font-size: 12px; }
 
+[hidden] { display: none !important; }
+
 .topbar-install-button[hidden] { display: none !important; }
 
 .sidebar-actions, .topbar-actions, .sync-grid, .utility-grid { gap: 8px; }
@@ -378,13 +380,17 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   background: rgba(255,255,255,0.92);
 }
 .folder-add-button {
+  display: inline-grid;
+  place-items: center;
   width: 22px;
   min-width: 22px;
   height: 22px;
   min-height: 22px;
+  padding: 0;
   border-radius: 6px;
   font-size: 16px;
   font-weight: 700;
+  line-height: 1;
   background: transparent;
 }
 
@@ -491,16 +497,15 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   box-shadow: inset 3px 0 0 rgba(92, 94, 229, 0.72);
 }
 .note-item.transfer-assistant {
-  min-height: 64px;
+  min-height: 50px;
   padding: 8px 10px;
   border: 0;
   background: linear-gradient(180deg, #4b78f6 0%, #3663ed 100%);
   color: #fff;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
 }
-.note-item.transfer-assistant .note-item-head { align-items: flex-start; }
+.note-item.transfer-assistant .note-item-head { align-items: center; }
 .note-item.transfer-assistant h3 { font-size: 14px; }
-.note-item.transfer-assistant p { -webkit-line-clamp: 1; line-height: 1.3; }
 .note-item.transfer-assistant .note-item-meta { margin-top: 0; }
 .note-item.transfer-assistant .note-item-head,
 .note-item.transfer-assistant .note-item-meta { gap: 6px; }
@@ -515,16 +520,12 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 }
 .note-item.transfer-assistant .note-item-head,
 .note-item.transfer-assistant .note-item-meta,
-.note-item.transfer-assistant .note-item p,
 .note-item.transfer-assistant .note-flags-text,
 .note-item.transfer-assistant .note-item-mode {
   color: #fff;
 }
 .note-item.transfer-assistant .note-item-mode {
   background: rgba(255,255,255,0.18);
-}
-.note-item.transfer-assistant .note-item p {
-  opacity: 0.9;
 }
 .note-item.transfer-assistant .note-flags-text { display: none; }
 .note-item-head { justify-content: space-between; gap: 8px; }
