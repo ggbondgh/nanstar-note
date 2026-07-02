@@ -17,12 +17,31 @@ const storageKeys = {
 const i18n = {
   zh: {
     workspaceTitle: "内容工作台",
+    mobileNotes: "笔记",
+    openNotes: "打开笔记列表",
+    closeNotes: "关闭笔记列表",
     newNote: "新建笔记",
     titlePlaceholder: "写一个清晰的标题",
     folderPlaceholder: "文件夹，例如：WK / 客户现场",
     editorPlaceholder: "纯文本适合放路径、账号检查清单、命令备忘；Markdown 适合结构化文档。Ctrl+Z / Ctrl+Y 保持浏览器原生编辑习惯。",
     sync: "同步",
     installDesktop: "安装到桌面",
+    androidApp: "Android App",
+    androidAppTitle: "安装与更新",
+    androidAppCopy: "手机端可以下载 APK 安装。后续 GitHub Release 生成新版本后，这里可以检查并打开最新安装包。",
+    androidDownload: "下载 Android APK",
+    androidCheckUpdate: "检查更新",
+    androidVersionLoading: "正在读取版本信息...",
+    androidWebVersion: "当前环境：网页版",
+    androidCurrentVersion: "当前 App：{version} ({build})",
+    androidUpdateReady: "发现新版本 {version}，可下载更新包。",
+    androidUpdateLatest: "已是最新版本：{version}",
+    androidUpdateChecking: "正在检查新版本...",
+    androidUpdateFailed: "检查失败，可以直接下载最新安装包。",
+    androidDownloadOpening: "正在打开 Android 安装包下载链接...",
+    androidUpdatePrompt: "发现新版本 {version}，现在下载安装包？",
+    androidUnknownVersion: "未知版本",
+    androidPanelReady: "可以下载或检查 NanStar Note Android 安装包。",
     import: "导入",
     exportCurrent: "导出当前",
     exportMenu: "导出",
@@ -207,12 +226,31 @@ const i18n = {
   },
   en: {
     workspaceTitle: "Content Desk",
+    mobileNotes: "Notes",
+    openNotes: "Open notes",
+    closeNotes: "Close notes",
     newNote: "New Note",
     titlePlaceholder: "Write a clear title",
     folderPlaceholder: "Folder, e.g. WK / Client Site",
     editorPlaceholder: "Plain text works well for paths, checklists, and command notes; Markdown is better for structured docs. Ctrl+Z / Ctrl+Y keep the browser's native editing flow.",
     sync: "Sync",
     installDesktop: "Install App",
+    androidApp: "Android App",
+    androidAppTitle: "Install & Update",
+    androidAppCopy: "Install the APK on Android. When GitHub Release publishes a newer build, this panel can check it and open the latest package.",
+    androidDownload: "Download Android APK",
+    androidCheckUpdate: "Check Update",
+    androidVersionLoading: "Reading version...",
+    androidWebVersion: "Current environment: web",
+    androidCurrentVersion: "Current app: {version} ({build})",
+    androidUpdateReady: "New version {version} is available.",
+    androidUpdateLatest: "Already latest: {version}",
+    androidUpdateChecking: "Checking for updates...",
+    androidUpdateFailed: "Update check failed. You can download the latest APK directly.",
+    androidDownloadOpening: "Opening Android APK download link...",
+    androidUpdatePrompt: "New version {version} is available. Download it now?",
+    androidUnknownVersion: "Unknown version",
+    androidPanelReady: "Download or check the NanStar Note Android package here.",
     import: "Import",
     exportCurrent: "Export Current",
     exportMenu: "Export",
@@ -683,6 +721,12 @@ const MAX_TRANSFER_IMAGES = 4;
 const TRANSFER_MAX_FILES = 5;
 const TRANSFER_MAX_FILE_BYTES = 20 * 1024 * 1024;
 const TRANSFER_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+const MOBILE_LAYOUT_QUERY = "(max-width: 760px)";
+const ANDROID_RELEASE_BASE_URL = "https://github.com/ggbondgh/nanstar-note/releases/latest/download";
+const ANDROID_APK_URL = `${ANDROID_RELEASE_BASE_URL}/nanstar-note.apk`;
+const ANDROID_UPDATE_URL = `${ANDROID_RELEASE_BASE_URL}/update.json`;
+const ANDROID_RELEASE_API_URL = "https://api.github.com/repos/ggbondgh/nanstar-note/releases/latest";
+let appRuntimeInfoPromise = null;
 
 function folderManagementEnabled() {
   return Boolean(getSyncToken());
@@ -720,6 +764,8 @@ const elements = {
   appShell: $(".app-shell"),
   sidebar: $(".sidebar"),
   sidebarResizer: $("#sidebarResizer"),
+  mobileNotesButton: $("#mobileNotesButton"),
+  mobileSidebarBackdrop: $("#mobileSidebarBackdrop"),
   cloudStatus: $("#cloudStatus"),
   sidebarToggleButton: $("#sidebarToggleButton"),
   sidebarQuickNewButton: $("#sidebarQuickNewButton"),
@@ -798,6 +844,12 @@ const elements = {
   updatedAt: $("#updatedAt"),
   importButton: $("#importButton"),
   exportButton: $("#exportButton"),
+  androidAppButton: $("#androidAppButton"),
+  androidAppDialog: $("#androidAppDialog"),
+  appVersionLabel: $("#appVersionLabel"),
+  appUpdateStatus: $("#appUpdateStatus"),
+  downloadAndroidAppButton: $("#downloadAndroidAppButton"),
+  checkAppUpdateButton: $("#checkAppUpdateButton"),
   exportDialog: $("#exportDialog"),
   exportCurrentButton: $("#exportCurrentButton"),
   exportFolderSelect: $("#exportFolderSelect"),
@@ -843,12 +895,17 @@ function init() {
   renderAll();
   setSaveStatus("已保存本地");
   startCloudSync();
+  hydrateAppUpdatePanel();
 }
 
 function bindEvents() {
   elements.newNoteButton.addEventListener("click", () => openNewNoteDialog());
   elements.sidebarToggleButton.addEventListener("click", toggleSidebar);
   elements.sidebarQuickNewButton?.addEventListener("click", () => openNewNoteDialog());
+  elements.mobileNotesButton?.addEventListener("click", toggleMobileSidebar);
+  elements.mobileSidebarBackdrop?.addEventListener("click", closeMobileSidebar);
+  const mobileMedia = window.matchMedia?.(MOBILE_LAYOUT_QUERY);
+  mobileMedia?.addEventListener?.("change", () => closeMobileSidebar());
   elements.languageToggleButton?.addEventListener("click", toggleLanguage);
   elements.folderSectionSummary?.addEventListener("click", (event) => {
     if (event.target.closest("button")) return;
@@ -1009,6 +1066,7 @@ function bindEvents() {
       const tpl = document.querySelector('#newNoteTxtBtn.active, #newNoteMDBtn.active')?.dataset?.tpl || "txt";
       elements.newNoteDialog.close();
       createNote(tpl, folder);
+      closeMobileSidebar();
     });
     document.querySelectorAll('#newNoteTxtBtn, #newNoteMDBtn').forEach(btn => {
       btn.addEventListener("click", (e) => {
@@ -1034,8 +1092,15 @@ function bindEvents() {
   });
   elements.importButton.addEventListener("click", () => elements.importFileInput.click());
   elements.importFileInput.addEventListener("change", importFile);
+  elements.androidAppButton?.addEventListener("click", () => {
+    elements.topbarMenu?.removeAttribute("open");
+    hydrateAppUpdatePanel();
+    elements.androidAppDialog?.showModal();
+  });
+  elements.downloadAndroidAppButton?.addEventListener("click", openAndroidDownload);
+  elements.checkAppUpdateButton?.addEventListener("click", checkAndroidUpdate);
   elements.shareButton.addEventListener("click", createShareLink);
-  [elements.importButton, elements.exportButton, elements.shareButton, elements.deleteButton].forEach((button) => {
+  [elements.importButton, elements.exportButton, elements.androidAppButton, elements.shareButton, elements.deleteButton].forEach((button) => {
     button?.addEventListener("click", () => elements.topbarMenu?.removeAttribute("open"));
   });
   bindTransferPanelEvents();
@@ -1122,6 +1187,11 @@ function bindEvents() {
       togglePreviewFocus();
       return;
     }
+    if (key === "escape" && document.body.classList.contains("mobile-sidebar-open")) {
+      event.preventDefault();
+      closeMobileSidebar();
+      return;
+    }
     if (key === "escape" && state.editorSearch.open) {
       event.preventDefault();
       closeEditorSearch();
@@ -1143,6 +1213,32 @@ function bindEvents() {
   });
 
   window.addEventListener("beforeunload", () => flushPendingSave(state.activeId));
+}
+
+function isMobileLayout() {
+  return Boolean(window.matchMedia?.(MOBILE_LAYOUT_QUERY)?.matches || window.innerWidth <= 760);
+}
+
+function setMobileSidebarOpen(open) {
+  const shouldOpen = Boolean(open) && isMobileLayout();
+  document.body.classList.toggle("mobile-sidebar-open", shouldOpen);
+  if (elements.mobileNotesButton) {
+    elements.mobileNotesButton.setAttribute("aria-expanded", String(shouldOpen));
+    elements.mobileNotesButton.title = shouldOpen ? t("closeNotes") : t("openNotes");
+    elements.mobileNotesButton.setAttribute("aria-label", shouldOpen ? t("closeNotes") : t("openNotes"));
+  }
+}
+
+function toggleMobileSidebar() {
+  setMobileSidebarOpen(!document.body.classList.contains("mobile-sidebar-open"));
+}
+
+function openMobileSidebar() {
+  setMobileSidebarOpen(true);
+}
+
+function closeMobileSidebar() {
+  setMobileSidebarOpen(false);
 }
 
 function bindNoteInput(input) {
@@ -1504,6 +1600,163 @@ function transferErrorText(error) {
   if (text.includes("Failed to fetch") || text.includes("Not found")) return t("transferApiUnavailable");
   if (text.includes("clipboard")) return t("transferClipboardDenied");
   return `${t("transferFailed")}：${text.slice(0, 120)}`;
+}
+
+async function hydrateAppUpdatePanel() {
+  if (!elements.appVersionLabel && !elements.appUpdateStatus) return;
+  if (elements.appVersionLabel) elements.appVersionLabel.textContent = t("androidVersionLoading");
+  const info = await getAppRuntimeInfo();
+  const versionName = info.versionName || t("androidUnknownVersion");
+  const build = info.versionCode || "debug";
+  if (elements.appVersionLabel) {
+    elements.appVersionLabel.textContent = info.native
+      ? t("androidCurrentVersion").replace("{version}", versionName).replace("{build}", build)
+      : t("androidWebVersion");
+  }
+  if (elements.appUpdateStatus && !elements.appUpdateStatus.dataset.locked) {
+    elements.appUpdateStatus.textContent = t("androidPanelReady");
+  }
+}
+
+async function getAppRuntimeInfo() {
+  if (appRuntimeInfoPromise) return appRuntimeInfoPromise;
+
+  appRuntimeInfoPromise = (async () => {
+    const capacitor = window.Capacitor;
+    const native = Boolean(capacitor?.isNativePlatform?.());
+    const appPlugin = capacitor?.Plugins?.App;
+
+    if (native && appPlugin?.getInfo) {
+      try {
+        const info = await appPlugin.getInfo();
+        return {
+          native: true,
+          versionName: info.version || "",
+          versionCode: Number(info.build || 0)
+        };
+      } catch (error) {
+        console.warn(error);
+      }
+    }
+
+    return {
+      native,
+      versionName: "",
+      versionCode: 0
+    };
+  })();
+
+  return appRuntimeInfoPromise;
+}
+
+async function checkAndroidUpdate() {
+  if (!elements.checkAppUpdateButton) return;
+  elements.checkAppUpdateButton.disabled = true;
+  setAppUpdateStatus(t("androidUpdateChecking"), true);
+
+  try {
+    const [current, latest] = await Promise.all([
+      getAppRuntimeInfo(),
+      fetchAndroidUpdateInfo()
+    ]);
+
+    const latestCode = Number(latest.versionCode || 0);
+    const currentCode = Number(current.versionCode || 0);
+    const latestName = latest.versionName || "Android App";
+    const hasUpdate = !current.native || !currentCode || latestCode > currentCode;
+
+    if (!hasUpdate) {
+      const currentName = current.versionName || t("androidUnknownVersion");
+      const message = t("androidUpdateLatest").replace("{version}", currentName);
+      setAppUpdateStatus(message, true);
+      showToast(message);
+      return;
+    }
+
+    const message = t("androidUpdateReady").replace("{version}", latestName);
+    setAppUpdateStatus(message, true);
+    if (window.confirm(t("androidUpdatePrompt").replace("{version}", latestName))) {
+      await openExternalUrl(latest.apkUrl || ANDROID_APK_URL);
+    }
+  } catch (error) {
+    console.warn(error);
+    setAppUpdateStatus(t("androidUpdateFailed"), true);
+    showToast(t("androidUpdateFailed"));
+  } finally {
+    elements.checkAppUpdateButton.disabled = false;
+  }
+}
+
+async function fetchAndroidUpdateInfo() {
+  const manifestInfo = await fetchAndroidUpdateManifest();
+  if (manifestInfo) return manifestInfo;
+
+  const response = await fetch(ANDROID_RELEASE_API_URL, {
+    cache: "no-store",
+    headers: { Accept: "application/vnd.github+json" }
+  });
+  if (!response.ok) throw new Error(`GitHub Release query failed: ${response.status}`);
+
+  const release = await response.json();
+  let info = {};
+  try {
+    info = JSON.parse(release.body || "{}");
+  } catch {
+    info = {};
+  }
+
+  const apkAsset = Array.isArray(release.assets)
+    ? release.assets.find((asset) => asset.name === "nanstar-note.apk")
+    : null;
+
+  return normalizeAndroidUpdateInfo(info, {
+    versionName: release.name || "",
+    apkUrl: apkAsset?.browser_download_url || ANDROID_APK_URL,
+    releaseUrl: release.html_url || "https://github.com/ggbondgh/nanstar-note/releases/latest"
+  });
+}
+
+async function fetchAndroidUpdateManifest() {
+  try {
+    const response = await fetch(ANDROID_UPDATE_URL, { cache: "no-store" });
+    if (!response.ok) return null;
+    const info = await response.json();
+    return normalizeAndroidUpdateInfo(info);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAndroidUpdateInfo(info = {}, fallback = {}) {
+  return {
+    versionCode: Number(info.versionCode || fallback.versionCode || 0),
+    versionName: info.versionName || fallback.versionName || "",
+    apkUrl: info.apkUrl || fallback.apkUrl || ANDROID_APK_URL,
+    releaseUrl: info.releaseUrl || fallback.releaseUrl || "https://github.com/ggbondgh/nanstar-note/releases/latest"
+  };
+}
+
+function setAppUpdateStatus(message, locked = false) {
+  if (!elements.appUpdateStatus) return;
+  elements.appUpdateStatus.textContent = message;
+  if (locked) elements.appUpdateStatus.dataset.locked = "1";
+  else delete elements.appUpdateStatus.dataset.locked;
+}
+
+async function openAndroidDownload() {
+  setAppUpdateStatus(t("androidDownloadOpening"), true);
+  await openExternalUrl(ANDROID_APK_URL);
+}
+
+async function openExternalUrl(url) {
+  const browserPlugin = window.Capacitor?.Plugins?.Browser;
+  if (browserPlugin?.open) {
+    await browserPlugin.open({ url });
+    return;
+  }
+
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  if (!opened) window.location.href = url;
 }
 
 function loadNotes() {
@@ -3061,6 +3314,7 @@ function deleteSelectedNotes() {
 function switchToNote(nextId) {
   if (!nextId || nextId === state.activeId) {
     if (nextId) syncCloudInBackground({ silent: true, pullOnly: true, reason: "open-note", noteId: nextId });
+    closeMobileSidebar();
     return;
   }
 
@@ -3071,7 +3325,8 @@ function switchToNote(nextId) {
   state.activeId = nextId;
   saveNotes();
   renderAll();
-  elements.bodyInput.focus();
+  closeMobileSidebar();
+  if (!isMobileLayout()) elements.bodyInput.focus();
   if (shouldPushPrevious) {
     syncCloudInBackground({ silent: false, forcePush: true, reason: "leave-note", noteId: previousId });
   }
@@ -4095,6 +4350,12 @@ function applyLanguage(language, initial = false) {
   if (elements.bodyInput) elements.bodyInput.placeholder = t("editorPlaceholder");
   if (elements.sidebarQuickNewButton) elements.sidebarQuickNewButton.title = t("newNote");
   if (elements.sidebarQuickNewButton) elements.sidebarQuickNewButton.setAttribute("aria-label", t("newNote"));
+  if (elements.mobileNotesButton) {
+    const mobileLabel = elements.mobileNotesButton.querySelector("span:last-child");
+    if (mobileLabel) mobileLabel.textContent = t("mobileNotes");
+    elements.mobileNotesButton.title = document.body.classList.contains("mobile-sidebar-open") ? t("closeNotes") : t("openNotes");
+    elements.mobileNotesButton.setAttribute("aria-label", document.body.classList.contains("mobile-sidebar-open") ? t("closeNotes") : t("openNotes"));
+  }
   if (elements.syncRefreshButton) {
     elements.syncRefreshButton.title = next === "en" ? "Refresh and overwrite local" : "从云端刷新并覆盖本地";
     elements.syncRefreshButton.setAttribute("aria-label", next === "en" ? "Refresh and overwrite local" : "从云端刷新并覆盖本地");
@@ -4109,6 +4370,7 @@ function applyLanguage(language, initial = false) {
   setMenuItemLabel(document.getElementById("topInstallButton"), t("installDesktop"));
   setMenuItemLabel(elements.importButton, t("import"));
   setMenuItemLabel(elements.exportButton, t("exportMenu"));
+  setMenuItemLabel(elements.androidAppButton, t("androidApp"));
   setMenuItemLabel(elements.shareButton, t("share"));
   setMenuItemLabel(elements.deleteButton, t("delete"));
   setToolbarTitle('[data-command="undo"]', t("undo"));
@@ -4172,6 +4434,15 @@ function applyLanguage(language, initial = false) {
   if (syncTokenLabel) syncTokenLabel.textContent = t("syncToken");
   const autoSyncLabel = document.getElementById("autoSyncLabel");
   if (autoSyncLabel) autoSyncLabel.textContent = t("autoSync");
+  const androidAppDialogTitle = document.getElementById("androidAppDialogTitle");
+  if (androidAppDialogTitle) androidAppDialogTitle.textContent = t("androidAppTitle");
+  const androidAppDialogCopy = document.getElementById("androidAppDialogCopy");
+  if (androidAppDialogCopy) androidAppDialogCopy.textContent = t("androidAppCopy");
+  const downloadAndroidAppButton = document.getElementById("downloadAndroidAppButton");
+  if (downloadAndroidAppButton) downloadAndroidAppButton.textContent = t("androidDownload");
+  const checkAppUpdateButton = document.getElementById("checkAppUpdateButton");
+  if (checkAppUpdateButton) checkAppUpdateButton.textContent = t("androidCheckUpdate");
+  hydrateAppUpdatePanel();
   if (elements.syncMessage && !getSyncToken()) elements.syncMessage.textContent = t("syncLocalReady");
   renderFolderDatalist();
   renderLists();

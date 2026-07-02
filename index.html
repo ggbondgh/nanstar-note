@@ -80,6 +80,8 @@
         </section>
       </aside>
 
+      <button class="mobile-sidebar-backdrop" id="mobileSidebarBackdrop" type="button" aria-label="关闭笔记列表"></button>
+
       <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="调整侧栏和工作区宽度"></div>
 
       <main class="main">
@@ -89,6 +91,10 @@
             <h2>内容工作台</h2>
           </div>
           <div class="topbar-actions">
+            <button class="ghost-button mobile-notes-button" id="mobileNotesButton" type="button" title="打开笔记列表" aria-label="打开笔记列表">
+              <span aria-hidden="true">☰</span>
+              <span>笔记</span>
+            </button>
             <button class="icon-button" id="languageToggleButton" type="button" title="切换语言" aria-label="切换语言">中</button>
             <button class="icon-button topbar-new-button" id="sidebarQuickNewButton" type="button" title="新建笔记" aria-label="新建笔记">＋</button>
             <button class="primary-button" id="topSyncButton" type="button">同步</button>
@@ -106,6 +112,10 @@
                 <button class="menu-item" id="exportButton" type="button">
                   <span aria-hidden="true">⇡</span>
                   <span>导出</span>
+                </button>
+                <button class="menu-item" id="androidAppButton" type="button">
+                  <span aria-hidden="true">▣</span>
+                  <span>Android App</span>
                 </button>
                 <button class="menu-item" id="shareButton" type="button">
                   <span aria-hidden="true">↗</span>
@@ -373,11 +383,36 @@
       </form>
     </dialog>
 
+    <dialog class="modal" id="androidAppDialog">
+      <form method="dialog" class="modal-card app-update-modal-card">
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow" id="androidAppModalEyebrow">Android App</p>
+            <h2 id="androidAppDialogTitle">安装与更新</h2>
+          </div>
+          <button class="icon-button" value="cancel" type="submit" aria-label="关闭">×</button>
+        </div>
+        <p class="modal-copy" id="androidAppDialogCopy">
+          手机端可以下载 APK 安装。后续 GitHub Release 生成新版本后，这里可以检查并打开最新安装包。
+        </p>
+        <div class="app-update-panel">
+          <div>
+            <strong id="appVersionLabel">正在读取版本信息...</strong>
+            <span id="appUpdateStatus" aria-live="polite">可以下载或检查 NanStar Note Android 安装包。</span>
+          </div>
+        </div>
+        <div class="sync-grid">
+          <button class="primary-button" id="downloadAndroidAppButton" type="button">下载 Android APK</button>
+          <button class="ghost-button" id="checkAppUpdateButton" type="button">检查更新</button>
+        </div>
+      </form>
+    </dialog>
+
     <input id="importFileInput" type="file" accept=".json,.md,.txt" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-    <script src="./script.js?v=21"></script>
+    <script src="./script.js?v=22"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
