@@ -1,9 +1,10 @@
-const CACHE = "nanstar-note-v15";
+const CACHE = "nanstar-note-v18";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./script.js",
+  "./assets/yjs.bundle.js",
   "./assets/icon.svg",
   "./manifest.webmanifest",
   "./sw.js"

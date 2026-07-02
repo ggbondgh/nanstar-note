@@ -3,6 +3,8 @@ const storageKeys = {
   activeNote: "nanstar-note-active",
   syncToken: "nanstar-note-sync-token",
   syncMeta: "nanstar-note-sync-meta",
+  crdtUpdateId: "nanstar-note-crdt-update-id",
+  crdtPendingUpdates: "nanstar-note-crdt-pending-updates",
   lastSyncAt: "nanstar-note-last-sync-at",
   autoSync: "nanstar-note-auto-sync",
   splitRatio: "nanstar-note-split-ratio",
@@ -582,6 +584,12 @@ const state = {
   syncInFlight: false,
   syncQueue: [],
   syncAction: "",
+  crdtDoc: null,
+  crdtNotes: null,
+  crdtFolders: null,
+  crdtApplying: false,
+  crdtSeedIsDefault: false,
+  crdtPendingUpdates: [],
   lastCloudPullAt: 0,
   dirtyNoteIds: new Set(),
   contextMenuFolder: null,
@@ -743,6 +751,7 @@ const elements = {
 init();
 
 function init() {
+  const startedWithDefaultNotes = state.localStateSource === "default";
   state.notes = loadNotes();
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   restoreDirtyNotes();
@@ -750,6 +759,7 @@ function init() {
   elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) !== "0";
   migrateFolderState();
   saveNotes();
+  initCrdtFromState({ clearPending: startedWithDefaultNotes });
   applyLanguage(state.language, true);
   applySidebarWidth(readSidebarWidth());
   applySplitRatio(readSplitRatio());
@@ -1314,6 +1324,7 @@ function looksLikeMarkdown(body) {
 }
 
 function saveNotes() {
+  writeStateToCrdt();
   localStorage.setItem(storageKeys.notes, JSON.stringify({
     notes: state.notes,
     folders: storedFolders()
@@ -1356,7 +1367,7 @@ function isDirtyNoteId(noteId) {
 }
 
 function hasDirtyNotes() {
-  return state.dirtyNoteIds.size > 0 || Boolean(readSyncMeta().pending);
+  return state.dirtyNoteIds.size > 0 || state.crdtPendingUpdates.length > 0 || Boolean(readSyncMeta().pending);
 }
 
 function markNoteDirty(noteId = state.activeId) {
@@ -1374,6 +1385,183 @@ function restoreDirtyNotes() {
 
 function dirtyNoteIds() {
   return [...state.dirtyNoteIds].filter(Boolean);
+}
+
+function crdtAvailable() {
+  return Boolean(window.Y && state.crdtDoc && state.crdtNotes && state.crdtFolders);
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(text) {
+  const binary = atob(text);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function readCrdtPendingUpdates() {
+  try {
+    const updates = JSON.parse(localStorage.getItem(storageKeys.crdtPendingUpdates) || "[]");
+    return Array.isArray(updates) ? updates.filter((item) => typeof item === "string" && item) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCrdtPendingUpdates() {
+  localStorage.setItem(storageKeys.crdtPendingUpdates, JSON.stringify(state.crdtPendingUpdates));
+}
+
+function initCrdtFromState(options = {}) {
+  if (!window.Y) return;
+  createCrdtDoc();
+  state.crdtPendingUpdates = readCrdtPendingUpdates();
+  if (options.clearPending && state.crdtPendingUpdates.length) {
+    state.crdtPendingUpdates = [];
+    writeCrdtPendingUpdates();
+  }
+  state.crdtApplying = true;
+  writeStateToCrdt({ force: true, origin: "seed" });
+  state.crdtApplying = false;
+  state.crdtSeedIsDefault = isDefaultSeedState(state.notes)
+    && state.crdtPendingUpdates.length === 0
+    && dirtyNoteIds().length === 0
+    && !readSyncMeta().pending;
+}
+
+function createCrdtDoc() {
+  const YLib = window.Y;
+  state.crdtDoc?.destroy?.();
+  state.crdtDoc = new YLib.Doc();
+  state.crdtNotes = state.crdtDoc.getMap("notes");
+  state.crdtFolders = state.crdtDoc.getMap("folders");
+  state.crdtDoc.on("update", (update, origin) => {
+    if (state.crdtApplying || origin === "remote" || origin === "seed") return;
+    state.crdtSeedIsDefault = false;
+    state.crdtPendingUpdates.push(bytesToBase64(update));
+    writeCrdtPendingUpdates();
+    writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: "" });
+    renderSyncMeta();
+    scheduleAutoSync();
+  });
+}
+
+function getCrdtNoteMap(noteId, create = false) {
+  if (!crdtAvailable() || !noteId) return null;
+  let noteMap = state.crdtNotes.get(noteId);
+  if (!noteMap && create) {
+    noteMap = new window.Y.Map();
+    noteMap.set("body", new window.Y.Text());
+    state.crdtNotes.set(noteId, noteMap);
+  }
+  return noteMap || null;
+}
+
+function syncYText(yText, nextValue) {
+  if (!yText) return;
+  const next = String(nextValue || "");
+  const current = yText.toString();
+  if (current === next) return;
+  let start = 0;
+  while (start < current.length && start < next.length && current[start] === next[start]) start += 1;
+  let currentEnd = current.length;
+  let nextEnd = next.length;
+  while (currentEnd > start && nextEnd > start && current[currentEnd - 1] === next[nextEnd - 1]) {
+    currentEnd -= 1;
+    nextEnd -= 1;
+  }
+  if (currentEnd > start) yText.delete(start, currentEnd - start);
+  if (nextEnd > start) yText.insert(start, next.slice(start, nextEnd));
+}
+
+function writeStateToCrdt(options = {}) {
+  if (!crdtAvailable() || (state.crdtApplying && !options.force)) return;
+  const noteIds = new Set(state.notes.filter((note) => !isFolderRegistry(note)).map((note) => note.id));
+  state.crdtDoc.transact(() => {
+    state.notes.forEach((note) => {
+      if (isFolderRegistry(note)) return;
+      const normalized = normalizeNote(note);
+      const noteMap = getCrdtNoteMap(normalized.id, true);
+      if (!noteMap) return;
+      const body = noteMap.get("body") instanceof window.Y.Text ? noteMap.get("body") : new window.Y.Text();
+      if (noteMap.get("body") !== body) noteMap.set("body", body);
+      [
+        "id", "title", "mode", "folder", "createdAt", "updatedAt", "deletedAt",
+        "pinned", "favorite", "kind", "editorSectionOpen"
+      ].forEach((key) => {
+        if (normalized[key] !== undefined && noteMap.get(key) !== normalized[key]) noteMap.set(key, normalized[key]);
+      });
+      syncYText(body, normalized.body);
+    });
+
+    Array.from(state.crdtNotes.keys()).forEach((id) => {
+      if (!noteIds.has(id)) state.crdtNotes.delete(id);
+    });
+
+    const folders = new Set(storedFolders().map(canonicalFolderName));
+    folders.forEach((folder) => state.crdtFolders.set(folder, true));
+    Array.from(state.crdtFolders.keys()).forEach((folder) => {
+      if (!folders.has(canonicalFolderName(folder))) state.crdtFolders.delete(folder);
+    });
+  }, options.origin || "local");
+}
+
+function readStateFromCrdt() {
+  if (!crdtAvailable()) return { notes: state.notes, folders: storedFolders() };
+  const notes = [];
+  state.crdtNotes.forEach((noteMap) => {
+    if (!(noteMap instanceof window.Y.Map)) return;
+    const body = noteMap.get("body");
+    notes.push(normalizeNote({
+      id: noteMap.get("id"),
+      title: noteMap.get("title"),
+      body: body instanceof window.Y.Text ? body.toString() : String(body || ""),
+      mode: noteMap.get("mode"),
+      folder: noteMap.get("folder"),
+      createdAt: noteMap.get("createdAt"),
+      updatedAt: noteMap.get("updatedAt"),
+      deletedAt: noteMap.get("deletedAt"),
+      pinned: noteMap.get("pinned"),
+      favorite: noteMap.get("favorite"),
+      kind: noteMap.get("kind"),
+      editorSectionOpen: noteMap.get("editorSectionOpen")
+    }));
+  });
+  const folders = Array.from(state.crdtFolders.keys()).map(canonicalFolderName);
+  return { notes, folders };
+}
+
+function applyCrdtToState({ render = true } = {}) {
+  if (!crdtAvailable()) return;
+  const snapshot = readStateFromCrdt();
+  state.crdtApplying = true;
+  state.notes = snapshot.notes.sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
+  setStoredFolders(snapshot.folders);
+  ensureActiveNote();
+  saveNotes();
+  state.crdtApplying = false;
+  if (render) renderAll();
+}
+
+function resetCrdtFromUpdates(updates) {
+  if (!window.Y) return;
+  createCrdtDoc();
+  state.crdtSeedIsDefault = false;
+  state.crdtApplying = true;
+  updates.forEach((item) => {
+    const update = typeof item === "string" ? item : item?.update;
+    if (update) window.Y.applyUpdate(state.crdtDoc, base64ToBytes(update), "remote");
+  });
+  state.crdtApplying = false;
+  applyCrdtToState();
 }
 
 function mergeCloudNotesSafely(incomingNotes) {
@@ -1422,9 +1610,19 @@ function clearSyncedDirtyNotes(snapshots) {
 
 function scheduleAutoSync() {
   clearTimeout(state.autoSyncTimer);
-  if (!elements.autoSyncToggle.checked || !getSyncToken() || state.syncInFlight) return;
+  if (!elements.autoSyncToggle.checked || !getSyncToken()) return;
+  if (state.syncInFlight) {
+    const hasLocalChanges = state.crdtPendingUpdates.length > 0 || dirtyNoteIds().length > 0 || Boolean(readSyncMeta().pending);
+    if (hasLocalChanges && !state.syncQueue.some((item) => item?.reason === "auto-push")) {
+      state.syncQueue.push({ silent: true, reason: "auto-push" });
+    }
+    return;
+  }
   state.autoSyncTimer = window.setTimeout(() => {
-    syncCloud({ silent: true, pullOnly: true, reason: "check" });
+    const hasLocalChanges = state.crdtPendingUpdates.length > 0 || dirtyNoteIds().length > 0 || Boolean(readSyncMeta().pending);
+    syncCloud(hasLocalChanges
+      ? { silent: true, reason: "auto-push" }
+      : { silent: true, pullOnly: true, reason: "check" });
   }, SYNC_PUSH_DELAY);
 }
 
@@ -2564,7 +2762,9 @@ function togglePreviewFocus() {
 function handleEditorSectionToggle() {
   const note = activeNote();
   if (!note) return;
-  note.editorSectionOpen = elements.editorSection.open;
+  const nextOpen = Boolean(elements.editorSection.open);
+  if (note.editorSectionOpen === nextOpen) return;
+  note.editorSectionOpen = nextOpen;
   note.updatedAt = Date.now();
   saveNotes();
   markSyncPending(note.id);
@@ -2868,6 +3068,10 @@ async function pullCloud() {
 }
 
 async function forcePullCloud() {
+  if (crdtAvailable()) {
+    return syncCloud({ manual: true, pullOnly: true, forcePull: true, reason: "force-pull" });
+  }
+
   const token = getSyncToken();
   if (!token) {
     showSyncMessage("请先填写同步 Token。");
@@ -2938,6 +3142,7 @@ function markSyncPending(noteId = state.activeId) {
   markNoteDirty(noteId);
   writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: "" });
   renderSyncMeta();
+  scheduleAutoSync();
 }
 
 function clearSyncPending(remoteUpdatedAt = Date.now(), patch = {}, syncedSnapshots = null) {
@@ -2961,7 +3166,7 @@ function startCloudSync() {
     return;
   }
   renderSyncMeta();
-  state.syncStartupTimer = window.setTimeout(() => syncCloud({ silent: true, pullOnly: true, reason: "startup" }), 300);
+  state.syncStartupTimer = window.setTimeout(() => syncCloud({ silent: true, reason: "startup" }), 300);
   state.syncPollTimer = window.setInterval(() => {
     if (!document.hidden) syncCloud({ silent: true, pullOnly: true, reason: "poll" });
   }, SYNC_POLL_INTERVAL);
@@ -2992,6 +3197,49 @@ async function fetchCloudState(token) {
   return response.json();
 }
 
+async function fetchCrdtState(token, since = 0) {
+  const response = await fetch(`./api/notes?crdt=1&since=${Number(since) || 0}&t=${Date.now()}`, {
+    cache: "no-store",
+    headers: cloudHeaders(token)
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+}
+
+async function fetchAllCrdtState(token, since = 0) {
+  let cursor = Math.max(0, Number(since) || 0);
+  let mergedPayload = null;
+  const allUpdates = [];
+
+  for (let page = 0; page < 50; page += 1) {
+    const payload = await fetchCrdtState(token, cursor);
+    const updates = Array.isArray(payload.updates) ? payload.updates : [];
+    mergedPayload = payload;
+    allUpdates.push(...updates);
+
+    const latestId = Number(payload.latestId) || 0;
+    const lastId = Number(updates[updates.length - 1]?.id) || cursor;
+    if (!updates.length || lastId >= latestId || lastId <= cursor) break;
+    cursor = lastId;
+  }
+
+  return {
+    ...(mergedPayload || { version: 2, latestId: 0, legacy: null }),
+    updates: allUpdates
+  };
+}
+
+async function postCrdtUpdates(token, updates) {
+  const response = await fetch("./api/notes", {
+    method: "POST",
+    cache: "no-store",
+    headers: cloudHeaders(token, true),
+    body: JSON.stringify({ updates })
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+}
+
 async function putCloudState(token) {
   const response = await fetch("./api/notes", {
     method: "PUT",
@@ -3015,7 +3263,168 @@ function replaceNotesFromCloud(notes, options = {}) {
   renderAll();
 }
 
+function legacyPayloadHasNotes(payload) {
+  return Array.isArray(payload?.notes) && payload.notes.some((note) => !isDeletedNote(normalizeNote(note)));
+}
+
+function replaceStateFromLegacyPayload(payload) {
+  state.crdtApplying = true;
+  state.notes = Array.isArray(payload?.notes)
+    ? payload.notes.map(normalizeNote).sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a))
+    : [];
+  setStoredFolders(Array.isArray(payload?.folders) ? payload.folders : []);
+  ensureActiveNote();
+  saveNotes();
+  state.crdtApplying = false;
+  createCrdtDoc();
+  state.crdtApplying = true;
+  writeStateToCrdt({ force: true, origin: "seed" });
+  state.crdtApplying = false;
+  renderAll();
+}
+
+function fullCrdtUpdateBase64() {
+  return bytesToBase64(window.Y.encodeStateAsUpdate(state.crdtDoc));
+}
+
+async function syncCrdtCloud(options = {}) {
+  const token = getSyncToken();
+  const manual = Boolean(options.manual);
+  const silent = Boolean(options.silent);
+  const forcePull = Boolean(options.forcePull);
+  const pullOnly = Boolean(options.pullOnly) || forcePull;
+  const reason = options.reason || (pullOnly ? "check" : "sync");
+
+  if (!token) {
+    if (manual) showSyncMessage("请先填写同步 Token。");
+    renderSyncMeta();
+    return;
+  }
+  if (!manual && !elements.autoSyncToggle.checked) return;
+  if (state.syncInFlight) {
+    state.syncQueue.push(options);
+    return;
+  }
+
+  clearTimeout(state.autoSyncTimer);
+  localStorage.setItem(storageKeys.syncToken, token);
+  state.syncInFlight = true;
+  state.syncAction = pullOnly ? "pulling" : "pushing";
+  renderSyncMeta();
+  if (!silent) showSyncMessage(forcePull ? t("syncRefreshing") : pullOnly ? t("syncPulling") : t("syncPushing"));
+
+  let pushed = false;
+  let pulled = false;
+  try {
+    if (forcePull) {
+      state.crdtPendingUpdates = [];
+      writeCrdtPendingUpdates();
+      state.dirtyNoteIds.clear();
+      writeSyncMeta({ pending: false, dirtyNoteIds: [], lastError: "" });
+    }
+
+    const since = forcePull ? 0 : Number(localStorage.getItem(storageKeys.crdtUpdateId) || 0);
+    const remotePayload = await fetchAllCrdtState(token, since);
+    const updates = Array.isArray(remotePayload.updates) ? remotePayload.updates : [];
+    const latestId = Number(remotePayload.latestId) || 0;
+    const localHasChanges = state.crdtPendingUpdates.length > 0 || dirtyNoteIds().length > 0 || Boolean(readSyncMeta().pending);
+
+    if (forcePull) {
+      if (updates.length) {
+        resetCrdtFromUpdates(updates);
+        localStorage.setItem(storageKeys.crdtUpdateId, String(latestId));
+        pulled = true;
+      } else if (legacyPayloadHasNotes(remotePayload.legacy)) {
+        replaceStateFromLegacyPayload(remotePayload.legacy);
+        const result = await postCrdtUpdates(token, [fullCrdtUpdateBase64()]);
+        localStorage.setItem(storageKeys.crdtUpdateId, String(Number(result.latestId) || latestId));
+        pushed = true;
+        pulled = true;
+      }
+    } else {
+      if (updates.length) {
+        if (since === 0 && state.crdtSeedIsDefault && !localHasChanges) {
+          resetCrdtFromUpdates(updates);
+        } else {
+          state.crdtApplying = true;
+          updates.forEach((item) => {
+            if (item?.update) window.Y.applyUpdate(state.crdtDoc, base64ToBytes(item.update), "remote");
+          });
+          state.crdtApplying = false;
+          applyCrdtToState();
+        }
+        state.crdtSeedIsDefault = false;
+        localStorage.setItem(storageKeys.crdtUpdateId, String(Number(updates[updates.length - 1]?.id) || latestId));
+        pulled = true;
+      } else if (since === 0 && latestId === 0 && legacyPayloadHasNotes(remotePayload.legacy)) {
+        replaceStateFromLegacyPayload(remotePayload.legacy);
+        state.crdtSeedIsDefault = false;
+        state.crdtPendingUpdates = [fullCrdtUpdateBase64()];
+        writeCrdtPendingUpdates();
+        pulled = true;
+      } else if (since === 0 && latestId === 0 && state.crdtPendingUpdates.length > 0) {
+        state.crdtPendingUpdates = [fullCrdtUpdateBase64()];
+        writeCrdtPendingUpdates();
+      } else if (since === 0 && latestId === 0 && state.crdtPendingUpdates.length === 0 && !state.crdtSeedIsDefault) {
+        state.crdtPendingUpdates = [fullCrdtUpdateBase64()];
+        writeCrdtPendingUpdates();
+      }
+    }
+
+    if (!pullOnly && state.crdtPendingUpdates.length) {
+      const pending = [...state.crdtPendingUpdates];
+      const result = await postCrdtUpdates(token, pending);
+      state.crdtPendingUpdates = [];
+      writeCrdtPendingUpdates();
+      localStorage.setItem(storageKeys.crdtUpdateId, String(Number(result.latestId) || latestId));
+      clearSyncPending(Number(result.updatedAt) || Date.now(), { lastPushAt: Date.now(), lastPullAt: pulled ? Date.now() : readSyncMeta().lastPullAt || 0 });
+      pushed = true;
+    } else if (forcePull || pulled) {
+      clearSyncPending(Date.now(), { lastPullAt: Date.now(), lastCheckedAt: Date.now() });
+    } else {
+      writeSyncMeta({ pending: state.crdtPendingUpdates.length > 0, dirtyNoteIds: dirtyNoteIds(), lastError: "", lastCheckedAt: Date.now() });
+    }
+
+    renderSyncMeta();
+    if (forcePull) {
+      const message = t("syncRefreshedAt").replace("{time}", formatTime(Date.now()));
+      showSyncMessage(message);
+      showToast(message);
+    } else if (pushed) {
+      const message = t("syncPushedAt").replace("{time}", formatTime(Date.now()));
+      showSyncMessage(message);
+      if (!silent) showToast(message);
+    } else if (pulled) {
+      const message = t("syncPulledAt").replace("{time}", formatTime(Date.now()));
+      showSyncMessage(message);
+      if (!silent) showToast(message);
+    } else if (manual) {
+      const message = t("syncNoChange");
+      showSyncMessage(message);
+      showToast(message);
+    }
+  } catch (error) {
+    const message = `${t("syncFailed")}：${cloudErrorText(error)}`;
+    writeSyncMeta({ pending: state.crdtPendingUpdates.length > 0 || state.dirtyNoteIds.size > 0, dirtyNoteIds: dirtyNoteIds(), lastError: message });
+    renderSyncMeta();
+    if (!silent) {
+      showSyncMessage(message);
+      showToast(message);
+    }
+  } finally {
+    state.syncInFlight = false;
+    state.syncAction = "";
+    renderSyncMeta();
+    if (state.syncQueue.length) {
+      const queued = state.syncQueue.shift();
+      window.setTimeout(() => syncCloud(queued), 120);
+    }
+  }
+}
+
 async function syncCloud(options = {}) {
+  if (crdtAvailable()) return syncCrdtCloud(options);
+
   const token = getSyncToken();
   const manual = Boolean(options.manual);
   const silent = Boolean(options.silent);

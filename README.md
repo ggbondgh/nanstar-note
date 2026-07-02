@@ -12,7 +12,7 @@ NanStar Note is a lightweight personal note platform for technical notes, client
 - Import `.json`, `.md`, and `.txt`.
 - Export all notes as JSON and download a single note as Markdown.
 - Share-link import for one note.
-- Cloudflare Pages Functions + D1 sync scaffold.
+- Cloudflare Pages Functions + D1 sync with a Yjs CRDT update log.
 
 ## Local preview
 
@@ -54,9 +54,11 @@ NOTE_SYNC_TOKEN=choose-a-long-private-token
 
 After deployment, open the sync dialog in NanStar Note and enter the same token.
 
-## Data model
+## Sync model
 
-Cloud sync stores one JSON document in D1. The API creates this table automatically:
+Cloud sync is local-first. The browser keeps notes in `localStorage`, records local edits as Yjs CRDT updates, and automatically pushes/pulls those updates through Cloudflare Pages Functions + D1. Notes and folders are stored in the same CRDT document, so folder create, rename, delete, and note moves sync across devices.
+
+The API still keeps the old JSON table for migration/backward compatibility:
 
 ```sql
 CREATE TABLE IF NOT EXISTS note_documents (
@@ -66,7 +68,24 @@ CREATE TABLE IF NOT EXISTS note_documents (
 );
 ```
 
-The stored document shape is:
+New sync writes append-only CRDT updates here:
+
+```sql
+CREATE TABLE IF NOT EXISTS note_crdt_updates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  update_data TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+```
+
+Client flow:
+
+- `GET /api/notes?crdt=1&since=<id>` pulls remote updates after the local update id.
+- `POST /api/notes` appends local base64 Yjs updates.
+- The first push to an empty cloud sends a full CRDT snapshot, not only the latest edit delta.
+- A fresh device that only has bundled default sample notes discards that local seed when it first pulls real cloud data, so default notes do not pollute the synced notebook.
+
+The legacy JSON document shape is:
 
 ```json
 {
@@ -74,6 +93,12 @@ The stored document shape is:
   "updatedAt": 0
 }
 ```
+
+Important sync pitfalls:
+
+- Do not seed a new cloud database with only an incremental edit update. Yjs needs the missing base structures, so the first cloud write must be `encodeStateAsUpdate(doc)`.
+- Do not merge bundled default notes into a real remote notebook on a new device. If the local state is still the default seed and remote CRDT updates exist, reset the local Yjs doc from remote updates instead of merging.
+- UI-only render events must not create CRDT updates. For example, changing the editor section `open` property during render should be ignored when the note already has the same `editorSectionOpen` value.
 
 This first version is designed for a single owner. Do not store passwords, API keys, or customer secrets unless you later add end-to-end encryption.
 
