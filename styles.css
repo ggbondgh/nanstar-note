@@ -50,7 +50,7 @@ body.preview-focus-mode .sidebar-toggle-button {
   display: none;
 }
 body.preview-focus-mode .editor-card {
-  height: 100vh;
+  height: 100dvh;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -110,17 +110,17 @@ button { border: 0; color: inherit; cursor: pointer; }
 input, textarea { min-width: 0; border: 0; color: inherit; background: transparent; outline: none; }
 input::placeholder, textarea::placeholder { color: #9aa5b6; }
 
-.app-shell { display: grid; grid-template-columns: var(--sidebar-width, 280px) 10px minmax(0, 1fr); height: 100vh; min-height: 0; overflow: hidden; }
+.app-shell { display: grid; grid-template-columns: var(--sidebar-width, 280px) 10px minmax(0, 1fr); height: 100dvh; min-height: 0; overflow: hidden; }
 .sidebar {
   position: sticky; top: 0; display: flex; flex-direction: column; gap: 8px;
-  height: 100vh; padding: 12px 10px; border-right: 1px solid var(--line);
+  height: 100dvh; padding: 12px 10px; border-right: 1px solid var(--line);
   background: #f8fafc; overflow: hidden;
 }
 .sidebar-resizer {
   position: sticky;
   top: 0;
   z-index: 12;
-  height: 100vh;
+  height: 100dvh;
   cursor: col-resize;
   background: rgba(216, 221, 230, 0.28);
 }
@@ -561,7 +561,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .note-item-meta { justify-content: space-between; gap: 10px; color: var(--muted); font-size: 11px; }
 .note-item-mode { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 19px; padding: 0 7px; border-radius: 999px; background: #eef3ff; color: var(--accent); font-size: 10px; font-weight: 700; }
 
-.main { display: flex; min-width: 0; flex-direction: column; gap: 8px; padding: 10px 12px 12px; }
+.main { display: flex; min-width: 0; min-height: 0; height: 100dvh; flex-direction: column; gap: 8px; padding: 10px 12px 12px; overflow: hidden; }
 .topbar {
   justify-content: space-between; gap: 14px; min-height: 40px; padding: 0 4px 4px;
   border-bottom: 1px solid rgba(216, 221, 230, 0.65);
@@ -577,7 +577,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 
 .editor-card {
   display: flex; flex-direction: column; min-width: 0; min-height: 0;
-  height: calc(100vh - 84px); border: 1px solid var(--line); border-radius: var(--radius);
+  flex: 1 1 auto; height: auto; border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--panel); box-shadow: var(--shadow); overflow: hidden;
 }
 .editor-section { border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.62); }
@@ -971,7 +971,7 @@ body.preview-focus-mode .preview-content {
 
 @media (max-width: 1320px) {
   .app-shell { grid-template-columns: var(--sidebar-width, 280px) 10px minmax(0, 1fr); }
-  .editor-card { height: 720px; }
+  .editor-card { height: auto; }
 }
 
 @media (max-width: 1020px) {
@@ -979,7 +979,7 @@ body.preview-focus-mode .preview-content {
   .app-shell { grid-template-columns: 1fr; height: auto; min-height: 100vh; overflow: visible; }
   .sidebar-resizer { display: none; }
   .sidebar { position: static; height: auto; overflow: visible; max-height: 50vh; }
-  .main { padding: 10px; }
+  .main { height: auto; padding: 10px; overflow: visible; }
   .topbar, .topbar-actions { align-items: stretch; flex-direction: column; }
   .topbar-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .editor-card { height: auto; min-height: 400px; }
