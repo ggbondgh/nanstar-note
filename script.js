@@ -39,6 +39,9 @@ const i18n = {
     androidUpdateChecking: "正在检查新版本...",
     androidUpdateFailed: "检查失败，可以直接下载最新安装包。",
     androidDownloadOpening: "正在打开 Android 安装包下载链接...",
+    androidDownloadInstalling: "正在下载 APK，完成后会打开系统安装器...",
+    androidDownloadReadyToInstall: "APK 已下载，请在系统安装器中确认安装。",
+    androidUnknownSourceBlocked: "请允许 NanStar Note 安装未知应用，返回后再点一次下载。",
     androidUpdatePrompt: "发现新版本 {version}，现在下载安装包？",
     androidUnknownVersion: "未知版本",
     androidPanelReady: "可以下载或检查 NanStar Note Android 安装包。",
@@ -253,6 +256,9 @@ const i18n = {
     androidUpdateChecking: "Checking for updates...",
     androidUpdateFailed: "Update check failed. You can download the latest APK directly.",
     androidDownloadOpening: "Opening Android APK download link...",
+    androidDownloadInstalling: "Downloading APK. The Android installer will open when it finishes...",
+    androidDownloadReadyToInstall: "APK downloaded. Confirm installation in the Android installer.",
+    androidUnknownSourceBlocked: "Allow NanStar Note to install unknown apps, then tap download again.",
     androidUpdatePrompt: "New version {version} is available. Download it now?",
     androidUnknownVersion: "Unknown version",
     androidPanelReady: "Download or check the NanStar Note Android package here.",
@@ -677,6 +683,7 @@ const state = {
   saveTimer: null,
   savePendingNoteId: null,
   autoSyncTimer: null,
+  syncTokenTimer: null,
   syncStartupTimer: null,
   syncPollTimer: null,
   syncInFlight: false,
@@ -705,8 +712,8 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 const DEFAULT_SPLIT_RATIO = 52;
 const DEFAULT_SIDEBAR_WIDTH = 280;
-const SYNC_POLL_INTERVAL = 15000;
-const SYNC_PUSH_DELAY = 1200;
+const SYNC_POLL_INTERVAL = 3000;
+const SYNC_PUSH_DELAY = 500;
 const TRANSFER_NOTE_ID = "nanstar-transfer-assistant";
 const FOLDER_REGISTRY_NOTE_ID = "nanstar-folder-registry";
 const INBOX_FOLDER = "默认文件夹";
@@ -1177,18 +1184,7 @@ function bindEvents() {
     forcePullCloud();
   });
   elements.logoutCloudButton.addEventListener("click", clearSyncToken);
-  elements.syncTokenInput.addEventListener("input", () => {
-    const token = elements.syncTokenInput.value.trim();
-    if (token) localStorage.setItem(storageKeys.syncToken, token);
-    else localStorage.removeItem(storageKeys.syncToken);
-    resetTransferState();
-    applyFolderSectionVisibility();
-    renderFolderDatalist();
-    renderLists();
-    renderTransferPanel();
-    renderSyncMeta();
-    startCloudSync();
-  });
+  elements.syncTokenInput.addEventListener("input", handleSyncTokenInput);
   elements.autoSyncToggle.addEventListener("change", () => {
     localStorage.setItem(storageKeys.autoSync, elements.autoSyncToggle.checked ? "1" : "0");
     renderSyncMeta();
@@ -1708,7 +1704,7 @@ async function checkAndroidUpdate() {
     const message = t("androidUpdateReady").replace("{version}", latestName);
     setAppUpdateStatus(message, true);
     if (window.confirm(t("androidUpdatePrompt").replace("{version}", latestName))) {
-      await openExternalUrl(latest.apkUrl || ANDROID_APK_URL);
+      await installAndroidApk(latest.apkUrl || ANDROID_APK_URL);
     }
   } catch (error) {
     console.warn(error);
@@ -1776,8 +1772,34 @@ function setAppUpdateStatus(message, locked = false) {
 }
 
 async function openAndroidDownload() {
+  await installAndroidApk(ANDROID_APK_URL);
+}
+
+async function installAndroidApk(url) {
+  const updaterPlugin = window.Capacitor?.Plugins?.NanStarUpdater;
+  if (nativeRuntime() && updaterPlugin?.installApk) {
+    try {
+      setAppUpdateStatus(t("androidDownloadInstalling"), true);
+      await updaterPlugin.installApk({ url });
+      setAppUpdateStatus(t("androidDownloadReadyToInstall"), true);
+      showToast(t("androidDownloadReadyToInstall"));
+      return;
+    } catch (error) {
+      const message = String(error?.code || error?.message || error || "");
+      if (message.includes("unknown_sources")) {
+        setAppUpdateStatus(t("androidUnknownSourceBlocked"), true);
+        showToast(t("androidUnknownSourceBlocked"));
+        return;
+      }
+      console.warn(error);
+      setAppUpdateStatus(t("androidUpdateFailed"), true);
+      showToast(t("androidUpdateFailed"));
+      return;
+    }
+  }
+
   setAppUpdateStatus(t("androidDownloadOpening"), true);
-  await openExternalUrl(ANDROID_APK_URL);
+  await openExternalUrl(url || ANDROID_APK_URL);
 }
 
 async function openExternalUrl(url) {
@@ -2071,7 +2093,7 @@ function scheduleSave(message = "已保存本地") {
     setSaveStatus(getSyncToken() ? t("syncPending") : message);
     markSyncPending(state.savePendingNoteId);
     state.savePendingNoteId = null;
-  }, 240);
+  }, 140);
 }
 
 function flushPendingSave(noteId = state.activeId) {
@@ -4000,14 +4022,16 @@ function clearSyncPending(remoteUpdatedAt = Date.now(), patch = {}, syncedSnapsh
   });
 }
 
-function startCloudSync() {
+function startCloudSync(options = {}) {
   stopCloudSync();
   if (!getSyncToken() || !elements.autoSyncToggle.checked) {
     renderSyncMeta();
     return;
   }
   renderSyncMeta();
-  state.syncStartupTimer = window.setTimeout(() => syncCloud({ silent: true, reason: "startup" }), 300);
+  if (!options.skipStartup) {
+    state.syncStartupTimer = window.setTimeout(() => syncCloud({ silent: true, reason: "startup" }), 300);
+  }
   state.syncPollTimer = window.setInterval(() => {
     if (!document.hidden) syncCloud({ silent: true, pullOnly: true, reason: "poll" });
   }, SYNC_POLL_INTERVAL);
@@ -4468,6 +4492,8 @@ async function syncCloud(options = {}) {
 }
 
 function clearSyncToken() {
+  clearTimeout(state.syncTokenTimer);
+  state.syncTokenTimer = null;
   elements.syncTokenInput.value = "";
   stopCloudSync();
   localStorage.removeItem(storageKeys.syncToken);
@@ -4483,6 +4509,16 @@ function clearSyncToken() {
   showSyncMessage(t("tokenCleared"));
 }
 
+function refreshSyncAccessUi() {
+  resetTransferState();
+  applyFolderSectionVisibility();
+  renderFolderDatalist();
+  renderExportFolderSelect();
+  renderLists();
+  renderTransferPanel();
+  renderSyncMeta();
+}
+
 function applyFolderSectionVisibility() {
   const enabled = folderManagementEnabled();
   if (elements.folderSection) {
@@ -4491,6 +4527,32 @@ function applyFolderSectionVisibility() {
   if (elements.folderAddButton) elements.folderAddButton.hidden = !enabled;
   if (elements.folderInput) elements.folderInput.disabled = !enabled;
   state.selectedFolder = enabled ? canonicalSelectedFolder(state.selectedFolder) : "";
+}
+
+function handleSyncTokenInput() {
+  clearTimeout(state.syncTokenTimer);
+  const token = elements.syncTokenInput.value.trim();
+  const previousToken = localStorage.getItem(storageKeys.syncToken) || "";
+
+  if (!token) {
+    localStorage.removeItem(storageKeys.syncToken);
+    stopCloudSync();
+    refreshSyncAccessUi();
+    showSyncMessage(t("syncLocalReady"));
+    return;
+  }
+
+  stopCloudSync();
+  localStorage.setItem(storageKeys.syncToken, token);
+  refreshSyncAccessUi();
+
+  const shouldForceConnect = token !== previousToken;
+  state.syncTokenTimer = window.setTimeout(async () => {
+    state.syncTokenTimer = null;
+    if (!getSyncToken()) return;
+    const connected = shouldForceConnect ? await forcePullCloud() : true;
+    if (connected !== false) startCloudSync({ skipStartup: true });
+  }, 900);
 }
 
 function getSyncToken() {
