@@ -376,10 +376,11 @@
         </label>
         <div class="sync-grid">
           <button class="primary-button" id="pushCloudButton" type="button">立即同步</button>
-          <button class="ghost-button" id="pullCloudButton" type="button">检查云端更新</button>
+          <button class="ghost-button" id="pullCloudButton" type="button">刷新云端最新</button>
           <button class="ghost-button" id="logoutCloudButton" type="button">清除 Token</button>
         </div>
         <div class="sync-message" id="syncMessage">未连接云同步，本地编辑可正常使用。</div>
+        <div class="sync-diagnostics" id="syncDiagnostics" hidden></div>
       </form>
     </dialog>
 
@@ -412,7 +413,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-    <script src="./script.js?v=22"></script>
+    <script src="./script.js?v=23"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })

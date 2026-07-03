@@ -938,6 +938,7 @@ body.preview-focus-mode .preview-content {
 .toggle-field input { width: 16px; height: 16px; }
 .sync-grid button { flex: 1; }
 .sync-message { padding: 11px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: #f7f9fc; color: var(--soft); font-size: 13px; }
+.sync-diagnostics { margin-top: -4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .app-update-modal-card { gap: 12px; }
 .app-update-panel {
   display: grid;
