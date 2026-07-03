@@ -53,9 +53,8 @@ export async function onRequestPost({ env, request }) {
   const { db, bucket } = setup;
 
   await ensureTable(db);
-  const formData = await request.formData();
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
+  const file = await readUploadedFile(request);
+  if (!file) {
     return json({ error: "Missing file" }, 400);
   }
   if (!file.name || !file.size) {
@@ -74,12 +73,12 @@ export async function onRequestPost({ env, request }) {
   }
 
   const id = crypto.randomUUID();
-  const name = safeFileName(file.name);
+  const name = file.name;
   const key = `transfers/${id}/${name}`;
   const mimeType = file.type || "application/octet-stream";
   const now = Date.now();
 
-  await bucket.put(key, file.stream(), {
+  await bucket.put(key, file.blob.stream(), {
     httpMetadata: {
       contentType: mimeType,
       contentDisposition: `attachment; filename*=UTF-8''${encodeRFC5987ValueChars(name)}`
@@ -145,6 +144,41 @@ async function currentUsage(db) {
     count: Number(result?.count) || 0,
     totalBytes: Number(result?.total_bytes) || 0
   };
+}
+
+async function readUploadedFile(request) {
+  const formData = await request.formData();
+  let part = formData.get("file");
+
+  if (!isUploadPart(part)) {
+    for (const [, candidate] of formData.entries()) {
+      if (isUploadPart(candidate)) {
+        part = candidate;
+        break;
+      }
+    }
+  }
+
+  if (!isUploadPart(part)) return null;
+
+  const blob = part instanceof Blob
+    ? part
+    : new Blob([await part.arrayBuffer()], { type: part.type || "application/octet-stream" });
+  return {
+    blob,
+    name: safeFileName(part.name || "file"),
+    type: part.type || blob.type || "application/octet-stream",
+    size: Number(part.size) || blob.size || 0
+  };
+}
+
+function isUploadPart(value) {
+  return Boolean(
+    value
+    && typeof value === "object"
+    && (typeof value.stream === "function" || typeof value.arrayBuffer === "function")
+    && typeof value.size === "number"
+  );
 }
 
 async function downloadFile(db, bucket, id) {
