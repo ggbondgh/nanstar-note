@@ -1485,11 +1485,14 @@ async function uploadSingleTransferFile(file) {
   state.transferUploads.unshift(upload);
   renderTransferPanel();
   try {
-    const formData = new FormData();
-    formData.append("file", file, file.name || "file");
     const result = await fetchTransferJson("./api/files", {
       method: "POST",
-      body: formData
+      body: file,
+      headers: {
+        "content-type": file.type || "application/octet-stream",
+        "x-file-name": encodeURIComponent(file.name || "file"),
+        "x-file-size": String(file.size || 0)
+      }
     });
     state.transferUploads = state.transferUploads.filter((item) => item.id !== upload.id);
     if (result.file) {

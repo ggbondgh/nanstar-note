@@ -147,6 +147,21 @@ async function currentUsage(db) {
 }
 
 async function readUploadedFile(request) {
+  const headerName = request.headers.get("x-file-name");
+  if (headerName) {
+    let decodedName = headerName;
+    try {
+      decodedName = decodeURIComponent(headerName);
+    } catch {}
+    const blob = await request.blob();
+    return {
+      blob,
+      name: safeFileName(decodedName),
+      type: request.headers.get("content-type") || blob.type || "application/octet-stream",
+      size: Number(request.headers.get("x-file-size")) || blob.size || 0
+    };
+  }
+
   const formData = await request.formData();
   let part = formData.get("file");
 
@@ -253,6 +268,6 @@ function corsHeaders() {
   return {
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
-    "access-control-allow-headers": "content-type, authorization"
+    "access-control-allow-headers": "content-type, authorization, x-file-name, x-file-size"
   };
 }
