@@ -91,6 +91,14 @@ CREATE TABLE IF NOT EXISTS note_transfer_files (
 );
 ```
 
+File upload pitfall fixed in this repo:
+
+- Symptom: upload UI shows `文件传输失败：Missing file`.
+- This does not mean the R2 binding is missing. If Cloudflare R2 is not bound, the API returns `Missing R2 binding NANSTAR_NOTE_FILES`.
+- Root cause: Cloudflare Pages Functions can fail to expose a browser `multipart/form-data` upload as a normal `File` object, so strict checks such as `formData.get("file") instanceof File` can reject a valid upload.
+- Current fix: the browser uploads the raw file bytes to `POST /api/files` and sends metadata with `x-file-name` and `x-file-size`. The function reads `request.blob()` for this binary path, while still keeping a fallback for older `FormData` uploads.
+- CORS must allow `content-type`, `authorization`, `x-file-name`, and `x-file-size`; otherwise browser preflight can block file uploads before the function runs.
+
 ## Sync model
 
 Cloud sync is local-first. The browser keeps notes in `localStorage`, records local edits as Yjs CRDT updates, and automatically pushes/pulls those updates through Cloudflare Pages Functions + D1. Notes and folders are stored in the same CRDT document, so folder create, rename, delete, and note moves sync across devices.
