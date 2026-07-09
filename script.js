@@ -772,6 +772,9 @@ const ANDROID_UPDATE_URL = `${ANDROID_RELEASE_BASE_URL}/update.json`;
 const ANDROID_RELEASE_API_URL = "https://api.github.com/repos/ggbondgh/nanstar-note/releases/latest";
 const CLOUD_API_ORIGIN = "https://nanstar-note.pages.dev";
 let appRuntimeInfoPromise = null;
+let editorLineMeasureNode = null;
+let editorLineLayoutCache = null;
+let editorLineLayoutFrame = 0;
 
 function nativeRuntime() {
   const capacitor = window.Capacitor;
@@ -980,6 +983,7 @@ function bindEvents() {
   elements.mobileSidebarBackdrop?.addEventListener("click", closeMobileSidebar);
   const mobileMedia = window.matchMedia?.(MOBILE_LAYOUT_QUERY);
   mobileMedia?.addEventListener?.("change", () => closeMobileSidebar());
+  window.addEventListener("resize", () => refreshEditorLineLayoutSoon());
   elements.languageToggleButton?.addEventListener("click", toggleLanguage);
   elements.folderSectionSummary?.addEventListener("click", (event) => {
     if (event.target.closest("button")) return;
@@ -2690,6 +2694,7 @@ function renderModeState() {
     ? `${t("modeMd")} · ${elements.editorSection.open ? t("collapseSection") : t("expandSection")}`
     : `${t("modeTxt")} · ${elements.editorSection.open ? t("collapseSection") : t("expandSection")}`;
   elements.splitEditor.style.setProperty("--split-ratio", `${readSplitRatio()}%`);
+  refreshEditorLineLayoutSoon();
   syncScrollState();
   syncEditorSearchState();
 }
@@ -3800,6 +3805,7 @@ function applySidebarWidth(value) {
     elements.appShell.style.setProperty("--sidebar-width", `${width}px`);
   }
   localStorage.setItem(storageKeys.sidebarWidth, String(width));
+  refreshEditorLineLayoutSoon();
 }
 
 function bindSidebarResizer() {
@@ -5152,8 +5158,8 @@ function selectMatch(match) {
   const textarea = elements.bodyInput;
   textarea.focus();
   textarea.setSelectionRange(match.start, match.end);
-  const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight) || 22;
-  textarea.scrollTop = Math.max(0, (match.line - 1) * lineHeight - textarea.clientHeight / 3);
+  const metrics = getEditorMetrics();
+  textarea.scrollTop = Math.max(0, metrics.paddingTop + getEditorLineTopOffset(match.line, metrics) - textarea.clientHeight / 3);
   updateCurrentLineIndicator();
   syncLineNumberScroll();
 }
@@ -5431,12 +5437,15 @@ function replaceRange(from, to, text) {
 function updateLineNumbers() {
   const states = getLineStates();
   const total = Math.max(1, states.length);
+  const metrics = getEditorMetrics();
+  const layout = getEditorLineLayout(metrics);
   elements.lineNumbersTrack.innerHTML = Array.from({ length: total }, (_, index) => {
     const lineNumber = index + 1;
     const classes = ["line-number"];
     if (lineNumber === state.currentLine) classes.push("current");
     if (states[index]?.searchHit) classes.push("search-hit");
-    return `<div class="${classes.join(" ")}" data-line="${lineNumber}">${lineNumber}</div>`;
+    const height = Math.max(metrics.lineHeight, layout.heights[index] || metrics.lineHeight);
+    return `<div class="${classes.join(" ")}" data-line="${lineNumber}" style="height:${height.toFixed(2)}px">${lineNumber}</div>`;
   }).join("");
   syncLineNumberScroll();
   renderEditorSearchCount();
@@ -5504,6 +5513,7 @@ function applySplitRatio(value) {
   const ratio = Math.max(32, Math.min(68, Number(value) || DEFAULT_SPLIT_RATIO));
   elements.splitEditor.style.setProperty("--split-ratio", `${ratio}%`);
   localStorage.setItem(storageKeys.splitRatio, String(ratio));
+  refreshEditorLineLayoutSoon();
 }
 
 function jumpToLine(lineIndex, targetId) {
@@ -5513,7 +5523,7 @@ function jumpToLine(lineIndex, targetId) {
   textarea.focus();
   textarea.setSelectionRange(start, start);
   const metrics = getEditorMetrics();
-  textarea.scrollTop = Math.max(0, metrics.paddingTop + lineIndex * metrics.lineHeight - textarea.clientHeight / 3);
+  textarea.scrollTop = Math.max(0, metrics.paddingTop + getEditorLineTopOffset(lineIndex + 1, metrics) - textarea.clientHeight / 3);
   updateCurrentLineIndicator();
   syncLineNumberScroll();
 
@@ -5528,14 +5538,125 @@ function getEditorMetrics() {
   const lineHeight = parseFloat(style.lineHeight) || 24;
   const paddingTop = parseFloat(style.paddingTop) || 0;
   const paddingBottom = parseFloat(style.paddingBottom) || 0;
-  return { lineHeight, paddingTop, paddingBottom };
+  const paddingLeft = parseFloat(style.paddingLeft) || 0;
+  const paddingRight = parseFloat(style.paddingRight) || 0;
+  return { lineHeight, paddingTop, paddingBottom, paddingLeft, paddingRight };
+}
+
+function refreshEditorLineLayoutSoon() {
+  editorLineLayoutCache = null;
+  if (editorLineLayoutFrame) return;
+  editorLineLayoutFrame = window.requestAnimationFrame(() => {
+    editorLineLayoutFrame = 0;
+    if (!elements.bodyInput || !elements.lineNumbersTrack) return;
+    updateLineNumbers();
+    syncScrollState();
+  });
+}
+
+function getEditorLineMeasureNode() {
+  if (editorLineMeasureNode?.isConnected) return editorLineMeasureNode;
+  const node = document.createElement("div");
+  Object.assign(node.style, {
+    position: "fixed",
+    left: "-10000px",
+    top: "0",
+    visibility: "hidden",
+    pointerEvents: "none",
+    zIndex: "-1",
+    boxSizing: "border-box",
+    margin: "0",
+    padding: "0",
+    border: "0",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    wordBreak: "break-word",
+    contain: "layout style"
+  });
+  document.body.appendChild(node);
+  editorLineMeasureNode = node;
+  return node;
+}
+
+function getEditorLineLayout(metrics = getEditorMetrics()) {
+  const textarea = elements.bodyInput;
+  const style = getComputedStyle(textarea);
+  const value = textarea.value.replace(/\r\n/g, "\n");
+  const width = Math.max(1, Math.floor(textarea.clientWidth - metrics.paddingLeft - metrics.paddingRight));
+  const fontKey = [
+    style.fontFamily,
+    style.fontSize,
+    style.fontWeight,
+    style.fontStyle,
+    style.letterSpacing,
+    style.tabSize,
+    metrics.lineHeight
+  ].join("|");
+
+  if (
+    editorLineLayoutCache
+    && editorLineLayoutCache.value === value
+    && editorLineLayoutCache.width === width
+    && editorLineLayoutCache.fontKey === fontKey
+  ) {
+    return editorLineLayoutCache.layout;
+  }
+
+  const measureNode = getEditorLineMeasureNode();
+  Object.assign(measureNode.style, {
+    width: `${width}px`,
+    fontFamily: style.fontFamily,
+    fontSize: style.fontSize,
+    fontWeight: style.fontWeight,
+    fontStyle: style.fontStyle,
+    letterSpacing: style.letterSpacing,
+    lineHeight: `${metrics.lineHeight}px`,
+    tabSize: style.tabSize || "4"
+  });
+
+  const fragment = document.createDocumentFragment();
+  const lines = value.split("\n");
+  lines.forEach((line) => {
+    const row = document.createElement("div");
+    row.style.minHeight = `${metrics.lineHeight}px`;
+    row.style.whiteSpace = "pre-wrap";
+    row.style.overflowWrap = "anywhere";
+    row.style.wordBreak = "break-word";
+    row.textContent = line || "\u00a0";
+    fragment.appendChild(row);
+  });
+  measureNode.replaceChildren(fragment);
+
+  let top = 0;
+  const tops = [];
+  const heights = Array.from(measureNode.children).map((row) => {
+    const height = Math.max(metrics.lineHeight, row.getBoundingClientRect().height || metrics.lineHeight);
+    tops.push(top);
+    top += height;
+    return height;
+  });
+  const layout = { heights, tops, totalHeight: top };
+  editorLineLayoutCache = { value, width, fontKey, layout };
+  return layout;
+}
+
+function getEditorLineTopOffset(lineNumber, metrics = getEditorMetrics()) {
+  const index = Math.max(0, Number(lineNumber) - 1);
+  const layout = getEditorLineLayout(metrics);
+  return layout.tops[index] ?? index * metrics.lineHeight;
+}
+
+function getEditorLineVisualHeight(lineNumber, metrics = getEditorMetrics()) {
+  const index = Math.max(0, Number(lineNumber) - 1);
+  const layout = getEditorLineLayout(metrics);
+  return Math.max(metrics.lineHeight, layout.heights[index] || metrics.lineHeight);
 }
 
 function renderCurrentLineDecoration() {
   const metrics = getEditorMetrics();
-  const offset = Math.max(0, metrics.paddingTop + (state.currentLine - 1) * metrics.lineHeight - elements.bodyInput.scrollTop);
+  const offset = Math.max(0, metrics.paddingTop + getEditorLineTopOffset(state.currentLine, metrics) - elements.bodyInput.scrollTop);
   elements.editorLineHighlight.style.transform = `translateY(${offset}px)`;
-  elements.editorLineHighlight.style.height = `${metrics.lineHeight}px`;
+  elements.editorLineHighlight.style.height = `${getEditorLineVisualHeight(state.currentLine, metrics)}px`;
   elements.editorLineHighlight.style.display = elements.bodyInput.value ? "block" : "none";
   updateLineNumberStyles();
 }
