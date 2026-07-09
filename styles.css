@@ -17,7 +17,7 @@
   --shadow: 0 18px 48px rgba(31, 41, 55, 0.08);
   --radius: 8px;
   --editor-gutter-width: 56px;
-  --editor-line-height: 26px;
+  --editor-line-height: 28px;
   --editor-padding-top: 14px;
   --editor-padding-bottom: 18px;
   --font-ui: "Segoe UI Variable", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
@@ -1362,7 +1362,7 @@ body.preview-focus-mode .preview-content {
 @media (max-width: 760px) {
   :root {
     --editor-gutter-width: 44px;
-    --editor-line-height: 25px;
+    --editor-line-height: 27px;
     --editor-padding-top: 12px;
     --editor-padding-bottom: 22px;
   }
