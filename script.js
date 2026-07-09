@@ -23,7 +23,8 @@ const i18n = {
     newNote: "新建笔记",
     titlePlaceholder: "写一个清晰的标题",
     folderPlaceholder: "文件夹，例如：WK / 客户现场",
-    editorPlaceholder: "纯文本适合放路径、账号检查清单、命令备忘；Markdown 适合结构化文档。Ctrl+Z / Ctrl+Y 保持浏览器原生编辑习惯。",
+    editorPlaceholder: "TXT 适合路径、账号、命令、清单；MD 适合结构化技术笔记；DOC 适合带格式的文档。Ctrl+Z / Ctrl+Y 保持浏览器原生编辑习惯。",
+    docPlaceholder: "像微信收藏/飞书文档一样编辑：标题、加粗、斜体、颜色、高亮、列表。",
     sync: "同步",
     installDesktop: "安装到桌面",
     androidApp: "Android App",
@@ -50,7 +51,8 @@ const i18n = {
     exportMenu: "导出",
     exportDialogTitle: "导出",
     exportCurrentTitle: "导出当前笔记",
-    exportCurrentCopy: "下载当前打开的 TXT/MD 文件",
+    exportCurrentCopy: "TXT 导出 .txt；MD 导出 .md/.txt/PDF；DOC 导出 .txt/.html/PDF",
+    exportDefault: "默认",
     exportFolderTitle: "导出文件夹",
     exportFolderCopy: "选择一个文件夹并下载 ZIP",
     exportAllTitle: "导出全部笔记",
@@ -115,17 +117,23 @@ const i18n = {
     noSearchMatch: "未找到匹配项",
     markdownMode: "Markdown 结构化模式",
     txtMode: "TXT 纯文本模式",
+    docMode: "DOC 文档模式",
     showPreview: "显示预览",
     hidePreview: "隐藏预览",
     undo: "撤回 Ctrl+Z",
     redo: "重做 Ctrl+Y",
     bold: "加粗",
+    italic: "斜体",
     inlineCode: "行内代码",
     unorderedList: "无序列表",
     orderedList: "有序列表",
     taskList: "任务清单",
     quote: "引用",
     codeBlock: "代码块",
+    underline: "下划线",
+    heading: "标题",
+    textColor: "文字颜色",
+    highlightColor: "高亮颜色",
     insertSnippets: "插入片段",
     insertPathSnippet: "路径片段",
     insertCommandSnippet: "命令片段",
@@ -224,6 +232,7 @@ const i18n = {
     editorSearchLabel: "查找",
     modeTxt: "TXT",
     modeMd: "MD",
+    modeDoc: "DOC",
     items: "条",
     inbox: "默认文件夹",
     newFolder: "新建文件夹",
@@ -253,7 +262,8 @@ const i18n = {
     newNote: "New Note",
     titlePlaceholder: "Write a clear title",
     folderPlaceholder: "Folder, e.g. WK / Client Site",
-    editorPlaceholder: "Plain text works well for paths, checklists, and command notes; Markdown is better for structured docs. Ctrl+Z / Ctrl+Y keep the browser's native editing flow.",
+    editorPlaceholder: "TXT is for paths, accounts, commands, and lists; MD is for structured technical notes; DOC is for formatted documents. Ctrl+Z / Ctrl+Y keep the browser's native editing flow.",
+    docPlaceholder: "Edit like a lightweight document: headings, bold, italic, colors, highlights, and lists.",
     sync: "Sync",
     installDesktop: "Install App",
     androidApp: "Android App",
@@ -280,7 +290,8 @@ const i18n = {
     exportMenu: "Export",
     exportDialogTitle: "Export",
     exportCurrentTitle: "Export Current Note",
-    exportCurrentCopy: "Download the current TXT/MD file",
+    exportCurrentCopy: "TXT exports .txt; MD exports .md/.txt/PDF; DOC exports .txt/.html/PDF",
+    exportDefault: "Default",
     exportFolderTitle: "Export Folder",
     exportFolderCopy: "Choose a folder and download a ZIP",
     exportAllTitle: "Export All Notes",
@@ -345,17 +356,23 @@ const i18n = {
     noSearchMatch: "No matches",
     markdownMode: "Markdown mode",
     txtMode: "Plain text mode",
+    docMode: "DOC mode",
     showPreview: "Show preview",
     hidePreview: "Hide preview",
     undo: "Undo Ctrl+Z",
     redo: "Redo Ctrl+Y",
     bold: "Bold",
+    italic: "Italic",
     inlineCode: "Inline code",
     unorderedList: "Bulleted list",
     orderedList: "Numbered list",
     taskList: "Task list",
     quote: "Quote",
     codeBlock: "Code block",
+    underline: "Underline",
+    heading: "Heading",
+    textColor: "Text color",
+    highlightColor: "Highlight color",
     insertSnippets: "Insert snippets",
     insertPathSnippet: "Path snippet",
     insertCommandSnippet: "Command snippet",
@@ -454,6 +471,7 @@ const i18n = {
     editorSearchLabel: "Find",
     modeTxt: "TXT",
     modeMd: "MD",
+    modeDoc: "DOC",
     items: "items",
     inbox: "Default Folder",
     newFolder: "New Folder",
@@ -497,6 +515,12 @@ const templates = {
 - 要点一
 - 要点二
 `
+  },
+  doc: {
+    title: "未命名 DOC",
+    mode: "doc",
+    folder: "默认文件夹",
+    body: "<p></p>"
   },
   command: {
     title: "命令速查",
@@ -731,7 +755,8 @@ const state = {
   lastCloudPullAt: 0,
   dirtyNoteIds: new Set(),
   contextMenuFolder: null,
-  contextMenuNoteId: null
+  contextMenuNoteId: null,
+  docSelection: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -898,6 +923,9 @@ const elements = {
   editorLineHighlight: $("#editorLineHighlight"),
   textShell: $("#textShell"),
   bodyInput: $("#bodyInput"),
+  docInput: $("#docInput"),
+  docTextColorInput: $("#docTextColorInput"),
+  docHighlightInput: $("#docHighlightInput"),
   previewPane: $("#previewPane"),
   previewContent: $("#previewContent"),
   previewFocusButton: $("#previewFocusButton"),
@@ -927,6 +955,7 @@ const elements = {
   checkAppUpdateButton: $("#checkAppUpdateButton"),
   exportDialog: $("#exportDialog"),
   exportCurrentButton: $("#exportCurrentButton"),
+  exportCurrentFormats: $("#exportCurrentFormats"),
   exportFolderSelect: $("#exportFolderSelect"),
   exportFolderButton: $("#exportFolderButton"),
   exportAllButton: $("#exportAllButton"),
@@ -1105,13 +1134,18 @@ function bindEvents() {
   bindNoteInput(elements.titleInput);
   bindNoteInput(elements.folderInput);
   bindNoteInput(elements.bodyInput);
+  bindNoteInput(elements.docInput);
   elements.bodyInput.addEventListener("paste", handleEditorPaste);
   elements.bodyInput.addEventListener("scroll", syncLineNumberScroll);
   elements.bodyInput.addEventListener("keyup", handleEditorCursorChange);
   elements.bodyInput.addEventListener("click", handleEditorCursorChange);
   elements.bodyInput.addEventListener("select", handleEditorCursorChange);
+  elements.docInput?.addEventListener("blur", normalizeDocInputHtml);
+  elements.docInput?.addEventListener("keyup", saveDocSelection);
+  elements.docInput?.addEventListener("mouseup", saveDocSelection);
   document.addEventListener("selectionchange", () => {
     if (document.activeElement === elements.bodyInput) handleEditorCursorChange();
+    if (document.activeElement === elements.docInput) saveDocSelection();
   });
   elements.editorSection.addEventListener("toggle", handleEditorSectionToggle);
   elements.editorSearchInput.addEventListener("input", handleEditorSearchInput);
@@ -1139,6 +1173,8 @@ function bindEvents() {
       button.closest(".toolbar-menu")?.removeAttribute("open");
     }
   });
+  elements.docTextColorInput?.addEventListener("input", () => applyDocCommand("foreColor", elements.docTextColorInput.value));
+  elements.docHighlightInput?.addEventListener("input", () => applyDocCommand("hiliteColor", elements.docHighlightInput.value));
   bindSplitter();
   bindSidebarResizer();
 
@@ -1165,8 +1201,10 @@ function bindEvents() {
   if (elements.duplicateButton) elements.duplicateButton.addEventListener("click", duplicateActiveNote);
   if (elements.copyMarkdownButton) elements.copyMarkdownButton.addEventListener("click", copyActiveContent);
   elements.exportButton.addEventListener("click", openExportDialog);
-  elements.exportCurrentButton?.addEventListener("click", () => {
-    exportCurrentNote();
+  elements.exportCurrentFormats?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-export-format]");
+    if (!button || button.hidden || button.disabled) return;
+    exportCurrentNote(button.dataset.exportFormat || "default");
     elements.exportDialog?.close();
   });
   elements.exportFolderButton?.addEventListener("click", exportSelectedFolderFromDialog);
@@ -1245,6 +1283,7 @@ function bindEvents() {
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
     if ((event.ctrlKey || event.metaKey) && key === "f") {
+      if (activeNote()?.mode === "doc") return;
       event.preventDefault();
       openEditorSearch(elements.bodyInput.value.slice(elements.bodyInput.selectionStart, elements.bodyInput.selectionEnd) || state.editorSearch.query || "");
       return;
@@ -1339,6 +1378,11 @@ function handleNoteInput(event) {
 }
 
 function updateDraftInputUi() {
+  if (activeNote()?.mode === "doc") {
+    renderPreview();
+    renderSyncMeta();
+    return;
+  }
   updateCurrentLineIndicator();
   updateLineNumbers();
   syncEditorSearchState();
@@ -1890,17 +1934,19 @@ function loadNotes() {
 }
 
 function normalizeNote(note) {
-  const body = String(note.body || "");
+  const rawBody = String(note.body || "");
+  const mode = normalizeMode(note.mode, rawBody);
+  const body = mode === "doc" ? sanitizeDocHtml(rawBody || "<p></p>") : rawBody;
   return {
     id: note.id || createId(),
     title: note.title || "未命名笔记",
-    mode: normalizeMode(note.mode, body),
+    mode,
     folder: canonicalFolderName(note.folder),
     body,
     pinned: Boolean(note.pinned),
     favorite: Boolean(note.favorite),
     system: note.system || "",
-    editorSectionOpen: typeof note.editorSectionOpen === "boolean" ? note.editorSectionOpen : normalizeMode(note.mode, body) === "md",
+    editorSectionOpen: typeof note.editorSectionOpen === "boolean" ? note.editorSectionOpen : mode === "md" || mode === "doc",
     previewVisible: note.previewVisible !== false,
     createdAt: Number(note.createdAt) || Date.now(),
     updatedAt: Number(note.updatedAt) || Date.now(),
@@ -2177,6 +2223,7 @@ function isDefaultSeedState(notes = state.notes) {
 }
 
 function normalizeMode(mode, body) {
+  if (mode === "doc" || mode === "rich" || mode === "html") return "doc";
   if (mode === "md" || mode === "markdown") return "md";
   if (mode === "txt" || mode === "text") return "txt";
   return looksLikeMarkdown(body) ? "md" : "txt";
@@ -2564,7 +2611,9 @@ function applyActiveInputsToNote(options = {}) {
 
   const nextTitle = elements.titleInput.value.trimStart() || "未命名笔记";
   const nextFolder = elements.folderInput ? normalizeFolderName(elements.folderInput.value) : note.folder;
-  const nextBody = elements.bodyInput.value;
+  const nextBody = note.mode === "doc"
+    ? sanitizeDocHtml(elements.docInput?.innerHTML || "")
+    : elements.bodyInput.value;
   const changed = note.title !== nextTitle || note.folder !== nextFolder || note.body !== nextBody;
 
   note.title = nextTitle;
@@ -2584,8 +2633,10 @@ function updateActiveFromInputs(options = {}) {
   if (!note) return;
 
   scheduleSave();
-  updateCurrentLineIndicator();
-  updateLineNumbers();
+  if (note.mode !== "doc") {
+    updateCurrentLineIndicator();
+    updateLineNumbers();
+  }
   renderPreview();
   renderFloatingOutline();
   renderFolderDatalist();
@@ -2640,7 +2691,8 @@ function renderEditor() {
     elements.folderInput.value = folderManagementEnabled() ? canonicalFolderName(note.folder) : INBOX_FOLDER;
     elements.folderInput.disabled = !folderManagementEnabled();
   }
-  elements.bodyInput.value = note.body;
+  elements.bodyInput.value = note.mode === "doc" ? docHtmlToText(note.body) : note.body;
+  if (elements.docInput) elements.docInput.innerHTML = note.mode === "doc" ? sanitizeDocHtml(note.body || "<p></p>") : "";
 
   if (elements.pinButton) {
     elements.pinButton.classList.toggle("active", note.pinned);
@@ -2658,19 +2710,25 @@ function renderEditor() {
   });
 
   renderModeState();
-  updateCurrentLineIndicator();
-  updateLineNumbers();
-  handleEditorCursorChange();
+  if (note.mode !== "doc") {
+    updateCurrentLineIndicator();
+    updateLineNumbers();
+    handleEditorCursorChange();
+  } else {
+    state.currentLine = 1;
+    renderCurrentLineDecoration();
+  }
 }
 
 function renderModeState() {
   const note = activeNote();
   if (!note) return;
   const isMarkdown = note.mode === "md";
+  const isDoc = note.mode === "doc";
   const previewVisible = isMarkdown && note.previewVisible !== false;
   const focused = isMarkdown && state.previewFocus;
   if (!isMarkdown) state.previewFocus = false;
-  if (typeof note.editorSectionOpen !== "boolean") note.editorSectionOpen = isMarkdown;
+  if (typeof note.editorSectionOpen !== "boolean") note.editorSectionOpen = isMarkdown || isDoc;
 
   elements.editorCard.dataset.mode = note.mode;
   elements.editorCard.classList.toggle("preview-hidden", !previewVisible && !focused);
@@ -2679,7 +2737,7 @@ function renderModeState() {
   document.body.dataset.noteMode = note.mode;
   document.body.classList.toggle("preview-focus-mode", focused);
 
-  if (elements.modeHint) elements.modeHint.textContent = isMarkdown ? t("markdownMode") : t("txtMode");
+  if (elements.modeHint) elements.modeHint.textContent = isMarkdown ? t("markdownMode") : isDoc ? t("docMode") : t("txtMode");
   elements.togglePreviewButton.textContent = previewVisible && !focused ? "◫" : "◨";
   elements.togglePreviewButton.title = previewVisible && !focused ? t("hidePreview") : t("showPreview");
   elements.togglePreviewButton.setAttribute("aria-label", previewVisible && !focused ? t("hidePreview") : t("showPreview"));
@@ -2688,6 +2746,9 @@ function renderModeState() {
   elements.toolbar.querySelectorAll(".md-tool, [data-insert]").forEach((button) => {
     button.hidden = !isMarkdown;
   });
+  elements.toolbar.querySelectorAll(".doc-tool").forEach((item) => {
+    item.hidden = !isDoc;
+  });
   elements.togglePreviewButton.hidden = !isMarkdown;
   elements.previewFocusButton.hidden = !isMarkdown;
   elements.previewFocusButton.textContent = focused ? "✕" : "⤢";
@@ -2695,13 +2756,13 @@ function renderModeState() {
   elements.previewFocusButton.setAttribute("aria-label", focused ? t("exitFocus") : t("focusPreview"));
   elements.previewPane.hidden = !previewVisible && !focused;
   elements.editorSection.open = Boolean(note.editorSectionOpen);
-  if (elements.editorSectionState) elements.editorSectionState.textContent = isMarkdown
-    ? `${t("modeMd")} · ${elements.editorSection.open ? t("collapseSection") : t("expandSection")}`
-    : `${t("modeTxt")} · ${elements.editorSection.open ? t("collapseSection") : t("expandSection")}`;
+  const modeLabel = isMarkdown ? t("modeMd") : isDoc ? t("modeDoc") : t("modeTxt");
+  if (elements.editorSectionState) elements.editorSectionState.textContent = `${modeLabel} · ${elements.editorSection.open ? t("collapseSection") : t("expandSection")}`;
   elements.splitEditor.style.setProperty("--split-ratio", `${readSplitRatio()}%`);
   refreshEditorLineLayoutSoon();
   syncScrollState();
   syncEditorSearchState();
+  renderExportFormatButtons();
 }
 
 function renderPreview() {
@@ -2712,7 +2773,8 @@ function renderPreview() {
     elements.previewContent.innerHTML = "";
     return;
   }
-  if (elements.wordCount) elements.wordCount.textContent = `${countWords(body)} ${t("characters")} / ${countLines(body)} ${t("lines")}`;
+  const plainBody = note?.mode === "doc" ? docHtmlToText(body) : body;
+  if (elements.wordCount) elements.wordCount.textContent = `${countWords(plainBody)} ${t("characters")} / ${countLines(plainBody)} ${t("lines")}`;
 
   if (!note || note.mode !== "md") {
     elements.previewContent.innerHTML = "";
@@ -3036,8 +3098,14 @@ function sanitizeZipSegment(value) {
 }
 
 function fileNameForNote(note) {
-  const ext = note.mode === "md" ? "md" : "txt";
+  const ext = note.mode === "md" ? "md" : note.mode === "doc" ? "html" : "txt";
   return `${sanitizeZipSegment(note.title)}.${ext}`;
+}
+
+function exportDataForNote(note) {
+  if (note.mode === "md") return formatMarkdownExport(note);
+  if (note.mode === "doc") return formatDocHtmlExport(note);
+  return note.body;
 }
 
 function buildZipEntries(structure, rootPrefix = "") {
@@ -3194,7 +3262,7 @@ function exportFolderZip(folder) {
   const entries = notes.map((note) => ({
     type: "file",
     name: fileNameForNote(note),
-    data: note.mode === "md" ? formatMarkdownExport(note) : note.body
+    data: exportDataForNote(note)
   }));
   const zip = createZipBlob(buildZipEntries([{ type: "folder", name: root, children: entries }]));
   downloadBlob(`${safeFileName(folderName)}-${formatFileDate(Date.now())}.zip`, zip);
@@ -3226,7 +3294,7 @@ function exportAllNotesZip() {
       children: items.map((note) => ({
         type: "file",
         name: fileNameForNote(note),
-        data: note.mode === "md" ? formatMarkdownExport(note) : note.body
+        data: exportDataForNote(note)
       }))
     }));
   const zip = createZipBlob(buildZipEntries([{ type: "folder", name: `NanStar Note ${formatFileDate(Date.now())}`, children }]));
@@ -3247,11 +3315,12 @@ function duplicateNoteById(id) {
 function exportNoteById(id) {
   const note = state.notes.find(n => n.id === id && !isDeletedNote(n));
   if (!note) return;
-  const isMarkdown = note.mode === "md";
-  const ext = isMarkdown ? "md" : "txt";
-  const type = isMarkdown ? "text/markdown" : "text/plain";
-  const content = isMarkdown ? formatMarkdownExport(note) : note.body;
-  downloadText(`${safeFileName(note.title)}.${ext}`, content, type);
+  const data = currentExportData(note, "default");
+  if (data.kind === "pdf") {
+    printNotePdf(note);
+    return;
+  }
+  downloadText(`${safeFileName(note.title)}.${data.extension}`, data.content, data.type);
   showToast("已导出笔记");
 }
 
@@ -3302,7 +3371,8 @@ function sortedNotes() {
       if (state.viewFilter === "favorite" && !note.favorite) return false;
       if (state.selectedFolder && canonicalFolderName(note.folder) !== state.selectedFolder) return false;
       if (!state.query) return true;
-      const haystack = `${note.title}\n${displayFolderLabel(note.folder)}\n${note.body}`.toLowerCase();
+      const body = note.mode === "doc" ? docHtmlToText(note.body) : note.body;
+      const haystack = `${note.title}\n${displayFolderLabel(note.folder)}\n${body}`.toLowerCase();
       return haystack.includes(state.query);
     })
     .sort((a, b) => {
@@ -3409,10 +3479,10 @@ function renderNoteList() {
   elements.noteList.innerHTML = notes
     .map((note) => {
       const transfer = isTransferAssistant(note);
-      const mode = note.mode === "md" ? "MD" : "TXT";
+      const mode = note.mode === "md" ? "MD" : note.mode === "doc" ? "DOC" : "TXT";
       const flags = transfer ? "" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
       const title = transfer ? t("transferAssistantTitle") : note.title;
-      const body = transfer ? "" : excerpt(note.body);
+      const body = transfer ? "" : excerpt(note.mode === "doc" ? docHtmlToText(note.body) : note.body);
       const folder = canonicalFolderName(note.folder);
       const folderLabel = displayFolderLabel(folder);
       const folderTag = !transfer && folder !== INBOX_FOLDER
@@ -3724,14 +3794,25 @@ function toggleFavorite() {
 
 function changeMode(mode) {
   const note = activeNote();
-  if (!note || !["txt", "md"].includes(mode) || note.mode === mode) return;
+  if (!note || !["txt", "md", "doc"].includes(mode) || note.mode === mode) return;
+  applyActiveInputsToNote({ touchUpdatedAt: false });
+  const previousMode = note.mode;
+  const plainBody = previousMode === "doc" ? docHtmlToText(note.body) : note.body;
   note.mode = mode;
+  if (mode === "doc") {
+    note.body = plainTextToDocHtml(plainBody);
+  } else if (previousMode === "doc") {
+    note.body = plainBody;
+  }
   note.previewVisible = mode === "md";
-  note.editorSectionOpen = mode === "md";
+  note.editorSectionOpen = mode === "md" || mode === "doc";
   state.previewFocus = false;
   note.updatedAt = Date.now();
-  persistAndRender(mode === "md" ? "已切换到 Markdown" : "已切换到 TXT");
-  elements.bodyInput.focus();
+  persistAndRender(`Mode: ${mode.toUpperCase()}`);
+  window.setTimeout(() => {
+    if (mode === "doc") focusDocEditorEnd();
+    else elements.bodyInput.focus();
+  }, 0);
 }
 
 function togglePreview() {
@@ -3884,7 +3965,7 @@ function duplicateActiveNote() {
 function copyActiveContent() {
   const note = activeNote();
   if (!note) return;
-  const content = note.mode === "md" ? formatMarkdownExport(note) : note.body;
+  const content = note.mode === "md" ? formatMarkdownExport(note) : note.mode === "doc" ? docHtmlToText(note.body) : note.body;
   navigator.clipboard.writeText(content).then(
     () => showToast("已复制当前内容"),
     () => showToast("当前浏览器不允许复制")
@@ -3909,17 +3990,19 @@ function exportBackupJson() {
   exportAllNotes();
 }
 
-function exportCurrentNote() {
+function exportCurrentNote(format = "default") {
   const note = activeNote();
   if (!note) return;
-  const isMarkdown = note.mode === "md";
-  const extension = isMarkdown ? "md" : "txt";
-  const type = isMarkdown ? "text/markdown" : "text/plain";
-  const content = isMarkdown ? formatMarkdownExport(note) : note.body;
-  downloadText(`${safeFileName(note.title)}.${extension}`, content, type);
+  const data = currentExportData(note, format);
+  if (data.kind === "pdf") {
+    printNotePdf(note);
+    return;
+  }
+  downloadText(`${safeFileName(note.title)}.${data.extension}`, data.content, data.type);
 }
 
 function openExportDialog() {
+  renderExportFormatButtons();
   renderExportFolderSelect();
   elements.exportDialog?.showModal();
 }
@@ -4915,6 +4998,7 @@ function applyLanguage(language, initial = false) {
   if (elements.titleInput) elements.titleInput.placeholder = t("titlePlaceholder");
   if (elements.folderInput) elements.folderInput.placeholder = t("folderPlaceholder");
   if (elements.bodyInput) elements.bodyInput.placeholder = t("editorPlaceholder");
+  if (elements.docInput) elements.docInput.dataset.placeholder = t("docPlaceholder");
   if (elements.sidebarQuickNewButton) elements.sidebarQuickNewButton.title = t("newNote");
   if (elements.sidebarQuickNewButton) elements.sidebarQuickNewButton.setAttribute("aria-label", t("newNote"));
   if (elements.mobileNotesButton) {
@@ -4955,6 +5039,18 @@ function applyLanguage(language, initial = false) {
   setToolbarTitle('[data-prefix="- [ ] "]', t("taskList"));
   setToolbarTitle('[data-prefix="> "]', t("quote"));
   setToolbarTitle('[data-block="code"]', t("codeBlock"));
+  setToolbarTitle('[data-doc-command="bold"]', t("bold"));
+  setToolbarTitle('[data-doc-command="italic"]', t("italic"));
+  setToolbarTitle('[data-doc-command="underline"]', t("underline"));
+  setToolbarTitle('[data-doc-command="insertUnorderedList"]', t("unorderedList"));
+  setToolbarTitle('[data-doc-command="insertOrderedList"]', t("orderedList"));
+  setToolbarTitle('[data-doc-block="h2"]', t("heading"));
+  setToolbarTitle('#docTextColorInput', t("textColor"));
+  setToolbarTitle('#docHighlightInput', t("highlightColor"));
+  const docTextColorLabel = elements.docTextColorInput?.closest("label");
+  if (docTextColorLabel) docTextColorLabel.title = t("textColor");
+  const docHighlightLabel = elements.docHighlightInput?.closest("label");
+  if (docHighlightLabel) docHighlightLabel.title = t("highlightColor");
   const insertMenu = document.querySelector(".toolbar-menu > summary");
   if (insertMenu) {
     insertMenu.title = t("insertSnippets");
@@ -5225,9 +5321,171 @@ function getLineFromIndex(text, index) {
   return text.slice(0, Math.max(0, index)).split("\n").length;
 }
 
+function saveDocSelection() {
+  if (!elements.docInput) return;
+  const selection = window.getSelection?.();
+  if (!selection || !selection.rangeCount) return;
+  const range = selection.getRangeAt(0);
+  const container = range.commonAncestorContainer;
+  const owner = container.nodeType === Node.ELEMENT_NODE ? container : container.parentNode;
+  if (!owner || !elements.docInput.contains(owner)) return;
+  state.docSelection = range.cloneRange();
+}
+
+function restoreDocSelection() {
+  if (!elements.docInput) return;
+  elements.docInput.focus();
+  const selection = window.getSelection?.();
+  if (!selection) return;
+  if (state.docSelection) {
+    try {
+      selection.removeAllRanges();
+      selection.addRange(state.docSelection);
+      return;
+    } catch {
+      state.docSelection = null;
+    }
+  }
+  const range = document.createRange();
+  range.selectNodeContents(elements.docInput);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  state.docSelection = range.cloneRange();
+}
+
+function focusDocEditorEnd() {
+  if (!elements.docInput) return;
+  elements.docInput.focus();
+  const selection = window.getSelection?.();
+  if (!selection) return;
+  const range = document.createRange();
+  range.selectNodeContents(elements.docInput);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  state.docSelection = range.cloneRange();
+}
+
+function normalizeDocInputHtml() {
+  const note = activeNote();
+  if (!note || note.mode !== "doc" || !elements.docInput) return;
+  const clean = sanitizeDocHtml(elements.docInput.innerHTML || "<p></p>");
+  if (elements.docInput.innerHTML !== clean) elements.docInput.innerHTML = clean;
+  updateActiveFromInputs({ force: true });
+}
+
+function currentDocBlockTag() {
+  const selection = window.getSelection?.();
+  if (!selection || !selection.anchorNode || !elements.docInput) return "";
+  let node = selection.anchorNode.nodeType === Node.ELEMENT_NODE ? selection.anchorNode : selection.anchorNode.parentNode;
+  while (node && node !== elements.docInput) {
+    const tag = node.tagName?.toLowerCase();
+    if (["p", "h1", "h2", "h3", "blockquote", "li"].includes(tag)) return tag;
+    node = node.parentNode;
+  }
+  return "";
+}
+
+function applyDocCommand(command, value = null) {
+  const note = activeNote();
+  if (!note || note.mode !== "doc") return;
+  restoreDocSelection();
+  try {
+    if (command === "foreColor" || command === "hiliteColor" || command === "backColor") {
+      document.execCommand("styleWithCSS", false, true);
+    } else if (command !== "undo" && command !== "redo") {
+      document.execCommand("styleWithCSS", false, false);
+    }
+    if (command === "hiliteColor") {
+      const ok = document.execCommand("hiliteColor", false, value);
+      if (!ok) document.execCommand("backColor", false, value);
+    } else {
+      document.execCommand(command, false, value);
+    }
+  } catch (error) {
+    console.warn("DOC command failed", error);
+  }
+  saveDocSelection();
+  window.setTimeout(() => {
+    normalizeDocInputHtml();
+    elements.docInput?.focus();
+  }, 0);
+}
+
+function applyDocBlock(block) {
+  const current = currentDocBlockTag();
+  const next = current === block ? "p" : block;
+  applyDocCommand("formatBlock", `<${next}>`);
+}
+
+function renderExportFormatButtons() {
+  if (!elements.exportCurrentFormats) return;
+  const note = activeNote();
+  const allowed = new Set(note?.mode === "doc"
+    ? ["default", "txt", "html", "pdf"]
+    : note?.mode === "md"
+      ? ["default", "txt", "md", "pdf"]
+      : ["default", "txt"]);
+  elements.exportCurrentFormats.querySelectorAll("[data-export-format]").forEach((button) => {
+    const format = button.dataset.exportFormat || "default";
+    button.hidden = !allowed.has(format);
+    button.disabled = !note || isTransferAssistant(note);
+    if (format === "default") button.textContent = t("exportDefault");
+  });
+}
+
+function runNativeHistoryCommand(command) {
+  const note = activeNote();
+  if (note?.mode === "doc") {
+    applyDocCommand(command);
+    return;
+  }
+  elements.bodyInput.focus();
+  try {
+    document.execCommand(command, false, null);
+  } catch {
+    // Native Ctrl+Z/Ctrl+Y still works from the keyboard; toolbar fallback is best-effort.
+  }
+  window.setTimeout(updateActiveFromInputs, 0);
+}
+
+function insertSnippet(type) {
+  const snippets = {
+    path: "路径：\nC:\\\\path\\\\to\\\\file\n",
+    command: "```bash\n\n```\n",
+    checklist: "- [ ] 待处理\n- [ ] 已确认\n"
+  };
+  const text = snippets[type] || "";
+  if (!text) return;
+  const textarea = elements.bodyInput;
+  const needsPrefix = textarea.selectionStart > 0 && !textarea.value.slice(0, textarea.selectionStart).endsWith("\n");
+  const prefix = needsPrefix ? "\n\n" : "";
+  replaceRange(textarea.selectionStart, textarea.selectionEnd, `${prefix}${text}`);
+  textarea.focus();
+}
+
+function insertTable() {
+  const textarea = elements.bodyInput;
+  const table = "| 项目 | 内容 |\n| --- | --- |\n|  |  |\n";
+  const needsPrefix = textarea.selectionStart > 0 && !textarea.value.slice(0, textarea.selectionStart).endsWith("\n");
+  replaceRange(textarea.selectionStart, textarea.selectionEnd, `${needsPrefix ? "\n\n" : ""}${table}`);
+  textarea.focus();
+}
+
 function applyToolbarAction(button) {
   if (button.dataset.command) {
     runNativeHistoryCommand(button.dataset.command);
+    return;
+  }
+
+  if (button.dataset.docCommand) {
+    applyDocCommand(button.dataset.docCommand);
+    return;
+  }
+
+  if (button.dataset.docBlock) {
+    applyDocBlock(button.dataset.docBlock);
     return;
   }
 
@@ -5933,6 +6191,232 @@ function formatMarkdownExport(note) {
   parts.push("");
   parts.push(note.body.trimEnd());
   return parts.join("\n").trim() + "\n";
+}
+
+function currentExportData(note, format = "default") {
+  const requested = format === "default"
+    ? (note.mode === "md" ? "md" : note.mode === "doc" ? "html" : "txt")
+    : format;
+
+  if (requested === "pdf" && (note.mode === "md" || note.mode === "doc")) {
+    return { kind: "pdf" };
+  }
+
+  if (note.mode === "doc") {
+    if (requested === "txt") {
+      return { extension: "txt", type: "text/plain", content: docHtmlToText(note.body) };
+    }
+    return { extension: "html", type: "text/html", content: formatDocHtmlExport(note) };
+  }
+
+  if (note.mode === "md") {
+    if (requested === "txt") {
+      return { extension: "txt", type: "text/plain", content: note.body };
+    }
+    return { extension: "md", type: "text/markdown", content: formatMarkdownExport(note) };
+  }
+
+  return { extension: "txt", type: "text/plain", content: note.body };
+}
+
+function sanitizeDocHtml(html) {
+  const source = String(html || "").trim();
+  if (!source) return "<p></p>";
+  if (typeof document === "undefined") return source.replace(/<script[\s\S]*?<\/script>/gi, "");
+
+  const allowedTags = new Set(["p", "br", "strong", "em", "u", "span", "mark", "h1", "h2", "h3", "ul", "ol", "li", "blockquote", "a"]);
+  const blockAliases = new Map([
+    ["div", "p"],
+    ["section", "p"],
+    ["article", "p"],
+    ["b", "strong"],
+    ["i", "em"]
+  ]);
+  const template = document.createElement("template");
+  template.innerHTML = source;
+
+  const cleanNode = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent || "");
+    if (node.nodeType !== Node.ELEMENT_NODE) return document.createDocumentFragment();
+
+    const rawTag = node.tagName.toLowerCase();
+    if (["script", "style", "iframe", "object", "embed", "meta", "link"].includes(rawTag)) {
+      return document.createDocumentFragment();
+    }
+
+    const tag = blockAliases.get(rawTag) || rawTag;
+    if (!allowedTags.has(tag)) {
+      const fragment = document.createDocumentFragment();
+      node.childNodes.forEach((child) => fragment.appendChild(cleanNode(child)));
+      return fragment;
+    }
+
+    const element = document.createElement(tag);
+    if (tag === "a") {
+      const href = node.getAttribute("href") || "";
+      if (/^(https?:|mailto:|tel:|#)/i.test(href)) {
+        element.setAttribute("href", href);
+        element.setAttribute("target", "_blank");
+        element.setAttribute("rel", "noreferrer");
+      }
+    }
+
+    const styles = [];
+    const color = safeDocColor(node.style?.color);
+    const background = safeDocColor(node.style?.backgroundColor);
+    if (color) styles.push(`color:${color}`);
+    if (background) styles.push(`background-color:${background}`);
+    if (styles.length) element.setAttribute("style", styles.join(";"));
+
+    node.childNodes.forEach((child) => element.appendChild(cleanNode(child)));
+    return element;
+  };
+
+  const fragment = document.createDocumentFragment();
+  template.content.childNodes.forEach((node) => fragment.appendChild(cleanNode(node)));
+  const output = document.createElement("div");
+  output.appendChild(fragment);
+  const result = output.innerHTML.trim();
+  return result || "<p></p>";
+}
+
+function safeDocColor(value) {
+  const color = String(value || "").trim();
+  if (!color || color.length > 48) return "";
+  if (/url|expression|javascript/i.test(color)) return "";
+  return color;
+}
+
+function docHtmlToText(html) {
+  const sanitized = sanitizeDocHtml(html);
+  if (typeof document === "undefined") {
+    return sanitized
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|h[1-3]|li|blockquote)>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = sanitized;
+  const blockTags = new Set(["P", "H1", "H2", "H3", "LI", "BLOCKQUOTE"]);
+  const containerTags = new Set(["UL", "OL"]);
+
+  const inlineText = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent || "";
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+    if (node.tagName === "BR") return "\n";
+    return Array.from(node.childNodes).map(inlineText).join("");
+  };
+
+  const lines = [];
+  const walk = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent || "";
+      if (text.trim()) lines.push(text.trim());
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    if (containerTags.has(node.tagName)) {
+      node.childNodes.forEach(walk);
+      return;
+    }
+    if (blockTags.has(node.tagName)) {
+      const text = inlineText(node).replace(/\u00a0/g, " ").trimEnd();
+      lines.push(node.tagName === "LI" && text.trim() ? `- ${text.trim()}` : text.trim());
+      return;
+    }
+    if (node.tagName === "BR") {
+      lines.push("");
+      return;
+    }
+    node.childNodes.forEach(walk);
+  };
+
+  wrapper.childNodes.forEach(walk);
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function plainTextToDocHtml(text) {
+  const value = String(text || "").replace(/\r\n/g, "\n");
+  if (!value.trim()) return "<p></p>";
+  return value
+    .split("\n")
+    .map((line) => line ? `<p>${escapeHtml(line)}</p>` : "<p><br></p>")
+    .join("");
+}
+
+function formatDocHtmlExport(note) {
+  const title = escapeHtml(note.title || "NanStar Note");
+  const body = sanitizeDocHtml(note.body || "<p></p>");
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <style>
+    body{margin:0;padding:32px;color:#1f2937;background:#fff;font:15px/1.8 "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+    main{max-width:860px;margin:0 auto}
+    h1,h2,h3{line-height:1.35}
+    h1{font-size:28px} h2{font-size:22px} h3{font-size:18px}
+    blockquote{margin:16px 0;padding:10px 14px;border-left:4px solid #2f5bea;background:#f4f7ff;color:#41516a}
+    a{color:#2f5bea}
+    p{margin:0.75em 0}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>${title}</h1>
+    ${body}
+  </main>
+</body>
+</html>`;
+}
+
+function printableHtmlForNote(note) {
+  if (note.mode === "doc") return formatDocHtmlExport(note);
+  const title = escapeHtml(note.title || "NanStar Note");
+  const body = renderMarkdown(note.body || "");
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <style>
+    body{margin:0;padding:32px;color:#1f2937;background:#fff;font:15px/1.8 "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+    main{max-width:900px;margin:0 auto}
+    h1,h2,h3,h4{line-height:1.35}
+    pre{white-space:pre-wrap;word-break:break-word;background:#111827;color:#d8e3f0;padding:14px;border-radius:8px}
+    code{font-family:"Cascadia Mono","Consolas",monospace}
+    blockquote{margin:16px 0;padding:10px 14px;border-left:4px solid #2f5bea;background:#f4f7ff;color:#41516a}
+    table{width:100%;border-collapse:collapse} th,td{border:1px solid #dde4ef;padding:8px 10px}
+    img{max-width:100%}
+    .code-copy,.preview-copy-image{display:none}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>${title}</h1>
+    ${body}
+  </main>
+</body>
+</html>`;
+}
+
+function printNotePdf(note) {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    showToast("PDF print window was blocked");
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(printableHtmlForNote(note));
+  printWindow.document.close();
+  printWindow.focus();
+  window.setTimeout(() => printWindow.print(), 250);
 }
 
 function parseTableRow(line) {

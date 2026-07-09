@@ -14,7 +14,7 @@
     <title>NanStar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=34" />
+    <link rel="stylesheet" href="./styles.css?v=36" />
   </head>
   <body>
     <div class="app-shell">
@@ -149,6 +149,7 @@
                 <div class="segmented segmented-tight" aria-label="编辑模式">
                   <button class="mode-button active" type="button" data-mode="txt">TXT</button>
                   <button class="mode-button" type="button" data-mode="md">MD</button>
+                  <button class="mode-button" type="button" data-mode="doc">DOC</button>
                 </div>
               </div>
               <div class="note-cloud-actions" id="noteCloudActions">
@@ -189,6 +190,20 @@
                   <button class="md-tool" type="button" data-prefix="- [ ] " title="任务清单">☐</button>
                   <button class="md-tool" type="button" data-prefix="> " title="引用">❝</button>
                   <button class="md-tool" type="button" data-block="code" title="代码块">&lt;/&gt;</button>
+                  <button class="doc-tool" type="button" data-doc-command="bold" title="加粗">B</button>
+                  <button class="doc-tool" type="button" data-doc-command="italic" title="斜体"><em>I</em></button>
+                  <button class="doc-tool" type="button" data-doc-command="underline" title="下划线"><u>U</u></button>
+                  <button class="doc-tool" type="button" data-doc-block="h2" title="标题">H</button>
+                  <button class="doc-tool" type="button" data-doc-command="insertUnorderedList" title="无序列表">•</button>
+                  <button class="doc-tool" type="button" data-doc-command="insertOrderedList" title="有序列表">1.</button>
+                  <label class="doc-color-tool doc-tool" title="文字颜色">
+                    <span aria-hidden="true">A</span>
+                    <input id="docTextColorInput" type="color" value="#1f2937" aria-label="文字颜色" />
+                  </label>
+                  <label class="doc-color-tool doc-tool" title="高亮颜色">
+                    <span aria-hidden="true">▰</span>
+                    <input id="docHighlightInput" type="color" value="#fff3a3" aria-label="高亮颜色" />
+                  </label>
                   <span class="toolbar-separator" aria-hidden="true"></span>
                   <details class="toolbar-menu md-tool">
                     <summary title="插入片段" aria-label="插入片段">＋</summary>
@@ -254,8 +269,17 @@
                   id="bodyInput"
                   spellcheck="false"
                   wrap="soft"
-                  placeholder="纯文本适合放路径、账号检查清单、命令备忘；Markdown 适合结构化文档。Ctrl+Z / Ctrl+Y 保持浏览器原生编辑习惯。"
+                  placeholder="TXT 适合路径、账号、命令、清单；MD 适合结构化技术笔记；DOC 适合带格式的文档。Ctrl+Z / Ctrl+Y 保持浏览器原生编辑习惯。"
                 ></textarea>
+                <div
+                  id="docInput"
+                  class="doc-input"
+                  contenteditable="true"
+                  role="textbox"
+                  aria-multiline="true"
+                  spellcheck="true"
+                  data-placeholder="像微信收藏/飞书文档一样编辑：标题、加粗、斜体、颜色、高亮、列表。"
+                ></div>
               </div>
             </section>
 
@@ -318,13 +342,20 @@
           <button class="icon-button" value="cancel" type="submit" aria-label="关闭">×</button>
         </div>
         <div class="export-options">
-          <button class="export-option" id="exportCurrentButton" type="button">
+          <div class="export-option export-current-option">
             <span class="export-option-icon" aria-hidden="true">⇡</span>
             <span>
               <strong id="exportCurrentTitle">导出当前笔记</strong>
-              <small id="exportCurrentCopy">下载当前打开的 TXT/MD 文件</small>
+              <small id="exportCurrentCopy">按当前模式选择导出格式</small>
             </span>
-          </button>
+            <div class="export-format-row" id="exportCurrentFormats" aria-label="导出当前笔记格式">
+              <button class="export-format-button" id="exportCurrentButton" type="button" data-export-format="default">默认</button>
+              <button class="export-format-button" id="exportCurrentTxtButton" type="button" data-export-format="txt">TXT</button>
+              <button class="export-format-button" id="exportCurrentMdButton" type="button" data-export-format="md">MD</button>
+              <button class="export-format-button" id="exportCurrentHtmlButton" type="button" data-export-format="html">HTML</button>
+              <button class="export-format-button" id="exportCurrentPdfButton" type="button" data-export-format="pdf">PDF</button>
+            </div>
+          </div>
           <div class="export-option export-folder-option">
             <span class="export-option-icon" aria-hidden="true">▣</span>
             <span>
@@ -424,7 +455,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-    <script src="./script.js?v=30"></script>
+    <script src="./script.js?v=32"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
