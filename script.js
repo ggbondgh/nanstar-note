@@ -1077,8 +1077,13 @@ function bindEvents() {
   // Note context menu
   if (elements.noteContextMenu) {
     elements.noteContextMenu.querySelectorAll(".context-menu-item").forEach(item => {
-      item.addEventListener("click", () => {
+      item.addEventListener("click", (event) => {
         const action = item.dataset.action;
+        if (action === "move" || action === "move-to") {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         const noteId = state.contextMenuNoteId;
         hideNoteContextMenu();
         if (!noteId) return;
@@ -2970,10 +2975,11 @@ function showNoteContextMenu(x, y) {
     moveList.querySelectorAll('[data-action="move-to"]').forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
+        const noteId = state.contextMenuNoteId;
         const tf = btn.dataset.folder;
         moveList.classList.remove('open');
+        moveNoteToFolder(noteId, tf);
         hideNoteContextMenu();
-        moveNoteToFolder(state.contextMenuNoteId, tf);
       });
     });
   }
@@ -3407,6 +3413,11 @@ function renderNoteList() {
       const flags = transfer ? "" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
       const title = transfer ? t("transferAssistantTitle") : note.title;
       const body = transfer ? "" : excerpt(note.body);
+      const folder = canonicalFolderName(note.folder);
+      const folderLabel = displayFolderLabel(folder);
+      const folderTag = !transfer && folder !== INBOX_FOLDER
+        ? `<span class="note-folder-tag" title="${escapeAttribute(folderLabel)}">${escapeHtml(folderLabel)}</span>`
+        : "";
       const cloudStatus = noteCloudStatus(note, syncMeta);
       const statusDot = transfer ? "" : `<span class="note-sync-indicator ${cloudStatus.status}" title="${escapeAttribute(cloudStatus.label)}" aria-label="${escapeAttribute(cloudStatus.label)}"></span>`;
       const classes = ["note-item"];
@@ -3435,7 +3446,10 @@ function renderNoteList() {
             </span>
             ${transfer ? "" : `<p>${escapeHtml(body)}</p>`}
             ${transfer ? "" : `<span class="note-item-meta">
-              <span class="note-item-mode">${mode}</span>
+              <span class="note-item-tags">
+                <span class="note-item-mode">${mode}</span>
+                ${folderTag}
+              </span>
               <time>${formatShortDate(note.updatedAt)}</time>
             </span>`}
           </button>
