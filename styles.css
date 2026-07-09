@@ -158,7 +158,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 
 .sidebar-actions, .topbar-actions, .sync-grid, .utility-grid { gap: 8px; }
 .sidebar-actions > * { min-width: 0; }
-.sidebar-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.sidebar-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
 .primary-button, .ghost-button, .danger-button, .icon-button, .text-button, .quick-chip, .toolbar button, .toolbar-menu > summary, .mode-button, .flag-button, .filter-item, .folder-item, .outline-item, .menu-item {
   min-height: 34px; border-radius: var(--radius); transition: transform 150ms ease, border-color 150ms ease, background 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
@@ -183,12 +183,14 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   border: 1px solid var(--line); background: rgba(255, 255, 255, 0.92);
 }
 .ghost-button, .danger-button { padding: 0 13px; font-weight: 650; }
+.compact-button { min-height: 30px; padding: 0 10px; font-size: 12px; }
 .ghost-button:hover, .icon-button:hover, .flag-button:hover, .mode-button:hover, .quick-chip:hover, .toolbar button:hover, .toolbar-menu > summary:hover, .folder-item:hover, .outline-item:hover, .filter-item:hover, .nav-section summary:hover, .menu-item:hover {
   border-color: var(--line-strong); background: #fff; transform: translateY(-1px);
 }
 .danger-button { color: var(--red); background: #fff7f7; }
 .icon-button { display: inline-grid; width: 36px; min-width: 36px; place-items: center; font-size: 17px; line-height: 1; }
-.sync-refresh-button { width: 36px; min-width: 36px; padding: 0; font-size: 16px; font-weight: 800; }
+.sync-refresh-button,
+.save-all-button { width: 36px; min-width: 36px; padding: 0; font-size: 16px; font-weight: 800; }
 .icon-toggle-button { font-size: 15px; }
 .toggle-icon { display: inline-block; transition: transform 180ms ease; }
 .topbar-new-button { font-size: 20px; font-weight: 700; }
@@ -555,6 +557,30 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 }
 .note-item.transfer-assistant .note-flags-text { display: none; }
 .note-item-head { justify-content: space-between; gap: 8px; }
+.note-item-side { display: inline-flex; align-items: center; justify-content: flex-end; gap: 7px; min-width: 52px; }
+.note-sync-indicator {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: #a8b1c2;
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.6);
+}
+.note-sync-indicator.synced {
+  background: #20b26b;
+  box-shadow: 0 0 0 1px rgba(32, 178, 107, 0.42), 0 0 0 4px rgba(32, 178, 107, 0.08);
+}
+.note-sync-indicator.dirty {
+  background: #ef4444;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.42), 0 0 0 4px rgba(239, 68, 68, 0.08);
+}
+.note-sync-indicator.offline,
+.note-sync-indicator.hidden {
+  background: #a8b1c2;
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.45);
+}
 .note-item h3 { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .note-flags-text { font-size: 11px; flex-shrink: 0; }
 .note-item p { display: -webkit-box; margin: 0; overflow: hidden; color: var(--muted); font-size: 12px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
@@ -586,6 +612,8 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .note-meta { justify-content: space-between; gap: 12px; padding: 10px 12px 6px; }
 .title-input { width: 100%; min-width: 0; height: 36px; flex: 1 1 auto; font-size: 20px; font-weight: 760; font-family: var(--font-ui); }
 .note-mode-switch { display: inline-flex; flex: 0 0 auto; justify-content: flex-end; }
+.note-cloud-actions { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; }
+.note-cloud-actions .note-sync-indicator { margin-right: 2px; }
 .note-flags { display: flex; gap: 8px; }
 .flag-button, .mode-button { display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; font-weight: 700; }
 .flag-button { min-width: 54px; }

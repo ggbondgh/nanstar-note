@@ -168,6 +168,17 @@ const i18n = {
     syncDiagnosticsNever: "无",
     syncBlockedDirty: "云端有更新，本地正在编辑，已保留本地",
     syncNoChange: "云端暂无更新",
+    syncBusy: "正在同步，请稍后再试",
+    saveNote: "保存",
+    syncNote: "同步",
+    saveAll: "保存全部到云端",
+    syncAll: "从云端同步全部",
+    noteSavedToCloud: "当前笔记已保存到云端 {time}",
+    notePulledFromCloud: "当前笔记已从云端更新 {time}",
+    cloudNoteMissing: "云端没有找到这篇笔记",
+    syncStatusSynced: "已和云端一致",
+    syncStatusDirty: "本地未保存到云端",
+    syncStatusOffline: "未连接云同步",
     transferAssistantTitle: "文件传输助手",
     transferAssistantBody: "",
     transferAssistantExcerpt: "跨设备临时传文件",
@@ -204,9 +215,9 @@ const i18n = {
     syncSettings: "同步设置",
     syncCopy: "使用 Cloudflare Pages Functions + D1 保存云端笔记。客户电脑建议使用无痕窗口，离开时清除 Token。",
     syncToken: "同步 Token",
-    autoSync: "自动同步：打开页面和停留时检查云端；离开笔记或 Ctrl+S 时同步到云端",
-    pushCloud: "立即同步",
-    pullCloud: "刷新云端最新",
+    autoSync: "手动同步：点击保存才上传，点击同步才从云端覆盖",
+    pushCloud: "保存全部",
+    pullCloud: "同步全部",
     clearToken: "清除 Token",
     syncLocalReady: "未连接云同步，本地编辑可正常使用。",
     tokenCleared: "已清除本地 Token。",
@@ -385,6 +396,17 @@ const i18n = {
     syncDiagnosticsNever: "never",
     syncBlockedDirty: "Cloud changed, local edit kept",
     syncNoChange: "No cloud changes",
+    syncBusy: "Sync is already running",
+    saveNote: "Save",
+    syncNote: "Sync",
+    saveAll: "Save all to cloud",
+    syncAll: "Sync all from cloud",
+    noteSavedToCloud: "Current note saved to cloud {time}",
+    notePulledFromCloud: "Current note updated from cloud {time}",
+    cloudNoteMissing: "This note was not found in cloud",
+    syncStatusSynced: "Same as cloud",
+    syncStatusDirty: "Local changes not saved to cloud",
+    syncStatusOffline: "Cloud sync is not connected",
     transferAssistantTitle: "File Transfer",
     transferAssistantBody: "",
     transferAssistantExcerpt: "Temporary cross-device files",
@@ -421,9 +443,9 @@ const i18n = {
     syncSettings: "Sync Settings",
     syncCopy: "Use Cloudflare Pages Functions + D1 to store notes in the cloud. On client computers, use an incognito window and clear the token when leaving.",
     syncToken: "Sync Token",
-    autoSync: "Auto check on open and while active; sync on note switch or Ctrl+S",
-    pushCloud: "Sync Now",
-    pullCloud: "Refresh Latest",
+    autoSync: "Manual sync: Save uploads, Sync overwrites from cloud",
+    pushCloud: "Save All",
+    pullCloud: "Sync All",
     clearToken: "Clear Token",
     syncLocalReady: "Cloud sync is not connected. Local editing still works.",
     tokenCleared: "Local token cleared.",
@@ -791,6 +813,10 @@ function normalizedStoredFolderNames(names) {
   return folders.sort((a, b) => a.localeCompare(b, "zh-CN"));
 }
 
+function mergeFolderLists(...lists) {
+  return [INBOX_FOLDER, ...normalizedStoredFolderNames(lists.flat().filter(Boolean))];
+}
+
 function normalizeFolderName(folder) {
   const value = canonicalFolderName(folder);
   return folderManagementEnabled() ? value : INBOX_FOLDER;
@@ -806,6 +832,7 @@ const elements = {
   sidebarToggleButton: $("#sidebarToggleButton"),
   sidebarQuickNewButton: $("#sidebarQuickNewButton"),
   newNoteButton: $("#newNoteButton"),
+  saveAllButton: $("#saveAllButton"),
   syncRefreshButton: $("#syncRefreshButton"),
   topSyncButton: $("#topSyncButton"),
   topbarMenu: $(".topbar-menu"),
@@ -843,6 +870,10 @@ const elements = {
   previewTitle: $("#previewTitle"),
   titleInput: $("#titleInput"),
   modeButtons: $$(".mode-button"),
+  noteCloudActions: $("#noteCloudActions"),
+  activeNoteSyncDot: $("#activeNoteSyncDot"),
+  saveNoteButton: $("#saveNoteButton"),
+  syncNoteButton: $("#syncNoteButton"),
   folderInput: $("#folderInput"),
   editorFindBar: $("#editorFindBar"),
   editorSearchInput: $("#editorSearchInput"),
@@ -914,7 +945,9 @@ function init() {
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   restoreDirtyNotes();
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
-  elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) !== "0";
+  localStorage.setItem(storageKeys.autoSync, "0");
+  elements.autoSyncToggle.checked = false;
+  elements.autoSyncToggle.disabled = true;
   migrateFolderState();
   saveNotes();
   clearLegacyCrdtSyncState({ clearOrphanPending: true });
@@ -1178,7 +1211,10 @@ function bindEvents() {
     });
   }
 
-  elements.pushCloudButton.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "manual-push" }));
+  elements.saveNoteButton?.addEventListener("click", () => saveCurrentNoteToCloud());
+  elements.syncNoteButton?.addEventListener("click", () => syncCurrentNoteFromCloud());
+  elements.saveAllButton?.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "save-all" }));
+  elements.pushCloudButton.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "save-all" }));
   elements.pullCloudButton.addEventListener("click", () => forcePullCloud());
   elements.syncRefreshButton?.addEventListener("click", () => {
     forcePullCloud();
@@ -1188,11 +1224,7 @@ function bindEvents() {
   elements.autoSyncToggle.addEventListener("change", () => {
     localStorage.setItem(storageKeys.autoSync, elements.autoSyncToggle.checked ? "1" : "0");
     renderSyncMeta();
-    if (elements.autoSyncToggle.checked) startCloudSync();
-    else stopCloudSync();
-  });
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) syncCloud({ silent: true, pullOnly: true, reason: "check" });
+    stopCloudSync();
   });
 
   window.addEventListener("keydown", (event) => {
@@ -2078,6 +2110,51 @@ function cloudSnapshotSignature(payload) {
   return snapshotSignature(cloudSnapshotNotes(payload), cloudSnapshotFolders(payload));
 }
 
+function cloudNoteSignatures(notes = []) {
+  return Object.fromEntries(
+    (Array.isArray(notes) ? notes : [])
+      .map(normalizeNote)
+      .filter((note) => !isTransferAssistant(note) && !isFolderRegistry(note))
+      .map((note) => [note.id, notesSignature([note])])
+  );
+}
+
+function cloudSnapshotMetaPatch(notes = syncableNotes(), folders = storedFolders()) {
+  return {
+    cloudNoteSignatures: cloudNoteSignatures(notes),
+    cloudFoldersSignature: foldersSignature(folders)
+  };
+}
+
+function writeKnownCloudSnapshot(notes = syncableNotes(), folders = storedFolders(), patch = {}) {
+  return writeSyncMeta({ ...cloudSnapshotMetaPatch(notes, folders), ...patch });
+}
+
+function writeKnownCloudNote(note, patch = {}) {
+  const normalized = normalizeNote(note);
+  const meta = readSyncMeta();
+  const signatures = {
+    ...(meta.cloudNoteSignatures && typeof meta.cloudNoteSignatures === "object" ? meta.cloudNoteSignatures : {})
+  };
+  signatures[normalized.id] = notesSignature([normalized]);
+  return writeSyncMeta({
+    cloudNoteSignatures: signatures,
+    ...patch
+  });
+}
+
+function noteCloudStatus(note, syncMeta = readSyncMeta()) {
+  if (!note || isTransferAssistant(note) || isFolderRegistry(note)) return { status: "hidden", label: "" };
+  if (!getSyncToken()) return { status: "offline", label: t("syncStatusOffline") };
+  const pendingInput = state.savePendingNoteId === note.id;
+  const knownSignature = syncMeta.cloudNoteSignatures?.[note.id] || "";
+  const localSignature = notesSignature([note]);
+  if (!pendingInput && knownSignature && knownSignature === localSignature && !isDirtyNoteId(note.id)) {
+    return { status: "synced", label: t("syncStatusSynced") };
+  }
+  return { status: "dirty", label: t("syncStatusDirty") };
+}
+
 function isDefaultSeedState(notes = state.notes) {
   const visible = notes.map(normalizeNote).filter((note) => !isDeletedNote(note) && !isTransferAssistant(note) && !isFolderRegistry(note));
   if (visible.length !== defaultNotes.length) return false;
@@ -2456,20 +2533,6 @@ function clearSyncedDirtyNotes(snapshots) {
 
 function scheduleAutoSync() {
   clearTimeout(state.autoSyncTimer);
-  if (!elements.autoSyncToggle.checked || !getSyncToken()) return;
-  if (state.syncInFlight) {
-    const hasLocalChanges = hasDirtyNotes();
-    if (hasLocalChanges && !state.syncQueue.some((item) => item?.reason === "auto-push")) {
-      state.syncQueue.push({ silent: true, reason: "auto-push" });
-    }
-    return;
-  }
-  state.autoSyncTimer = window.setTimeout(() => {
-    const hasLocalChanges = hasDirtyNotes();
-    syncCloud(hasLocalChanges
-      ? { silent: true, reason: "auto-push" }
-      : { silent: true, pullOnly: true, reason: "check" });
-  }, SYNC_PUSH_DELAY);
 }
 
 function syncCloudInBackground(options = {}) {
@@ -2546,6 +2609,7 @@ function renderEditor() {
   const transferMode = isTransferAssistant(note);
   elements.editorCard.classList.toggle("transfer-mode", transferMode);
   if (elements.transferPanel) elements.transferPanel.hidden = !transferMode;
+  if (elements.noteCloudActions) elements.noteCloudActions.hidden = transferMode;
   if (transferMode) {
     state.previewFocus = false;
     document.body.classList.remove("preview-focus-mode");
@@ -3312,6 +3376,7 @@ function renderFolders() {
 
 function renderNoteList() {
   const notes = sortedNotes();
+  const syncMeta = readSyncMeta();
   if (elements.listStatus) elements.listStatus.textContent = `${notes.length} ${t("items")}`;
   pruneNoteSelection();
   renderBulkActionBar();
@@ -3331,6 +3396,8 @@ function renderNoteList() {
       const flags = transfer ? "" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
       const title = transfer ? t("transferAssistantTitle") : note.title;
       const body = transfer ? "" : excerpt(note.body);
+      const cloudStatus = noteCloudStatus(note, syncMeta);
+      const statusDot = transfer ? "" : `<span class="note-sync-indicator ${cloudStatus.status}" title="${escapeAttribute(cloudStatus.label)}" aria-label="${escapeAttribute(cloudStatus.label)}"></span>`;
       const classes = ["note-item"];
       const rowClasses = ["note-row"];
       const selectable = !transfer;
@@ -3350,7 +3417,10 @@ function renderNoteList() {
           <button class="${classes.join(" ")}" type="button" data-id="${note.id}">
             <span class="note-item-head">
               <h3>${escapeHtml(title)}</h3>
-              <span class="note-flags-text">${flags}</span>
+              <span class="note-item-side">
+                ${statusDot}
+                <span class="note-flags-text">${flags}</span>
+              </span>
             </span>
             ${transfer ? "" : `<p>${escapeHtml(body)}</p>`}
             ${transfer ? "" : `<span class="note-item-meta">
@@ -3480,34 +3550,22 @@ function deleteSelectedNotes() {
 
 function switchToNote(nextId) {
   if (!nextId || nextId === state.activeId) {
-    if (nextId) syncCloudInBackground({ silent: true, pullOnly: true, reason: "open-note", noteId: nextId });
     closeMobileSidebar();
     return;
   }
 
   const previousId = state.activeId;
   prepareCurrentNoteForSync({ noteId: previousId });
-  const shouldPushPrevious = isDirtyNoteId(previousId);
 
   state.activeId = nextId;
   saveNotes();
   renderAll();
   closeMobileSidebar();
   if (!isMobileLayout()) elements.bodyInput.focus();
-  if (shouldPushPrevious) {
-    syncCloudInBackground({ silent: false, forcePush: true, reason: "leave-note", noteId: previousId });
-  }
-  syncCloudInBackground({ silent: true, pullOnly: true, reason: "open-note", noteId: nextId });
 }
 
 async function syncCurrentNoteNow() {
-  const noteId = state.activeId;
-  if (!prepareCurrentNoteForSync({ noteId, forcePush: true })) {
-    showToast(t("inputComposing"));
-    return;
-  }
-  markSyncPending(noteId);
-  await syncCloud({ manual: true, forcePush: true, reason: "ctrl-s", noteId });
+  await saveCurrentNoteToCloud();
 }
 
 function renderSyncMeta() {
@@ -3560,6 +3618,21 @@ function renderSyncMeta() {
         .replace("{time}", lastVerifyTime ? formatTime(lastVerifyTime) : t("syncDiagnosticsNever"));
     }
   }
+  renderActiveNoteCloudStatus(syncMeta);
+}
+
+function renderActiveNoteCloudStatus(syncMeta = readSyncMeta()) {
+  if (!elements.activeNoteSyncDot) return;
+  const note = activeNote();
+  const status = noteCloudStatus(note, syncMeta);
+  elements.activeNoteSyncDot.className = `note-sync-indicator ${status.status}`;
+  elements.activeNoteSyncDot.title = status.label;
+  elements.activeNoteSyncDot.setAttribute("aria-label", status.label);
+  const disabled = !note || isTransferAssistant(note) || isFolderRegistry(note) || state.syncInFlight;
+  if (elements.saveNoteButton) elements.saveNoteButton.disabled = disabled;
+  if (elements.syncNoteButton) elements.syncNoteButton.disabled = disabled;
+  if (elements.saveAllButton) elements.saveAllButton.disabled = state.syncInFlight;
+  if (elements.syncRefreshButton) elements.syncRefreshButton.disabled = state.syncInFlight;
 }
 
 function openNewNoteDialog() {
@@ -3968,6 +4041,176 @@ async function forcePullCloud() {
   return syncCloud({ manual: true, pullOnly: true, forcePull: true, reason: "force-pull" });
 }
 
+async function saveCurrentNoteToCloud() {
+  const noteId = state.activeId;
+  if (!prepareCurrentNoteForSync({ noteId })) {
+    showToast(t("inputComposing"));
+    return false;
+  }
+  return saveNoteToCloud(noteId);
+}
+
+async function saveNoteToCloud(noteId) {
+  const token = getSyncToken();
+  const note = state.notes.find((item) => item.id === noteId && !isDeletedNote(item));
+  if (!token) {
+    showSyncMessage("请先填写同步 Token。");
+    showToast(t("syncStatusOffline"));
+    renderSyncMeta();
+    return false;
+  }
+  if (!note || isTransferAssistant(note) || isFolderRegistry(note)) return false;
+  if (state.syncInFlight) {
+    showToast(t("syncBusy"));
+    return false;
+  }
+
+  clearTimeout(state.autoSyncTimer);
+  localStorage.setItem(storageKeys.syncToken, token);
+  state.syncInFlight = true;
+  state.syncAction = "pushing";
+  renderSyncMeta();
+  showSyncMessage(t("syncPushing"));
+
+  try {
+    const localNote = normalizeNote(note);
+    const localSignature = notesSignature([localNote]);
+    const remotePayload = await fetchCloudState(token);
+    const nextNotes = cloudSnapshotNotes(remotePayload)
+      .filter((item) => !isTransferAssistant(item) && !isFolderRegistry(item) && item.id !== localNote.id);
+    nextNotes.push(localNote);
+    const nextFolders = mergeFolderLists(cloudSnapshotFolders(remotePayload), storedFolders(), [localNote.folder]);
+    const pushResult = await putCloudState(token, { notes: withSystemNotes(nextNotes), folders: nextFolders });
+    let remoteUpdatedAt = Number(pushResult.updatedAt) || Date.now();
+    showSyncMessage(t("syncVerifying"));
+
+    const verifyPayload = await fetchCloudState(token);
+    remoteUpdatedAt = Number(verifyPayload.updatedAt) || remoteUpdatedAt;
+    const remoteNote = cloudSnapshotNotes(verifyPayload).find((item) => item.id === localNote.id);
+    const now = Date.now();
+    if (!remoteNote || notesSignature([remoteNote]) !== localSignature) {
+      const message = t("syncVerifyFailed");
+      writeSyncMeta({
+        pending: true,
+        dirtyNoteIds: dirtyNoteIds(),
+        lastError: message,
+        remoteUpdatedAt,
+        lastCheckedAt: now,
+        lastVerifyAt: now
+      });
+      renderSyncMeta();
+      renderLists();
+      showSyncMessage(message);
+      showToast(message);
+      return false;
+    }
+
+    state.dirtyNoteIds.delete(localNote.id);
+    localStorage.setItem(storageKeys.lastSyncAt, String(now));
+    writeKnownCloudNote(remoteNote, {
+      cloudFoldersSignature: foldersSignature(nextFolders),
+      pending: dirtyNoteIds().length > 0,
+      dirtyNoteIds: dirtyNoteIds(),
+      lastError: "",
+      remoteUpdatedAt,
+      lastSyncedAt: now,
+      lastPushAt: now,
+      lastVerifiedAt: now,
+      lastCheckedAt: now
+    });
+    setSaveStatus(t("syncVerifiedAt").replace("{time}", formatTime(now)));
+    const message = t("noteSavedToCloud").replace("{time}", formatTime(now));
+    showSyncMessage(message);
+    showToast(message);
+    renderAll();
+    return true;
+  } catch (error) {
+    const message = `${t("syncFailed")}：${cloudErrorText(error)}`;
+    writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: message });
+    renderSyncMeta();
+    renderLists();
+    showSyncMessage(message);
+    showToast(message);
+    return false;
+  } finally {
+    state.syncInFlight = false;
+    state.syncAction = "";
+    renderSyncMeta();
+  }
+}
+
+async function syncCurrentNoteFromCloud() {
+  const token = getSyncToken();
+  const noteId = state.activeId;
+  if (!token) {
+    showSyncMessage("请先填写同步 Token。");
+    showToast(t("syncStatusOffline"));
+    renderSyncMeta();
+    return false;
+  }
+  if (!noteId || isTransferAssistant(activeNote())) return false;
+  if (state.syncInFlight) {
+    showToast(t("syncBusy"));
+    return false;
+  }
+
+  clearTimeout(state.saveTimer);
+  state.saveTimer = null;
+  state.savePendingNoteId = null;
+  state.syncInFlight = true;
+  state.syncAction = "pulling";
+  renderSyncMeta();
+  showSyncMessage(t("syncPulling"));
+
+  try {
+    const remotePayload = await fetchCloudState(token);
+    const remoteNote = cloudSnapshotNotes(remotePayload).find((item) => item.id === noteId && !isTransferAssistant(item) && !isFolderRegistry(item));
+    if (!remoteNote) {
+      showSyncMessage(t("cloudNoteMissing"));
+      showToast(t("cloudNoteMissing"));
+      return false;
+    }
+
+    const normalized = normalizeNote(remoteNote);
+    const index = state.notes.findIndex((item) => item.id === noteId);
+    if (index >= 0) state.notes[index] = normalized;
+    else state.notes.unshift(normalized);
+    setStoredFolders(mergeFolderLists(storedFolders(), cloudSnapshotFolders(remotePayload), [normalized.folder]));
+    state.dirtyNoteIds.delete(noteId);
+    ensureActiveNote();
+    saveNotes();
+
+    const now = Date.now();
+    localStorage.setItem(storageKeys.lastSyncAt, String(now));
+    writeKnownCloudNote(normalized, {
+      cloudFoldersSignature: foldersSignature(mergeFolderLists(storedFolders(), cloudSnapshotFolders(remotePayload), [normalized.folder])),
+      pending: dirtyNoteIds().length > 0,
+      dirtyNoteIds: dirtyNoteIds(),
+      lastError: "",
+      remoteUpdatedAt: Number(remotePayload.updatedAt) || now,
+      lastSyncedAt: now,
+      lastPullAt: now,
+      lastCheckedAt: now
+    });
+    const message = t("notePulledFromCloud").replace("{time}", formatTime(now));
+    showSyncMessage(message);
+    showToast(message);
+    renderAll();
+    return true;
+  } catch (error) {
+    const message = `${t("syncFailed")}：${cloudErrorText(error)}`;
+    writeSyncMeta({ lastError: message });
+    renderSyncMeta();
+    showSyncMessage(message);
+    showToast(message);
+    return false;
+  } finally {
+    state.syncInFlight = false;
+    state.syncAction = "";
+    renderSyncMeta();
+  }
+}
+
 function readSyncMeta() {
   try {
     return JSON.parse(localStorage.getItem(storageKeys.syncMeta) || "{}") || {};
@@ -3990,7 +4233,7 @@ function markSyncPending(noteId = state.activeId) {
   markNoteDirty(noteId);
   writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: "" });
   renderSyncMeta();
-  scheduleAutoSync();
+  renderLists();
 }
 
 function clearSyncPending(remoteUpdatedAt = Date.now(), patch = {}, syncedSnapshots = null) {
@@ -4010,17 +4253,7 @@ function clearSyncPending(remoteUpdatedAt = Date.now(), patch = {}, syncedSnapsh
 
 function startCloudSync(options = {}) {
   stopCloudSync();
-  if (!getSyncToken() || !elements.autoSyncToggle.checked) {
-    renderSyncMeta();
-    return;
-  }
   renderSyncMeta();
-  if (!options.skipStartup) {
-    state.syncStartupTimer = window.setTimeout(() => syncCloud({ silent: true, reason: "startup" }), 300);
-  }
-  state.syncPollTimer = window.setInterval(() => {
-    if (!document.hidden) syncCloud({ silent: true, pullOnly: true, reason: "poll" });
-  }, SYNC_POLL_INTERVAL);
 }
 
 function stopCloudSync() {
@@ -4091,12 +4324,14 @@ async function postCrdtUpdates(token, updates) {
   return response.json();
 }
 
-async function putCloudState(token) {
+async function putCloudState(token, snapshot = {}) {
+  const notes = Array.isArray(snapshot.notes) ? snapshot.notes : syncableNotes();
+  const folders = Array.isArray(snapshot.folders) ? snapshot.folders : storedFolders();
   const response = await fetch(apiUrl("/api/notes"), {
     method: "PUT",
     cache: "no-store",
     headers: cloudHeaders(token, true),
-    body: JSON.stringify({ notes: syncableNotes(), folders: storedFolders(), updatedAt: Date.now() })
+    body: JSON.stringify({ notes, folders, updatedAt: Date.now() })
   });
   if (!response.ok) throw new Error(await response.text());
   return response.json();
@@ -4440,8 +4675,14 @@ async function syncCloud(options = {}) {
         return false;
       }
 
-      clearSyncPending(remoteUpdatedAt, { lastPushAt: now, lastVerifiedAt: now, lastCheckedAt: now });
+      clearSyncPending(remoteUpdatedAt, {
+        ...cloudSnapshotMetaPatch(syncableNotes(), storedFolders()),
+        lastPushAt: now,
+        lastVerifiedAt: now,
+        lastCheckedAt: now
+      });
       renderSyncMeta();
+      renderLists();
       const message = t("syncVerifiedAt").replace("{time}", formatTime(now));
       showSyncMessage(message);
       if (!silent) showToast(message);
@@ -4462,10 +4703,12 @@ async function syncCloud(options = {}) {
 
     const now = Date.now();
     clearSyncPending(remoteUpdatedAt, {
+      ...cloudSnapshotMetaPatch(cloudSnapshotNotes(remotePayload), cloudSnapshotFolders(remotePayload)),
       lastPullAt: pulled ? now : readSyncMeta().lastPullAt || 0,
       lastCheckedAt: now
     });
     renderSyncMeta();
+    renderLists();
     if (forcePull) {
       const message = t("syncRefreshedAt").replace("{time}", formatTime(now));
       showSyncMessage(message);
@@ -4544,7 +4787,6 @@ function applyFolderSectionVisibility() {
 function handleSyncTokenInput() {
   clearTimeout(state.syncTokenTimer);
   const token = elements.syncTokenInput.value.trim();
-  const previousToken = localStorage.getItem(storageKeys.syncToken) || "";
 
   if (!token) {
     localStorage.removeItem(storageKeys.syncToken);
@@ -4558,12 +4800,11 @@ function handleSyncTokenInput() {
   localStorage.setItem(storageKeys.syncToken, token);
   refreshSyncAccessUi();
 
-  const shouldForceConnect = token !== previousToken;
   state.syncTokenTimer = window.setTimeout(async () => {
     state.syncTokenTimer = null;
     if (!getSyncToken()) return;
-    const connected = shouldForceConnect ? await forcePullCloud() : true;
-    if (connected !== false) startCloudSync({ skipStartup: true });
+    showSyncMessage(t("cloudReady"));
+    renderSyncMeta();
   }, 900);
 }
 
@@ -4650,10 +4891,16 @@ function applyLanguage(language, initial = false) {
     elements.mobileNotesButton.setAttribute("aria-label", document.body.classList.contains("mobile-sidebar-open") ? t("closeNotes") : t("openNotes"));
   }
   if (elements.syncRefreshButton) {
-    elements.syncRefreshButton.title = next === "en" ? "Refresh and overwrite local" : "从云端刷新并覆盖本地";
-    elements.syncRefreshButton.setAttribute("aria-label", next === "en" ? "Refresh and overwrite local" : "从云端刷新并覆盖本地");
+    elements.syncRefreshButton.title = t("syncAll");
+    elements.syncRefreshButton.setAttribute("aria-label", t("syncAll"));
+  }
+  if (elements.saveAllButton) {
+    elements.saveAllButton.title = t("saveAll");
+    elements.saveAllButton.setAttribute("aria-label", t("saveAll"));
   }
   if (elements.topSyncButton) elements.topSyncButton.textContent = t("sync");
+  if (elements.saveNoteButton) elements.saveNoteButton.textContent = t("saveNote");
+  if (elements.syncNoteButton) elements.syncNoteButton.textContent = t("syncNote");
   const topbarMenuButton = document.querySelector(".topbar-menu-button");
   if (topbarMenuButton) {
     topbarMenuButton.title = t("moreActions");

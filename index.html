@@ -14,7 +14,7 @@
     <title>NanStar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=25" />
+    <link rel="stylesheet" href="./styles.css?v=27" />
   </head>
   <body>
     <div class="app-shell">
@@ -35,6 +35,7 @@
             <span aria-hidden="true">+</span>
             <span>新建笔记</span>
           </button>
+          <button class="icon-button save-all-button" id="saveAllButton" type="button" title="保存全部到云端" aria-label="保存全部到云端">⇡</button>
           <button class="icon-button sync-refresh-button" id="syncRefreshButton" type="button" title="刷新并覆盖本地" aria-label="刷新并覆盖本地">↻</button>
         </div>
 
@@ -149,6 +150,11 @@
                   <button class="mode-button active" type="button" data-mode="txt">TXT</button>
                   <button class="mode-button" type="button" data-mode="md">MD</button>
                 </div>
+              </div>
+              <div class="note-cloud-actions" id="noteCloudActions">
+                <span class="note-sync-indicator" id="activeNoteSyncDot" aria-hidden="true"></span>
+                <button class="ghost-button compact-button" id="saveNoteButton" type="button">保存</button>
+                <button class="ghost-button compact-button" id="syncNoteButton" type="button">同步</button>
               </div>
             </div>
 
@@ -372,7 +378,7 @@
         </label>
         <label class="toggle-field">
           <input id="autoSyncToggle" type="checkbox" />
-          <span id="autoSyncLabel">自动同步：打开页面自动拉取，编辑后自动保存到云端</span>
+          <span id="autoSyncLabel">手动同步：点击保存才上传，点击同步才从云端覆盖</span>
         </label>
         <div class="sync-grid">
           <button class="primary-button" id="pushCloudButton" type="button">立即同步</button>
@@ -413,7 +419,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-    <script src="./script.js?v=26"></script>
+    <script src="./script.js?v=27"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
