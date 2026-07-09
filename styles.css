@@ -883,7 +883,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   color: #9d5d00;
   background: rgba(255, 205, 84, 0.16);
 }
-#bodyInput { width: 100%; min-height: 0; resize: none; padding: var(--editor-padding-top) 16px var(--editor-padding-bottom); background: transparent; font-size: 15px; line-height: var(--editor-line-height); font-family: var(--font-editor); font-weight: 400; letter-spacing: 0.1px; white-space: pre-wrap; overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word; }
+#bodyInput { width: 100%; min-height: 0; resize: none; padding: var(--editor-padding-top) 16px var(--editor-padding-bottom); background: transparent; font-size: 15px; line-height: var(--editor-line-height); font-family: var(--font-editor); font-weight: 400; letter-spacing: 0.3px; white-space: pre-wrap; overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word; }
 #bodyInput { position: relative; z-index: 1; }
 .preview-pane { background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%); }
 .preview-content {
