@@ -236,6 +236,8 @@ const i18n = {
     outlineTitle: "目录",
     outlineEmpty: "暂无标题",
     newNoteDialogTitle: "新建笔记",
+    newNoteTitleLabel: "笔记名",
+    newNoteTitlePlaceholder: "留空则使用默认名称",
     newNoteFolderLabel: "文件夹",
     create: "创建",
     searchPlaceholderShort: "搜索笔记...",
@@ -464,6 +466,8 @@ const i18n = {
     outlineTitle: "Outline",
     outlineEmpty: "No headings",
     newNoteDialogTitle: "New Note",
+    newNoteTitleLabel: "Name",
+    newNoteTitlePlaceholder: "Leave empty to use the default name",
     newNoteFolderLabel: "Folder",
     create: "Create",
     searchPlaceholderShort: "Search notes...",
@@ -849,6 +853,7 @@ const elements = {
   folderDatalist: $("#folderDatalist"),
   filterTabs: $$(".filter-tab"),
   newNoteDialog: $("#newNoteDialog"),
+  newNoteTitleInput: $("#newNoteTitleInput"),
   newNoteFolderSelect: $("#newNoteFolderSelect"),
   newNoteConfirmBtn: $("#newNoteConfirmBtn"),
   floatingOutline: $("#floatingOutline"),
@@ -1132,9 +1137,10 @@ function bindEvents() {
   if (elements.newNoteConfirmBtn) {
     elements.newNoteConfirmBtn.addEventListener("click", () => {
       const folder = elements.newNoteFolderSelect?.value || INBOX_FOLDER;
+      const title = elements.newNoteTitleInput?.value || "";
       const tpl = document.querySelector('#newNoteTxtBtn.active, #newNoteMDBtn.active')?.dataset?.tpl || "txt";
       elements.newNoteDialog.close();
-      createNote(tpl, folder);
+      createNote(tpl, folder, title);
       closeMobileSidebar();
     });
     document.querySelectorAll('#newNoteTxtBtn, #newNoteMDBtn').forEach(btn => {
@@ -3418,8 +3424,8 @@ function renderNoteList() {
             <span class="note-item-head">
               <h3>${escapeHtml(title)}</h3>
               <span class="note-item-side">
-                ${statusDot}
                 <span class="note-flags-text">${flags}</span>
+                ${statusDot}
               </span>
             </span>
             ${transfer ? "" : `<p>${escapeHtml(body)}</p>`}
@@ -3639,15 +3645,19 @@ function openNewNoteDialog() {
   if (!elements.newNoteFolderSelect || !elements.newNoteDialog) return;
   const folders = getFolderNames();
   const defaultFolder = canonicalSelectedFolder(state.selectedFolder) || INBOX_FOLDER;
+  if (elements.newNoteTitleInput) elements.newNoteTitleInput.value = "";
   elements.newNoteFolderSelect.innerHTML = folders.length
     ? folders.map(f => `<option value="${escapeAttribute(f)}" ${f === defaultFolder ? "selected" : ""}>${escapeHtml(displayFolderLabel(f))}</option>`).join("")
     : `<option value="${INBOX_FOLDER}">${INBOX_FOLDER}</option>`;
   elements.newNoteFolderSelect.disabled = !folderManagementEnabled();
   elements.newNoteDialog.showModal();
+  window.setTimeout(() => elements.newNoteTitleInput?.focus(), 0);
 }
 
-function createNote(templateName, folder) {
+function createNote(templateName, folder, title = "") {
   const note = createNoteObject(templateName);
+  const nextTitle = String(title || "").trim();
+  if (nextTitle) note.title = nextTitle;
   note.folder = folderManagementEnabled() ? normalizeFolderName(folder || state.selectedFolder || note.folder) : INBOX_FOLDER;
   state.notes.unshift(note);
   state.activeId = note.id;
@@ -4857,6 +4867,9 @@ function applyLanguage(language, initial = false) {
   if (elements.searchInput) elements.searchInput.placeholder = t("searchPlaceholderShort");
   const newNoteTitle = document.getElementById("newNoteDialogTitle");
   if (newNoteTitle) newNoteTitle.textContent = t("newNoteDialogTitle");
+  const newNoteTitleLabel = document.getElementById("newNoteTitleLabel");
+  if (newNoteTitleLabel) newNoteTitleLabel.textContent = t("newNoteTitleLabel");
+  if (elements.newNoteTitleInput) elements.newNoteTitleInput.placeholder = t("newNoteTitlePlaceholder");
   const newNoteFolderLabel = document.getElementById("newNoteFolderLabel");
   if (newNoteFolderLabel) newNoteFolderLabel.textContent = t("newNoteFolderLabel");
   if (elements.newNoteConfirmBtn) elements.newNoteConfirmBtn.textContent = t("create");
