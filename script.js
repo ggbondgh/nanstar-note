@@ -132,8 +132,21 @@ const i18n = {
     codeBlock: "代码块",
     underline: "下划线",
     heading: "标题",
+    paragraphStyle: "段落样式",
+    paragraphBody: "正文",
+    heading1: "标题 1",
+    heading2: "标题 2",
+    heading3: "标题 3",
     textColor: "文字颜色",
     highlightColor: "高亮颜色",
+    defaultTextColor: "默认文字",
+    clearHighlight: "取消高亮",
+    customColor: "自定义",
+    moreFormat: "更多格式",
+    insertLink: "链接",
+    removeLink: "取消链接",
+    clearFormat: "清除格式",
+    linkPrompt: "输入链接地址",
     insertSnippets: "插入片段",
     insertPathSnippet: "路径片段",
     insertCommandSnippet: "命令片段",
@@ -371,8 +384,21 @@ const i18n = {
     codeBlock: "Code block",
     underline: "Underline",
     heading: "Heading",
+    paragraphStyle: "Paragraph style",
+    paragraphBody: "Body",
+    heading1: "Heading 1",
+    heading2: "Heading 2",
+    heading3: "Heading 3",
     textColor: "Text color",
     highlightColor: "Highlight color",
+    defaultTextColor: "Default text",
+    clearHighlight: "Clear highlight",
+    customColor: "Custom",
+    moreFormat: "More formats",
+    insertLink: "Link",
+    removeLink: "Remove link",
+    clearFormat: "Clear format",
+    linkPrompt: "Enter link URL",
     insertSnippets: "Insert snippets",
     insertPathSnippet: "Path snippet",
     insertCommandSnippet: "Command snippet",
@@ -766,6 +792,8 @@ const DEFAULT_SIDEBAR_WIDTH = 280;
 const SYNC_POLL_INTERVAL = 3000;
 const SYNC_PUSH_DELAY = 500;
 const NOTE_SYNC_ENGINE = "snapshot";
+const DOC_DEFAULT_TEXT_COLOR = "#111827";
+const DOC_DEFAULT_HIGHLIGHT_COLOR = "#fef3c7";
 const TRANSFER_NOTE_ID = "nanstar-transfer-assistant";
 const FOLDER_REGISTRY_NOTE_ID = "nanstar-folder-registry";
 const INBOX_FOLDER = "默认文件夹";
@@ -915,6 +943,9 @@ const elements = {
   editorSearchNextButton: $("#editorSearchNextButton"),
   editorSearchCloseButton: $("#editorSearchCloseButton"),
   toolbar: $(".toolbar"),
+  docBlockSelect: $("#docBlockSelect"),
+  docTextColorSwatch: $("#docTextColorSwatch"),
+  docHighlightSwatch: $("#docHighlightSwatch"),
   togglePreviewButton: $("#togglePreviewButton"),
   splitEditor: $("#splitEditor"),
   splitter: $("#splitter"),
@@ -1141,11 +1172,18 @@ function bindEvents() {
   elements.bodyInput.addEventListener("click", handleEditorCursorChange);
   elements.bodyInput.addEventListener("select", handleEditorCursorChange);
   elements.docInput?.addEventListener("blur", normalizeDocInputHtml);
-  elements.docInput?.addEventListener("keyup", saveDocSelection);
-  elements.docInput?.addEventListener("mouseup", saveDocSelection);
+  ["keyup", "mouseup", "click"].forEach((eventName) => {
+    elements.docInput?.addEventListener(eventName, () => {
+      saveDocSelection();
+      updateDocToolbarState();
+    });
+  });
   document.addEventListener("selectionchange", () => {
     if (document.activeElement === elements.bodyInput) handleEditorCursorChange();
-    if (document.activeElement === elements.docInput) saveDocSelection();
+    if (document.activeElement === elements.docInput) {
+      saveDocSelection();
+      updateDocToolbarState();
+    }
   });
   elements.editorSection.addEventListener("toggle", handleEditorSectionToggle);
   elements.editorSearchInput.addEventListener("input", handleEditorSearchInput);
@@ -1164,7 +1202,8 @@ function bindEvents() {
   elements.togglePreviewButton.addEventListener("click", togglePreview);
   elements.previewFocusButton.addEventListener("click", togglePreviewFocus);
   elements.toolbar.addEventListener("mousedown", (event) => {
-    if (event.target.closest("button")) event.preventDefault();
+    if (activeNote()?.mode === "doc") saveDocSelection();
+    if (event.target.closest("button, summary")) event.preventDefault();
   });
   elements.toolbar.addEventListener("click", (event) => {
     const button = event.target.closest("button");
@@ -1173,8 +1212,12 @@ function bindEvents() {
       button.closest(".toolbar-menu")?.removeAttribute("open");
     }
   });
-  elements.docTextColorInput?.addEventListener("input", () => applyDocCommand("foreColor", elements.docTextColorInput.value));
-  elements.docHighlightInput?.addEventListener("input", () => applyDocCommand("hiliteColor", elements.docHighlightInput.value));
+  elements.toolbar.querySelectorAll("input[type='color']").forEach((input) => {
+    input.addEventListener("click", (event) => event.stopPropagation());
+  });
+  elements.docBlockSelect?.addEventListener("change", () => applyDocBlock(elements.docBlockSelect.value, true));
+  elements.docTextColorInput?.addEventListener("input", () => applyDocColor("foreColor", elements.docTextColorInput.value));
+  elements.docHighlightInput?.addEventListener("input", () => applyDocColor("hiliteColor", elements.docHighlightInput.value));
   bindSplitter();
   bindSidebarResizer();
 
@@ -2749,6 +2792,7 @@ function renderModeState() {
   elements.toolbar.querySelectorAll(".doc-tool").forEach((item) => {
     item.hidden = !isDoc;
   });
+  updateDocToolbarState();
   elements.togglePreviewButton.hidden = !isMarkdown;
   elements.previewFocusButton.hidden = !isMarkdown;
   elements.previewFocusButton.textContent = focused ? "✕" : "⤢";
@@ -5044,14 +5088,44 @@ function applyLanguage(language, initial = false) {
   setToolbarTitle('[data-doc-command="underline"]', t("underline"));
   setToolbarTitle('[data-doc-command="insertUnorderedList"]', t("unorderedList"));
   setToolbarTitle('[data-doc-command="insertOrderedList"]', t("orderedList"));
-  setToolbarTitle('[data-doc-block="h2"]', t("heading"));
+  if (elements.docBlockSelect) {
+    elements.docBlockSelect.title = t("paragraphStyle");
+    elements.docBlockSelect.setAttribute("aria-label", t("paragraphStyle"));
+    const blockLabels = {
+      p: t("paragraphBody"),
+      h1: t("heading1"),
+      h2: t("heading2"),
+      h3: t("heading3"),
+      blockquote: t("quote")
+    };
+    Array.from(elements.docBlockSelect.options).forEach((option) => {
+      option.textContent = blockLabels[option.value] || option.textContent;
+    });
+  }
   setToolbarTitle('#docTextColorInput', t("textColor"));
   setToolbarTitle('#docHighlightInput', t("highlightColor"));
-  const docTextColorLabel = elements.docTextColorInput?.closest("label");
-  if (docTextColorLabel) docTextColorLabel.title = t("textColor");
-  const docHighlightLabel = elements.docHighlightInput?.closest("label");
-  if (docHighlightLabel) docHighlightLabel.title = t("highlightColor");
-  const insertMenu = document.querySelector(".toolbar-menu > summary");
+  const docTextSummary = document.querySelector('[data-doc-color-menu="foreColor"] > summary');
+  if (docTextSummary) {
+    docTextSummary.title = t("textColor");
+    docTextSummary.setAttribute("aria-label", t("textColor"));
+  }
+  const docHighlightSummary = document.querySelector('[data-doc-color-menu="hiliteColor"] > summary');
+  if (docHighlightSummary) {
+    docHighlightSummary.title = t("highlightColor");
+    docHighlightSummary.setAttribute("aria-label", t("highlightColor"));
+  }
+  setMenuItemLabel(document.querySelector('[data-doc-color-clear="foreColor"]'), t("defaultTextColor"));
+  setMenuItemLabel(document.querySelector('[data-doc-color-clear="hiliteColor"]'), t("clearHighlight"));
+  document.querySelectorAll(".doc-custom-color span").forEach((span) => { span.textContent = t("customColor"); });
+  const docMoreMenu = document.querySelector(".doc-more-menu > summary");
+  if (docMoreMenu) {
+    docMoreMenu.title = t("moreFormat");
+    docMoreMenu.setAttribute("aria-label", t("moreFormat"));
+  }
+  setMenuItemLabel(document.querySelector('[data-doc-action="link"]'), t("insertLink"));
+  setMenuItemLabel(document.querySelector('[data-doc-command="unlink"]'), t("removeLink"));
+  setMenuItemLabel(document.querySelector('[data-doc-command="removeFormat"]'), t("clearFormat"));
+  const insertMenu = document.querySelector(".toolbar-menu.md-tool > summary");
   if (insertMenu) {
     insertMenu.title = t("insertSnippets");
     insertMenu.setAttribute("aria-label", t("insertSnippets"));
@@ -5367,11 +5441,67 @@ function focusDocEditorEnd() {
   state.docSelection = range.cloneRange();
 }
 
+function getDocSelectionOffsets() {
+  if (!elements.docInput) return null;
+  const selection = window.getSelection?.();
+  if (!selection || !selection.rangeCount) return null;
+  const range = selection.getRangeAt(0);
+  if (!elements.docInput.contains(range.commonAncestorContainer)) return null;
+
+  const measure = document.createRange();
+  measure.selectNodeContents(elements.docInput);
+  measure.setEnd(range.startContainer, range.startOffset);
+  const start = measure.toString().length;
+  measure.setEnd(range.endContainer, range.endOffset);
+  const end = measure.toString().length;
+  measure.detach?.();
+  return { start, end };
+}
+
+function restoreDocSelectionOffsets(offsets) {
+  if (!elements.docInput || !offsets) return;
+  const walker = document.createTreeWalker(elements.docInput, NodeFilter.SHOW_TEXT);
+  const range = document.createRange();
+  let consumed = 0;
+  let startSet = false;
+  let endSet = false;
+  let node = walker.nextNode();
+
+  while (node) {
+    const next = consumed + node.textContent.length;
+    if (!startSet && offsets.start <= next) {
+      range.setStart(node, Math.max(0, offsets.start - consumed));
+      startSet = true;
+    }
+    if (!endSet && offsets.end <= next) {
+      range.setEnd(node, Math.max(0, offsets.end - consumed));
+      endSet = true;
+      break;
+    }
+    consumed = next;
+    node = walker.nextNode();
+  }
+
+  if (!startSet || !endSet) {
+    range.selectNodeContents(elements.docInput);
+    range.collapse(false);
+  }
+  const selection = window.getSelection?.();
+  if (!selection) return;
+  selection.removeAllRanges();
+  selection.addRange(range);
+  state.docSelection = range.cloneRange();
+}
+
 function normalizeDocInputHtml() {
   const note = activeNote();
   if (!note || note.mode !== "doc" || !elements.docInput) return;
+  const selectionOffsets = getDocSelectionOffsets();
   const clean = sanitizeDocHtml(elements.docInput.innerHTML || "<p></p>");
-  if (elements.docInput.innerHTML !== clean) elements.docInput.innerHTML = clean;
+  if (elements.docInput.innerHTML !== clean) {
+    elements.docInput.innerHTML = clean;
+    restoreDocSelectionOffsets(selectionOffsets);
+  }
   updateActiveFromInputs({ force: true });
 }
 
@@ -5385,6 +5515,88 @@ function currentDocBlockTag() {
     node = node.parentNode;
   }
   return "";
+}
+
+function activeDocElement() {
+  const selection = window.getSelection?.();
+  if (!selection || !selection.anchorNode || !elements.docInput) return null;
+  let node = selection.anchorNode.nodeType === Node.ELEMENT_NODE ? selection.anchorNode : selection.anchorNode.parentNode;
+  while (node && node !== elements.docInput) {
+    if (node.nodeType === Node.ELEMENT_NODE) return node;
+    node = node.parentNode;
+  }
+  return null;
+}
+
+function docStyleAncestor(command) {
+  if (!elements.docInput) return null;
+  const selection = window.getSelection?.();
+  if (!selection || !selection.rangeCount) return null;
+  const range = selection.getRangeAt(0);
+  let node = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentNode;
+  let match = null;
+  while (node && node !== elements.docInput) {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = node.tagName?.toLowerCase();
+      const hasBackground = tag === "mark" || Boolean(safeDocColor(node.style?.backgroundColor, "background"));
+      const hasColor = Boolean(safeDocColor(node.style?.color, "text"));
+      if ((command === "hiliteColor" && hasBackground) || (command === "foreColor" && hasColor)) {
+        match = node;
+      }
+    }
+    node = node.parentNode;
+  }
+  return match;
+}
+
+function moveCollapsedDocSelectionOutOfStyle(command) {
+  if (!elements.docInput) return false;
+  const selection = window.getSelection?.();
+  if (!selection || !selection.rangeCount) return false;
+  const range = selection.getRangeAt(0);
+  if (!range.collapsed || !elements.docInput.contains(range.startContainer)) return false;
+  const styled = docStyleAncestor(command);
+  if (!styled || !styled.parentNode) return false;
+
+  const measure = document.createRange();
+  measure.selectNodeContents(styled);
+  measure.setEnd(range.startContainer, range.startOffset);
+  const offset = measure.toString().length;
+  const total = styled.textContent.length;
+  measure.detach?.();
+
+  const nextRange = document.createRange();
+  const caretNode = document.createElement("span");
+  caretNode.setAttribute("data-doc-clear-caret", "1");
+  caretNode.textContent = "\u200b";
+  if (offset <= 0) {
+    styled.parentNode.insertBefore(caretNode, styled);
+    nextRange.setStart(caretNode.firstChild, 1);
+  } else if (offset >= total) {
+    styled.parentNode.insertBefore(caretNode, styled.nextSibling);
+    nextRange.setStart(caretNode.firstChild, 1);
+  } else {
+    const afterRange = range.cloneRange();
+    afterRange.setEndAfter(styled);
+    const afterFragment = afterRange.extractContents();
+    styled.parentNode.insertBefore(caretNode, styled.nextSibling);
+    styled.parentNode.insertBefore(afterFragment, caretNode.nextSibling);
+    nextRange.setStart(caretNode.firstChild, 1);
+  }
+  nextRange.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(nextRange);
+  state.docSelection = nextRange.cloneRange();
+  return true;
+}
+
+function finishDocFormatting() {
+  saveDocSelection();
+  window.setTimeout(() => {
+    normalizeDocInputHtml();
+    updateDocToolbarState();
+    elements.docInput?.focus();
+  }, 0);
 }
 
 function applyDocCommand(command, value = null) {
@@ -5406,17 +5618,103 @@ function applyDocCommand(command, value = null) {
   } catch (error) {
     console.warn("DOC command failed", error);
   }
-  saveDocSelection();
-  window.setTimeout(() => {
-    normalizeDocInputHtml();
-    elements.docInput?.focus();
-  }, 0);
+  finishDocFormatting();
 }
 
-function applyDocBlock(block) {
+function applyDocBlock(block, force = false) {
   const current = currentDocBlockTag();
-  const next = current === block ? "p" : block;
+  const next = force ? block : current === block ? "p" : block;
   applyDocCommand("formatBlock", `<${next}>`);
+}
+
+function applyDocColor(command, color) {
+  if (!color) return;
+  const input = command === "foreColor" ? elements.docTextColorInput : elements.docHighlightInput;
+  const swatch = command === "foreColor" ? elements.docTextColorSwatch : elements.docHighlightSwatch;
+  if (input) input.value = color;
+  if (swatch) swatch.style.background = color;
+  applyDocCommand(command, color);
+}
+
+function clearDocColor(command) {
+  const note = activeNote();
+  if (!note || note.mode !== "doc") return;
+  restoreDocSelection();
+  const selection = window.getSelection?.();
+  const collapsed = Boolean(selection?.rangeCount && selection.getRangeAt(0).collapsed);
+  const movedOutOfStyle = collapsed && moveCollapsedDocSelectionOutOfStyle(command);
+  try {
+    if (!movedOutOfStyle) {
+      document.execCommand("styleWithCSS", false, true);
+      if (command === "foreColor") {
+        document.execCommand("foreColor", false, DOC_DEFAULT_TEXT_COLOR);
+      } else {
+        const ok = document.execCommand("hiliteColor", false, "transparent");
+        if (!ok) document.execCommand("backColor", false, "transparent");
+      }
+    }
+  } catch (error) {
+    console.warn("DOC clear color failed", error);
+  }
+  if (movedOutOfStyle) {
+    saveDocSelection();
+    updateActiveFromInputs({ force: true });
+    updateDocToolbarState();
+    elements.docInput?.focus();
+    return;
+  }
+  finishDocFormatting();
+}
+
+function applyDocLink() {
+  const note = activeNote();
+  if (!note || note.mode !== "doc") return;
+  restoreDocSelection();
+  const current = document.queryCommandValue?.("createLink") || "";
+  const url = window.prompt(t("linkPrompt"), current && current !== "false" ? current : "https://");
+  if (!url) {
+    elements.docInput?.focus();
+    return;
+  }
+  let nextUrl = url.trim();
+  if (!/^(https?:|mailto:|tel:|#)/i.test(nextUrl)) nextUrl = `https://${nextUrl}`;
+  applyDocCommand("createLink", nextUrl);
+}
+
+function queryDocCommandState(command) {
+  try {
+    return Boolean(document.queryCommandState?.(command));
+  } catch {
+    return false;
+  }
+}
+
+function normalizeDocBlockForSelect(tag) {
+  if (tag === "li") {
+    const active = activeDocElement();
+    const parentList = active?.closest?.("ul,ol");
+    return parentList ? "p" : "p";
+  }
+  return ["p", "h1", "h2", "h3", "blockquote"].includes(tag) ? tag : "p";
+}
+
+function updateDocToolbarState() {
+  if (!elements.toolbar || activeNote()?.mode !== "doc") return;
+  const block = normalizeDocBlockForSelect(currentDocBlockTag());
+  if (elements.docBlockSelect && elements.docBlockSelect.value !== block) elements.docBlockSelect.value = block;
+  elements.toolbar.querySelectorAll("[data-doc-command]").forEach((button) => {
+    const command = button.dataset.docCommand;
+    const stateCommands = new Set(["bold", "italic", "underline", "insertUnorderedList", "insertOrderedList"]);
+    button.classList.toggle("active", stateCommands.has(command) && queryDocCommandState(command));
+  });
+  if (elements.docTextColorSwatch) {
+    const color = elements.docTextColorInput?.value || DOC_DEFAULT_TEXT_COLOR;
+    elements.docTextColorSwatch.style.background = color;
+  }
+  if (elements.docHighlightSwatch) {
+    const color = elements.docHighlightInput?.value || DOC_DEFAULT_HIGHLIGHT_COLOR;
+    elements.docHighlightSwatch.style.background = color;
+  }
 }
 
 function renderExportFormatButtons() {
@@ -5476,6 +5774,22 @@ function insertTable() {
 function applyToolbarAction(button) {
   if (button.dataset.command) {
     runNativeHistoryCommand(button.dataset.command);
+    return;
+  }
+
+  if (button.dataset.docColorClear) {
+    clearDocColor(button.dataset.docColorClear);
+    return;
+  }
+
+  if (button.dataset.docColor) {
+    const command = button.closest("[data-doc-color-menu]")?.dataset.docColorMenu || "foreColor";
+    applyDocColor(command, button.dataset.docColor);
+    return;
+  }
+
+  if (button.dataset.docAction === "link") {
+    applyDocLink();
     return;
   }
 
@@ -6236,7 +6550,7 @@ function sanitizeDocHtml(html) {
   template.innerHTML = source;
 
   const cleanNode = (node) => {
-    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent || "");
+    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode((node.textContent || "").replace(/\u200b/g, ""));
     if (node.nodeType !== Node.ELEMENT_NODE) return document.createDocumentFragment();
 
     const rawTag = node.tagName.toLowerCase();
@@ -6262,13 +6576,16 @@ function sanitizeDocHtml(html) {
     }
 
     const styles = [];
-    const color = safeDocColor(node.style?.color);
-    const background = safeDocColor(node.style?.backgroundColor);
+    const color = safeDocColor(node.style?.color, "text");
+    const background = safeDocColor(node.style?.backgroundColor, "background");
     if (color) styles.push(`color:${color}`);
     if (background) styles.push(`background-color:${background}`);
     if (styles.length) element.setAttribute("style", styles.join(";"));
 
-    node.childNodes.forEach((child) => element.appendChild(cleanNode(child)));
+    const childFragment = document.createDocumentFragment();
+    node.childNodes.forEach((child) => childFragment.appendChild(cleanNode(child)));
+    if (tag === "span" && !styles.length) return childFragment;
+    element.appendChild(childFragment);
     return element;
   };
 
@@ -6280,10 +6597,12 @@ function sanitizeDocHtml(html) {
   return result || "<p></p>";
 }
 
-function safeDocColor(value) {
+function safeDocColor(value, kind = "any") {
   const color = String(value || "").trim();
   if (!color || color.length > 48) return "";
   if (/url|expression|javascript/i.test(color)) return "";
+  if (kind === "background" && /^(transparent|rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\))$/i.test(color)) return "";
+  if (kind === "text" && /^(#111827|rgb\(\s*17\s*,\s*24\s*,\s*39\s*\))$/i.test(color)) return "";
   return color;
 }
 

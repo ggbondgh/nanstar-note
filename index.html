@@ -14,7 +14,7 @@
     <title>NanStar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=36" />
+    <link rel="stylesheet" href="./styles.css?v=37" />
   </head>
   <body>
     <div class="app-shell">
@@ -190,20 +190,89 @@
                   <button class="md-tool" type="button" data-prefix="- [ ] " title="任务清单">☐</button>
                   <button class="md-tool" type="button" data-prefix="> " title="引用">❝</button>
                   <button class="md-tool" type="button" data-block="code" title="代码块">&lt;/&gt;</button>
+                  <select class="doc-style-select doc-tool" id="docBlockSelect" title="段落样式" aria-label="段落样式">
+                    <option value="p">正文</option>
+                    <option value="h1">标题 1</option>
+                    <option value="h2">标题 2</option>
+                    <option value="h3">标题 3</option>
+                    <option value="blockquote">引用</option>
+                  </select>
                   <button class="doc-tool" type="button" data-doc-command="bold" title="加粗">B</button>
                   <button class="doc-tool" type="button" data-doc-command="italic" title="斜体"><em>I</em></button>
                   <button class="doc-tool" type="button" data-doc-command="underline" title="下划线"><u>U</u></button>
-                  <button class="doc-tool" type="button" data-doc-block="h2" title="标题">H</button>
+                  <details class="toolbar-menu doc-tool doc-color-menu" data-doc-color-menu="foreColor">
+                    <summary class="doc-color-summary" title="文字颜色" aria-label="文字颜色">
+                      <span class="doc-color-letter" aria-hidden="true">A</span>
+                      <span class="doc-color-swatch" id="docTextColorSwatch" aria-hidden="true"></span>
+                      <span class="doc-menu-caret" aria-hidden="true">▾</span>
+                    </summary>
+                    <div class="toolbar-menu-panel doc-palette-panel">
+                      <button class="doc-palette-action" type="button" data-doc-color-clear="foreColor">
+                        <span aria-hidden="true">×</span>
+                        <span>默认文字</span>
+                      </button>
+                      <div class="doc-palette-grid" aria-label="文字颜色">
+                        <button type="button" data-doc-color="#111827" style="--swatch:#111827" aria-label="黑色"></button>
+                        <button type="button" data-doc-color="#dc2626" style="--swatch:#dc2626" aria-label="红色"></button>
+                        <button type="button" data-doc-color="#ea580c" style="--swatch:#ea580c" aria-label="橙色"></button>
+                        <button type="button" data-doc-color="#ca8a04" style="--swatch:#ca8a04" aria-label="黄色"></button>
+                        <button type="button" data-doc-color="#16a34a" style="--swatch:#16a34a" aria-label="绿色"></button>
+                        <button type="button" data-doc-color="#0d9488" style="--swatch:#0d9488" aria-label="青色"></button>
+                        <button type="button" data-doc-color="#2563eb" style="--swatch:#2563eb" aria-label="蓝色"></button>
+                        <button type="button" data-doc-color="#7c3aed" style="--swatch:#7c3aed" aria-label="紫色"></button>
+                      </div>
+                      <label class="doc-custom-color">
+                        <span>自定义</span>
+                        <input id="docTextColorInput" type="color" value="#111827" aria-label="自定义文字颜色" />
+                      </label>
+                    </div>
+                  </details>
+                  <details class="toolbar-menu doc-tool doc-color-menu" data-doc-color-menu="hiliteColor">
+                    <summary class="doc-color-summary" title="高亮颜色" aria-label="高亮颜色">
+                      <span class="doc-highlight-mark" aria-hidden="true">▰</span>
+                      <span class="doc-color-swatch" id="docHighlightSwatch" aria-hidden="true"></span>
+                      <span class="doc-menu-caret" aria-hidden="true">▾</span>
+                    </summary>
+                    <div class="toolbar-menu-panel doc-palette-panel">
+                      <button class="doc-palette-action" type="button" data-doc-color-clear="hiliteColor">
+                        <span aria-hidden="true">×</span>
+                        <span>取消高亮</span>
+                      </button>
+                      <div class="doc-palette-grid" aria-label="高亮颜色">
+                        <button type="button" data-doc-color="#fef3c7" style="--swatch:#fef3c7" aria-label="浅黄"></button>
+                        <button type="button" data-doc-color="#fee2e2" style="--swatch:#fee2e2" aria-label="浅红"></button>
+                        <button type="button" data-doc-color="#ffedd5" style="--swatch:#ffedd5" aria-label="浅橙"></button>
+                        <button type="button" data-doc-color="#dcfce7" style="--swatch:#dcfce7" aria-label="浅绿"></button>
+                        <button type="button" data-doc-color="#ccfbf1" style="--swatch:#ccfbf1" aria-label="浅青"></button>
+                        <button type="button" data-doc-color="#dbeafe" style="--swatch:#dbeafe" aria-label="浅蓝"></button>
+                        <button type="button" data-doc-color="#ede9fe" style="--swatch:#ede9fe" aria-label="浅紫"></button>
+                        <button type="button" data-doc-color="#f3f4f6" style="--swatch:#f3f4f6" aria-label="浅灰"></button>
+                      </div>
+                      <label class="doc-custom-color">
+                        <span>自定义</span>
+                        <input id="docHighlightInput" type="color" value="#fef3c7" aria-label="自定义高亮颜色" />
+                      </label>
+                    </div>
+                  </details>
                   <button class="doc-tool" type="button" data-doc-command="insertUnorderedList" title="无序列表">•</button>
                   <button class="doc-tool" type="button" data-doc-command="insertOrderedList" title="有序列表">1.</button>
-                  <label class="doc-color-tool doc-tool" title="文字颜色">
-                    <span aria-hidden="true">A</span>
-                    <input id="docTextColorInput" type="color" value="#1f2937" aria-label="文字颜色" />
-                  </label>
-                  <label class="doc-color-tool doc-tool" title="高亮颜色">
-                    <span aria-hidden="true">▰</span>
-                    <input id="docHighlightInput" type="color" value="#fff3a3" aria-label="高亮颜色" />
-                  </label>
+                  <details class="toolbar-menu doc-tool doc-more-menu">
+                    <summary title="更多格式" aria-label="更多格式">···</summary>
+                    <div class="toolbar-menu-panel">
+                      <button type="button" data-doc-action="link" title="插入链接">
+                        <span aria-hidden="true">↗</span>
+                        <span>链接</span>
+                      </button>
+                      <button type="button" data-doc-command="unlink" title="取消链接">
+                        <span aria-hidden="true">⌫</span>
+                        <span>取消链接</span>
+                      </button>
+                      <button type="button" data-doc-command="removeFormat" title="清除格式">
+                        <span aria-hidden="true">Tx</span>
+                        <span>清除格式</span>
+                      </button>
+                    </div>
+                  </details>
                   <span class="toolbar-separator" aria-hidden="true"></span>
                   <details class="toolbar-menu md-tool">
                     <summary title="插入片段" aria-label="插入片段">＋</summary>
@@ -455,7 +524,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-    <script src="./script.js?v=33"></script>
+    <script src="./script.js?v=35"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
