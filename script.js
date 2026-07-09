@@ -164,7 +164,7 @@ const i18n = {
     syncVerifying: "已上传，正在校验云端...",
     syncVerifiedAt: "已同步并校验 {time}",
     syncVerifyFailed: "云端校验未通过，已保留待同步",
-    syncDiagnostics: "本地版本 {version} · 待上传 {updates} · 待同步 {dirty} · 最近校验 {time}",
+    syncDiagnostics: "待同步 {dirty} · 最近校验 {time}",
     syncDiagnosticsNever: "无",
     syncBlockedDirty: "云端有更新，本地正在编辑，已保留本地",
     syncNoChange: "云端暂无更新",
@@ -381,7 +381,7 @@ const i18n = {
     syncVerifying: "Uploaded, verifying cloud...",
     syncVerifiedAt: "Synced and verified {time}",
     syncVerifyFailed: "Cloud verification failed; kept pending sync",
-    syncDiagnostics: "Local version {version} · pending updates {updates} · dirty notes {dirty} · last verify {time}",
+    syncDiagnostics: "Dirty notes {dirty} · last verify {time}",
     syncDiagnosticsNever: "never",
     syncBlockedDirty: "Cloud changed, local edit kept",
     syncNoChange: "No cloud changes",
@@ -714,6 +714,7 @@ const DEFAULT_SPLIT_RATIO = 52;
 const DEFAULT_SIDEBAR_WIDTH = 280;
 const SYNC_POLL_INTERVAL = 3000;
 const SYNC_PUSH_DELAY = 500;
+const NOTE_SYNC_ENGINE = "snapshot";
 const TRANSFER_NOTE_ID = "nanstar-transfer-assistant";
 const FOLDER_REGISTRY_NOTE_ID = "nanstar-folder-registry";
 const INBOX_FOLDER = "默认文件夹";
@@ -909,7 +910,6 @@ const elements = {
 init();
 
 function init() {
-  const startedWithDefaultNotes = state.localStateSource === "default";
   state.notes = loadNotes();
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   restoreDirtyNotes();
@@ -917,7 +917,7 @@ function init() {
   elements.autoSyncToggle.checked = localStorage.getItem(storageKeys.autoSync) !== "0";
   migrateFolderState();
   saveNotes();
-  initCrdtFromState({ clearPending: startedWithDefaultNotes });
+  clearLegacyCrdtSyncState({ clearOrphanPending: true });
   applyLanguage(state.language, true);
   applySidebarWidth(readSidebarWidth());
   applySplitRatio(readSplitRatio());
@@ -2054,6 +2054,30 @@ function foldersSignature(folders = storedFolders()) {
   return JSON.stringify([INBOX_FOLDER, ...normalizedStoredFolderNames(folders)].map(canonicalFolderName));
 }
 
+function snapshotSignature(notes = syncableNotes(), folders = storedFolders()) {
+  const normalizedNotes = (Array.isArray(notes) ? notes : [])
+    .map(normalizeNote)
+    .filter((note) => !isTransferAssistant(note) && !isFolderRegistry(note))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  return JSON.stringify({
+    notes: normalizedNotes,
+    folders: JSON.parse(foldersSignature(folders))
+  });
+}
+
+function cloudSnapshotNotes(payload) {
+  return Array.isArray(payload?.notes) ? payload.notes.map(normalizeNote) : [];
+}
+
+function cloudSnapshotFolders(payload) {
+  if (Array.isArray(payload?.folders)) return payload.folders;
+  return storedFolders(cloudSnapshotNotes(payload));
+}
+
+function cloudSnapshotSignature(payload) {
+  return snapshotSignature(cloudSnapshotNotes(payload), cloudSnapshotFolders(payload));
+}
+
 function isDefaultSeedState(notes = state.notes) {
   const visible = notes.map(normalizeNote).filter((note) => !isDeletedNote(note) && !isTransferAssistant(note) && !isFolderRegistry(note));
   if (visible.length !== defaultNotes.length) return false;
@@ -2139,7 +2163,6 @@ function prepareCurrentNoteForSync(options = {}) {
 
   if (options.forcePush && !hasDirtyNotes()) markAllNotesDirty();
   saveNotes();
-  ensureCrdtPendingUpdatesForDirty();
 
   if (hasDirtyNotes() && getSyncToken()) {
     writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: "" });
@@ -2154,7 +2177,7 @@ function isDirtyNoteId(noteId) {
 }
 
 function hasDirtyNotes() {
-  return state.dirtyNoteIds.size > 0 || state.crdtPendingUpdates.length > 0 || Boolean(readSyncMeta().pending);
+  return state.dirtyNoteIds.size > 0 || Boolean(readSyncMeta().pending);
 }
 
 function markNoteDirty(noteId = state.activeId) {
@@ -2177,7 +2200,7 @@ function dirtyNoteIds() {
 }
 
 function crdtAvailable() {
-  return Boolean(window.Y && state.crdtDoc && state.crdtNotes && state.crdtFolders);
+  return NOTE_SYNC_ENGINE === "crdt" && Boolean(window.Y && state.crdtDoc && state.crdtNotes && state.crdtFolders);
 }
 
 function bytesToBase64(bytes) {
@@ -2206,7 +2229,20 @@ function readCrdtPendingUpdates() {
 }
 
 function writeCrdtPendingUpdates() {
-  localStorage.setItem(storageKeys.crdtPendingUpdates, JSON.stringify(state.crdtPendingUpdates));
+  if (state.crdtPendingUpdates.length) {
+    localStorage.setItem(storageKeys.crdtPendingUpdates, JSON.stringify(state.crdtPendingUpdates));
+  } else {
+    localStorage.removeItem(storageKeys.crdtPendingUpdates);
+  }
+}
+
+function clearLegacyCrdtSyncState(options = {}) {
+  state.crdtPendingUpdates = [];
+  localStorage.removeItem(storageKeys.crdtPendingUpdates);
+  localStorage.removeItem(storageKeys.crdtUpdateId);
+  if (options.clearOrphanPending && !dirtyNoteIds().length && readSyncMeta().pending) {
+    writeSyncMeta({ pending: false, dirtyNoteIds: [], lastError: "" });
+  }
 }
 
 function initCrdtFromState(options = {}) {
@@ -2422,14 +2458,14 @@ function scheduleAutoSync() {
   clearTimeout(state.autoSyncTimer);
   if (!elements.autoSyncToggle.checked || !getSyncToken()) return;
   if (state.syncInFlight) {
-    const hasLocalChanges = state.crdtPendingUpdates.length > 0 || dirtyNoteIds().length > 0 || Boolean(readSyncMeta().pending);
+    const hasLocalChanges = hasDirtyNotes();
     if (hasLocalChanges && !state.syncQueue.some((item) => item?.reason === "auto-push")) {
       state.syncQueue.push({ silent: true, reason: "auto-push" });
     }
     return;
   }
   state.autoSyncTimer = window.setTimeout(() => {
-    const hasLocalChanges = state.crdtPendingUpdates.length > 0 || dirtyNoteIds().length > 0 || Boolean(readSyncMeta().pending);
+    const hasLocalChanges = hasDirtyNotes();
     syncCloud(hasLocalChanges
       ? { silent: true, reason: "auto-push" }
       : { silent: true, pullOnly: true, reason: "check" });
@@ -3518,10 +3554,8 @@ function renderSyncMeta() {
   if (elements.syncDiagnostics) {
     elements.syncDiagnostics.hidden = !token;
     if (token) {
-      const lastVerifyTime = Number(syncMeta.lastVerifiedAt || syncMeta.lastVerifyAt || 0);
+      const lastVerifyTime = Number(syncMeta.lastVerifiedAt || syncMeta.lastCheckedAt || syncMeta.lastPullAt || syncMeta.lastPushAt || 0);
       elements.syncDiagnostics.textContent = t("syncDiagnostics")
-        .replace("{version}", String(localStorage.getItem(storageKeys.crdtUpdateId) || 0))
-        .replace("{updates}", String(state.crdtPendingUpdates.length))
         .replace("{dirty}", String(dirtyNoteIds().length))
         .replace("{time}", lastVerifyTime ? formatTime(lastVerifyTime) : t("syncDiagnosticsNever"));
     }
@@ -3931,56 +3965,7 @@ async function pullCloud() {
 }
 
 async function forcePullCloud() {
-  if (crdtAvailable()) {
-    return syncCloud({ manual: true, pullOnly: true, forcePull: true, reason: "force-pull" });
-  }
-
-  const token = getSyncToken();
-  if (!token) {
-    showSyncMessage("请先填写同步 Token。");
-    return false;
-  }
-  if (state.saveTimer) {
-    clearTimeout(state.saveTimer);
-    state.saveTimer = null;
-  }
-  state.savePendingNoteId = null;
-  state.dirtyNoteIds.clear();
-  writeSyncMeta({ pending: false, dirtyNoteIds: [], lastError: "" });
-  if (!elements.autoSyncToggle.checked && !state.syncInFlight) {
-    clearTimeout(state.autoSyncTimer);
-  }
-  localStorage.setItem(storageKeys.syncToken, token);
-  state.syncInFlight = true;
-  state.syncAction = "pulling";
-  renderSyncMeta();
-  showSyncMessage(t("syncRefreshing"));
-  try {
-    const remotePayload = await fetchCloudState(token);
-    const remoteNotes = Array.isArray(remotePayload.notes) ? remotePayload.notes.map(normalizeNote) : [];
-    const remoteFolders = Array.isArray(remotePayload.folders) ? remotePayload.folders : null;
-    replaceNotesFromCloud(remoteNotes, { keepActiveId: true, folders: remoteFolders });
-    const now = Date.now();
-    clearSyncPending(Number(remotePayload.updatedAt) || now, { lastPullAt: now, lastCheckedAt: now });
-    showSyncMessage(t("syncRefreshedAt").replace("{time}", formatTime(now)));
-    showToast(t("syncRefreshedAt").replace("{time}", formatTime(now)));
-    return true;
-  } catch (error) {
-    const message = `${t("syncFailed")}：${cloudErrorText(error)}`;
-    writeSyncMeta({ lastError: message });
-    renderSyncMeta();
-    showSyncMessage(message);
-    showToast(message);
-    return false;
-  } finally {
-    state.syncInFlight = false;
-    state.syncAction = "";
-    renderSyncMeta();
-    if (state.syncQueue.length) {
-      const queued = state.syncQueue.shift();
-      window.setTimeout(() => syncCloud(queued), 120);
-    }
-  }
+  return syncCloud({ manual: true, pullOnly: true, forcePull: true, reason: "force-pull" });
 }
 
 function readSyncMeta() {
@@ -4011,6 +3996,7 @@ function markSyncPending(noteId = state.activeId) {
 function clearSyncPending(remoteUpdatedAt = Date.now(), patch = {}, syncedSnapshots = null) {
   const now = Date.now();
   localStorage.setItem(storageKeys.lastSyncAt, String(now));
+  clearLegacyCrdtSyncState();
   clearSyncedDirtyNotes(syncedSnapshots);
   writeSyncMeta({
     pending: state.dirtyNoteIds.size > 0,
@@ -4118,7 +4104,7 @@ async function putCloudState(token) {
 
 function replaceNotesFromCloud(notes, options = {}) {
   const keepActiveId = options.keepActiveId !== false ? state.activeId : null;
-  state.notes = notes.map(normalizeNote).sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
+  state.notes = withSystemNotes(notes).sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
   if (Array.isArray(options.folders)) setStoredFolders(options.folders);
   state.activeId = keepActiveId && state.notes.some((note) => note.id === keepActiveId && !isDeletedNote(note))
     ? keepActiveId
@@ -4358,6 +4344,7 @@ async function syncCrdtCloud(options = {}) {
       showSyncMessage(message);
       showToast(message);
     }
+    return false;
   } finally {
     state.syncInFlight = false;
     state.syncAction = "";
@@ -4370,24 +4357,31 @@ async function syncCrdtCloud(options = {}) {
 }
 
 async function syncCloud(options = {}) {
-  if (crdtAvailable()) return syncCrdtCloud(options);
-
   const token = getSyncToken();
   const manual = Boolean(options.manual);
   const silent = Boolean(options.silent);
   const forcePush = Boolean(options.forcePush);
-  const pullOnly = Boolean(options.pullOnly) && !forcePush;
-  const reason = options.reason || (pullOnly ? "check" : "sync");
+  const forcePull = Boolean(options.forcePull);
+  const pullOnly = (Boolean(options.pullOnly) || forcePull) && !forcePush;
 
   if (!token) {
     if (manual) showSyncMessage("请先填写同步 Token。");
     renderSyncMeta();
-    return;
+    return false;
   }
-  if (!manual && !elements.autoSyncToggle.checked) return;
+  if (!manual && !elements.autoSyncToggle.checked) return false;
   if (state.syncInFlight) {
     state.syncQueue.push(options);
-    return;
+    return false;
+  }
+  if (pullOnly && !forcePull && (hasDirtyNotes() || state.noteInputComposing)) {
+    if (manual) {
+      showSyncMessage(t("inputComposing"));
+      showToast(t("inputComposing"));
+    }
+    renderSyncMeta();
+    scheduleAutoSync();
+    return false;
   }
   if (!pullOnly && !prepareCurrentNoteForSync({
     noteId: options.noteId || state.activeId,
@@ -4401,76 +4395,93 @@ async function syncCloud(options = {}) {
     return false;
   }
 
+  if (forcePull) {
+    clearTimeout(state.saveTimer);
+    state.saveTimer = null;
+    state.savePendingNoteId = null;
+    state.dirtyNoteIds.clear();
+    clearLegacyCrdtSyncState();
+    writeSyncMeta({ pending: false, dirtyNoteIds: [], lastError: "" });
+  }
+
   clearTimeout(state.autoSyncTimer);
   localStorage.setItem(storageKeys.syncToken, token);
-  if (forcePush && !hasDirtyNotes()) markAllNotesDirty();
-  const pendingBefore = hasDirtyNotes() || forcePush;
-  const dirtySnapshot = Object.fromEntries(dirtyNoteIds().map((id) => [id, noteSignatureById(id)]));
+  const shouldPush = !pullOnly && (forcePush || hasDirtyNotes());
+  const pendingBefore = shouldPush || hasDirtyNotes();
   state.syncInFlight = true;
-  state.syncAction = pullOnly ? "pulling" : "pushing";
+  state.syncAction = shouldPush ? "pushing" : "pulling";
   renderSyncMeta();
-  if (!silent) showSyncMessage(pullOnly ? t("syncPulling") : t("syncPushing"));
+  if (!silent) showSyncMessage(forcePull ? t("syncRefreshing") : shouldPush ? t("syncPushing") : t("syncPulling"));
 
   try {
-    const remotePayload = await fetchCloudState(token);
-    const remoteNotes = Array.isArray(remotePayload.notes) ? remotePayload.notes.map(normalizeNote) : [];
-    const remoteFolders = Array.isArray(remotePayload.folders) ? remotePayload.folders : null;
-    const remoteSignature = notesSignature(remoteNotes);
-    let remoteUpdatedAt = Number(remotePayload.updatedAt) || Date.now();
-    let pulled = false;
-    let pushed = false;
-    let blocked = false;
+    if (shouldPush) {
+      const localSignature = snapshotSignature(syncableNotes(), storedFolders());
+      const pushResult = await putCloudState(token);
+      let remoteUpdatedAt = Number(pushResult.updatedAt) || Date.now();
+      if (!silent) showSyncMessage(t("syncVerifying"));
+      writeSyncMeta({ lastError: "", lastVerifyStartedAt: Date.now() });
+      const verifyPayload = await fetchCloudState(token);
+      remoteUpdatedAt = Number(verifyPayload.updatedAt) || remoteUpdatedAt;
+      const remoteSignature = cloudSnapshotSignature(verifyPayload);
+      const now = Date.now();
+      if (remoteSignature !== localSignature) {
+        const message = t("syncVerifyFailed");
+        writeSyncMeta({
+          pending: true,
+          dirtyNoteIds: dirtyNoteIds(),
+          lastError: message,
+          remoteUpdatedAt,
+          lastCheckedAt: now,
+          lastVerifyAt: now
+        });
+        renderSyncMeta();
+        showSyncMessage(message);
+        if (!silent) showToast(message);
+        return false;
+      }
 
-    if (pullOnly) {
-      const result = applyCloudNotes(remotePayload, { allowReplace: reason === "startup" || reason === "open-note" || reason === "manual-pull" });
-      pulled = result.changed;
-      blocked = result.blocked;
-    } else if (!pendingBefore && notesSignature() !== remoteSignature) {
-      const result = applyCloudNotes(remotePayload, { allowReplace: reason === "startup" || reason === "open-note" });
-      pulled = result.changed;
-      blocked = result.blocked;
+      clearSyncPending(remoteUpdatedAt, { lastPushAt: now, lastVerifiedAt: now, lastCheckedAt: now });
+      renderSyncMeta();
+      const message = t("syncVerifiedAt").replace("{time}", formatTime(now));
+      showSyncMessage(message);
+      if (!silent) showToast(message);
+      return true;
     }
 
-    if (!pullOnly && !blocked && hasDirtyNotes()) {
-      const pulledBeforePush = applyCloudNotes(remotePayload, { allowReplace: false });
-      blocked = pulledBeforePush.blocked;
-      const pushResult = await putCloudState(token);
-      remoteUpdatedAt = Number(pushResult.updatedAt) || Date.now();
-      pushed = true;
+    const beforeSignature = snapshotSignature(syncableNotes(), storedFolders());
+    const remotePayload = await fetchCloudState(token);
+    const remoteUpdatedAt = Number(remotePayload.updatedAt) || Date.now();
+    const remoteSignature = cloudSnapshotSignature(remotePayload);
+    const pulled = forcePull || beforeSignature !== remoteSignature;
+    if (pulled) {
+      replaceNotesFromCloud(cloudSnapshotNotes(remotePayload), {
+        keepActiveId: true,
+        folders: cloudSnapshotFolders(remotePayload)
+      });
     }
 
     const now = Date.now();
-    if (pushed) {
-      clearSyncPending(remoteUpdatedAt, { lastPushAt: now, lastPullAt: pulled ? now : readSyncMeta().lastPullAt || 0 }, dirtySnapshot);
-    } else if (pulled) {
-      writeSyncMeta({ lastError: "", lastPullAt: now, remoteUpdatedAt, lastSyncedAt: now });
-      localStorage.setItem(storageKeys.lastSyncAt, String(now));
-    } else if (blocked) {
-      writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: "", remoteUpdatedAt });
-    } else {
-      writeSyncMeta({ lastError: "", remoteUpdatedAt, lastCheckedAt: now });
-    }
-
+    clearSyncPending(remoteUpdatedAt, {
+      lastPullAt: pulled ? now : readSyncMeta().lastPullAt || 0,
+      lastCheckedAt: now
+    });
     renderSyncMeta();
-    if (blocked) {
-      const message = t("syncBlockedDirty");
+    if (forcePull) {
+      const message = t("syncRefreshedAt").replace("{time}", formatTime(now));
+      showSyncMessage(message);
+      showToast(message);
+    } else if (pulled) {
+      const message = t("syncPulledAt").replace("{time}", formatTime(now));
       showSyncMessage(message);
       if (!silent) showToast(message);
-    } else if (pushed) {
-      const message = t("syncPushedAt").replace("{time}", formatTime(Date.now()));
-      showSyncMessage(message);
-      showToast(message);
-    } else if (pulled) {
-      const message = t("syncPulledAt").replace("{time}", formatTime(Date.now()));
-      showSyncMessage(message);
-      showToast(message);
     } else if (manual) {
       const message = t("syncNoChange");
       showSyncMessage(message);
       showToast(message);
     } else if (!silent) {
-      showSyncMessage(t("syncCheckedAt").replace("{time}", formatTime(Date.now())));
+      showSyncMessage(t("syncCheckedAt").replace("{time}", formatTime(now)));
     }
+    return true;
   } catch (error) {
     const message = `${t("syncFailed")}：${cloudErrorText(error)}`;
     if (pendingBefore || forcePush) writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: message });
@@ -4480,6 +4491,7 @@ async function syncCloud(options = {}) {
       showSyncMessage(message);
       showToast(message);
     }
+    return false;
   } finally {
     state.syncInFlight = false;
     state.syncAction = "";
