@@ -9,7 +9,7 @@ const FILE_TABLE_SQL = `
   )
 `;
 
-const MAX_FILE_COUNT = 5;
+const MAX_FILE_COUNT = 8;
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 

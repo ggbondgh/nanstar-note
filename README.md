@@ -76,7 +76,7 @@ After deployment, open the sync dialog in NanStar Note and enter the same token.
 
 ## File transfer module
 
-The file-transfer assistant is separate from TXT/MD notes. It stores file bytes in Cloudflare R2 and stores only file metadata in D1. Current limits are 5 files, 20 MB per file, and 50 MB total.
+The file-transfer assistant is separate from TXT/MD notes. It stores file bytes in Cloudflare R2 and stores only file metadata in D1. Current limits are 8 files, 20 MB per file, and 50 MB total.
 
 The Pages Functions route is `GET/POST/DELETE /api/files`. It uses the same `NOTE_SYNC_TOKEN` bearer token as note sync and creates this D1 table automatically:
 
