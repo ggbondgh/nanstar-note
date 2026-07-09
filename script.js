@@ -1130,9 +1130,10 @@ function bindEvents() {
     if (!event.target.closest("#folderContextMenu")) hideFolderContextMenu();
     if (!event.target.closest("#noteContextMenu")) hideNoteContextMenu();
     if (!event.target.closest(".topbar-menu")) elements.topbarMenu?.removeAttribute("open");
-    if (!event.target.closest(".toolbar-menu")) document.querySelectorAll(".toolbar-menu[open]").forEach((menu) => menu.removeAttribute("open"));
+    if (!event.target.closest(".toolbar-menu")) closeToolbarMenus();
   });
-  window.addEventListener("scroll", () => { hideFolderContextMenu(); hideNoteContextMenu(); }, { capture: true });
+  window.addEventListener("scroll", () => { hideFolderContextMenu(); hideNoteContextMenu(); closeToolbarMenus(); }, { capture: true });
+  window.addEventListener("resize", () => positionOpenToolbarMenus());
 
   // Note context menu
   if (elements.noteContextMenu) {
@@ -1206,10 +1207,17 @@ function bindEvents() {
     if (event.target.closest("button, summary")) event.preventDefault();
   });
   elements.toolbar.addEventListener("click", (event) => {
+    const summary = event.target.closest(".toolbar-menu > summary");
+    if (summary) {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleToolbarMenu(summary.closest(".toolbar-menu"));
+      return;
+    }
     const button = event.target.closest("button");
     if (button) {
       applyToolbarAction(button);
-      button.closest(".toolbar-menu")?.removeAttribute("open");
+      closeToolbarMenu(button.closest(".toolbar-menu"));
     }
   });
   elements.toolbar.querySelectorAll("input[type='color']").forEach((input) => {
@@ -1371,6 +1379,86 @@ function bindEvents() {
 
 function isMobileLayout() {
   return Boolean(window.matchMedia?.(MOBILE_LAYOUT_QUERY)?.matches || window.innerWidth <= 760);
+}
+
+function closeToolbarMenu(menu) {
+  if (!menu) return;
+  menu.removeAttribute("open");
+  const panel = menu.querySelector(".toolbar-menu-panel");
+  if (!panel) return;
+  panel.classList.remove("toolbar-menu-panel-fixed");
+  panel.style.position = "";
+  panel.style.left = "";
+  panel.style.right = "";
+  panel.style.top = "";
+  panel.style.bottom = "";
+  panel.style.maxWidth = "";
+  panel.style.maxHeight = "";
+}
+
+function closeToolbarMenus(except = null) {
+  document.querySelectorAll(".toolbar-menu[open]").forEach((menu) => {
+    if (menu !== except) closeToolbarMenu(menu);
+  });
+}
+
+function toggleToolbarMenu(menu) {
+  if (!menu) return;
+  const shouldOpen = !menu.hasAttribute("open");
+  closeToolbarMenus(menu);
+  if (!shouldOpen) {
+    closeToolbarMenu(menu);
+    return;
+  }
+  menu.setAttribute("open", "");
+  positionToolbarMenu(menu);
+}
+
+function positionOpenToolbarMenus() {
+  document.querySelectorAll(".toolbar-menu[open]").forEach(positionToolbarMenu);
+}
+
+function positionToolbarMenu(menu) {
+  const summary = menu?.querySelector("summary");
+  const panel = menu?.querySelector(".toolbar-menu-panel");
+  if (!summary || !panel) return;
+  if (!isMobileLayout()) {
+    panel.classList.remove("toolbar-menu-panel-fixed");
+    panel.style.position = "";
+    panel.style.left = "";
+    panel.style.right = "";
+    panel.style.top = "";
+    panel.style.bottom = "";
+    panel.style.maxWidth = "";
+    panel.style.maxHeight = "";
+    return;
+  }
+
+  const gutter = 8;
+  const rect = summary.getBoundingClientRect();
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  const maxWidth = Math.max(160, viewportWidth - gutter * 2);
+  panel.classList.add("toolbar-menu-panel-fixed");
+  panel.style.position = "fixed";
+  panel.style.right = "auto";
+  panel.style.maxWidth = `${maxWidth}px`;
+
+  const measuredWidth = Math.min(panel.getBoundingClientRect().width || 220, maxWidth);
+  const left = Math.min(Math.max(gutter, rect.left), Math.max(gutter, viewportWidth - measuredWidth - gutter));
+  const belowTop = rect.bottom + 6;
+  const belowSpace = viewportHeight - belowTop - gutter;
+  const aboveSpace = rect.top - gutter;
+  panel.style.left = `${left}px`;
+  if (belowSpace < 150 && aboveSpace > belowSpace) {
+    panel.style.top = "auto";
+    panel.style.bottom = `${Math.max(gutter, viewportHeight - rect.top + 6)}px`;
+    panel.style.maxHeight = `${Math.max(140, aboveSpace - 8)}px`;
+  } else {
+    panel.style.top = `${belowTop}px`;
+    panel.style.bottom = "auto";
+    panel.style.maxHeight = `${Math.max(140, belowSpace)}px`;
+  }
 }
 
 function setMobileSidebarOpen(open) {
