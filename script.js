@@ -146,6 +146,19 @@ const i18n = {
     insertLink: "链接",
     removeLink: "取消链接",
     clearFormat: "清除格式",
+    insertImage: "插入图片",
+    docImageSize: "图片大小",
+    docImageOriginal: "原始",
+    docImageRemove: "删除图片",
+    docImageResize: "拖动调整图片大小",
+    docImageUploading: "图片上传中...",
+    docImageUploaded: "图片已插入",
+    docImageTokenRequired: "配置同步 Token 后才能插入图片。",
+    docImageTooLarge: "图片太大，单张上限 {size}。",
+    docImageTypeUnsupported: "仅支持 JPG、PNG、WebP、GIF、AVIF 图片。",
+    docImageCountLimit: "每篇 DOC 最多插入 {count} 张图片。",
+    docImageTotalLimit: "DOC 图片总量不能超过 {size}。",
+    docImageUploadFailed: "图片上传失败",
     linkPrompt: "输入链接地址",
     insertSnippets: "插入片段",
     insertPathSnippet: "路径片段",
@@ -398,6 +411,19 @@ const i18n = {
     insertLink: "Link",
     removeLink: "Remove link",
     clearFormat: "Clear format",
+    insertImage: "Insert image",
+    docImageSize: "Image size",
+    docImageOriginal: "Original",
+    docImageRemove: "Remove image",
+    docImageResize: "Drag to resize image",
+    docImageUploading: "Uploading image...",
+    docImageUploaded: "Image inserted",
+    docImageTokenRequired: "Configure the sync token before inserting images.",
+    docImageTooLarge: "Image is too large. Limit: {size}.",
+    docImageTypeUnsupported: "Only JPG, PNG, WebP, GIF, and AVIF images are supported.",
+    docImageCountLimit: "Keep at most {count} images in each DOC note.",
+    docImageTotalLimit: "DOC images cannot exceed {size} in total.",
+    docImageUploadFailed: "Image upload failed",
     linkPrompt: "Enter link URL",
     insertSnippets: "Insert snippets",
     insertPathSnippet: "Path snippet",
@@ -782,7 +808,10 @@ const state = {
   dirtyNoteIds: new Set(),
   contextMenuFolder: null,
   contextMenuNoteId: null,
-  docSelection: null
+  docSelection: null,
+  docSelectedImage: null,
+  docImageUploading: false,
+  docImageResize: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -794,6 +823,10 @@ const SYNC_PUSH_DELAY = 500;
 const NOTE_SYNC_ENGINE = "snapshot";
 const DOC_DEFAULT_TEXT_COLOR = "#111827";
 const DOC_DEFAULT_HIGHLIGHT_COLOR = "#fef3c7";
+const DOC_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+const DOC_IMAGE_MAX_PER_NOTE = 20;
+const DOC_IMAGE_MAX_TOTAL_BYTES = 250 * 1024 * 1024;
+const DOC_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "image/avif"]);
 const TRANSFER_NOTE_ID = "nanstar-transfer-assistant";
 const FOLDER_REGISTRY_NOTE_ID = "nanstar-folder-registry";
 const INBOX_FOLDER = "默认文件夹";
@@ -955,6 +988,15 @@ const elements = {
   textShell: $("#textShell"),
   bodyInput: $("#bodyInput"),
   docInput: $("#docInput"),
+  docImageInput: $("#docImageInput"),
+  docImageSelectionFrame: $("#docImageSelectionFrame"),
+  docImageControls: $("#docImageControls"),
+  docImageControlLabel: $("#docImageControlLabel"),
+  docImageOriginalButton: $("#docImageOriginalButton"),
+  docImageRemoveButton: $("#docImageRemoveButton"),
+  docImageResizeHandle: $("#docImageResizeHandle"),
+  docImageUploadIndicator: $("#docImageUploadIndicator"),
+  docImageUploadText: $("#docImageUploadText"),
   docTextColorInput: $("#docTextColorInput"),
   docHighlightInput: $("#docHighlightInput"),
   previewPane: $("#previewPane"),
@@ -1043,7 +1085,10 @@ function bindEvents() {
   elements.mobileSidebarBackdrop?.addEventListener("click", closeMobileSidebar);
   const mobileMedia = window.matchMedia?.(MOBILE_LAYOUT_QUERY);
   mobileMedia?.addEventListener?.("change", () => closeMobileSidebar());
-  window.addEventListener("resize", () => refreshEditorLineLayoutSoon());
+  window.addEventListener("resize", () => {
+    refreshEditorLineLayoutSoon();
+    positionDocImageSelection();
+  });
   elements.languageToggleButton?.addEventListener("click", toggleLanguage);
   elements.folderSectionSummary?.addEventListener("click", (event) => {
     if (event.target.closest("button")) return;
@@ -1131,6 +1176,7 @@ function bindEvents() {
     if (!event.target.closest("#noteContextMenu")) hideNoteContextMenu();
     if (!event.target.closest(".topbar-menu")) elements.topbarMenu?.removeAttribute("open");
     if (!event.target.closest(".toolbar-menu")) closeToolbarMenus();
+    if (!event.target.closest("#docInput, #docImageControls, #docImageResizeHandle")) clearDocImageSelection();
   });
   window.addEventListener("scroll", () => { hideFolderContextMenu(); hideNoteContextMenu(); closeToolbarMenus(); }, { capture: true });
   window.addEventListener("resize", () => positionOpenToolbarMenus());
@@ -1172,6 +1218,13 @@ function bindEvents() {
   elements.bodyInput.addEventListener("keyup", handleEditorCursorChange);
   elements.bodyInput.addEventListener("click", handleEditorCursorChange);
   elements.bodyInput.addEventListener("select", handleEditorCursorChange);
+  elements.docInput?.addEventListener("paste", handleDocImagePaste);
+  elements.docInput?.addEventListener("dragover", handleDocImageDragOver);
+  elements.docInput?.addEventListener("dragleave", handleDocImageDragLeave);
+  elements.docInput?.addEventListener("drop", handleDocImageDrop);
+  elements.docInput?.addEventListener("scroll", positionDocImageSelection);
+  elements.docInput?.addEventListener("click", handleDocImageClick);
+  elements.docInput?.addEventListener("keydown", handleDocImageKeydown);
   elements.docInput?.addEventListener("blur", normalizeDocInputHtml);
   ["keyup", "mouseup", "click"].forEach((eventName) => {
     elements.docInput?.addEventListener(eventName, () => {
@@ -1226,6 +1279,18 @@ function bindEvents() {
   elements.docBlockSelect?.addEventListener("change", () => applyDocBlock(elements.docBlockSelect.value, true));
   elements.docTextColorInput?.addEventListener("input", () => applyDocColor("foreColor", elements.docTextColorInput.value));
   elements.docHighlightInput?.addEventListener("input", () => applyDocColor("hiliteColor", elements.docHighlightInput.value));
+  elements.docImageInput?.addEventListener("change", () => {
+    const files = Array.from(elements.docImageInput.files || []);
+    elements.docImageInput.value = "";
+    uploadAndInsertDocImages(files);
+  });
+  elements.docImageControls?.addEventListener("mousedown", (event) => event.preventDefault());
+  elements.docImageControls?.addEventListener("click", handleDocImageControlClick);
+  elements.docImageResizeHandle?.addEventListener("pointerdown", startDocImageResize);
+  elements.docImageResizeHandle?.addEventListener("keydown", handleDocImageResizeKeydown);
+  window.addEventListener("pointermove", continueDocImageResize);
+  window.addEventListener("pointerup", finishDocImageResize);
+  window.addEventListener("pointercancel", finishDocImageResize);
   bindSplitter();
   bindSidebarResizer();
 
@@ -2802,6 +2867,7 @@ function renderAll() {
 
 function renderEditor() {
   const note = activeNote();
+  clearDocImageSelection();
   if (!note) return;
   const transferMode = isTransferAssistant(note);
   elements.editorCard.classList.toggle("transfer-mode", transferMode);
@@ -2856,6 +2922,7 @@ function renderModeState() {
   if (!note) return;
   const isMarkdown = note.mode === "md";
   const isDoc = note.mode === "doc";
+  if (!isDoc) clearDocImageSelection();
   const previewVisible = isMarkdown && note.previewVisible !== false;
   const focused = isMarkdown && state.previewFocus;
   if (!isMarkdown) state.previewFocus = false;
@@ -5210,9 +5277,20 @@ function applyLanguage(language, initial = false) {
     docMoreMenu.title = t("moreFormat");
     docMoreMenu.setAttribute("aria-label", t("moreFormat"));
   }
+  setMenuItemLabel(document.querySelector('[data-doc-action="image"]'), t("insertImage"));
+  setToolbarTitle('[data-doc-action="image"]', t("insertImage"));
   setMenuItemLabel(document.querySelector('[data-doc-action="link"]'), t("insertLink"));
   setMenuItemLabel(document.querySelector('[data-doc-command="unlink"]'), t("removeLink"));
   setMenuItemLabel(document.querySelector('[data-doc-command="removeFormat"]'), t("clearFormat"));
+  if (elements.docImageControlLabel) elements.docImageControlLabel.textContent = t("docImageSize");
+  if (elements.docImageControls) elements.docImageControls.setAttribute("aria-label", t("docImageSize"));
+  if (elements.docImageOriginalButton) elements.docImageOriginalButton.textContent = t("docImageOriginal");
+  if (elements.docImageRemoveButton) {
+    elements.docImageRemoveButton.title = t("docImageRemove");
+    elements.docImageRemoveButton.setAttribute("aria-label", t("docImageRemove"));
+  }
+  if (elements.docImageResizeHandle) elements.docImageResizeHandle.setAttribute("aria-label", t("docImageResize"));
+  if (elements.docImageUploadText) elements.docImageUploadText.textContent = t("docImageUploading");
   const insertMenu = document.querySelector(".toolbar-menu.md-tool > summary");
   if (insertMenu) {
     insertMenu.title = t("insertSnippets");
@@ -5769,6 +5847,409 @@ function applyDocLink() {
   applyDocCommand("createLink", nextUrl);
 }
 
+function openDocImagePicker() {
+  const note = activeNote();
+  if (!note || note.mode !== "doc") return;
+  if (!getSyncToken()) {
+    showToast(t("docImageTokenRequired"));
+    return;
+  }
+  saveDocSelection();
+  elements.docImageInput?.click();
+}
+
+function handleDocImagePaste(event) {
+  const files = Array.from(event.clipboardData?.items || [])
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter(Boolean);
+  if (!files.length) return;
+  event.preventDefault();
+  saveDocSelection();
+  uploadAndInsertDocImages(files);
+}
+
+function handleDocImageDragOver(event) {
+  if (!hasDraggedDocImages(event.dataTransfer)) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  elements.docInput?.classList.add("dragging-image");
+}
+
+function handleDocImageDragLeave(event) {
+  if (event.relatedTarget && elements.docInput?.contains(event.relatedTarget)) return;
+  elements.docInput?.classList.remove("dragging-image");
+}
+
+function handleDocImageDrop(event) {
+  const files = Array.from(event.dataTransfer?.files || []).filter((file) => file.type.startsWith("image/"));
+  elements.docInput?.classList.remove("dragging-image");
+  if (!files.length) return;
+  event.preventDefault();
+  setDocCaretFromPoint(event.clientX, event.clientY);
+  saveDocSelection();
+  uploadAndInsertDocImages(files);
+}
+
+function hasDraggedDocImages(dataTransfer) {
+  if (!dataTransfer) return false;
+  if (Array.from(dataTransfer.items || []).some((item) => item.kind === "file" && item.type.startsWith("image/"))) return true;
+  return Array.from(dataTransfer.files || []).some((file) => file.type.startsWith("image/"));
+}
+
+function setDocCaretFromPoint(x, y) {
+  if (!elements.docInput) return;
+  let range = document.caretRangeFromPoint?.(x, y) || null;
+  if (!range && document.caretPositionFromPoint) {
+    const position = document.caretPositionFromPoint(x, y);
+    if (position) {
+      range = document.createRange();
+      range.setStart(position.offsetNode, position.offset);
+      range.collapse(true);
+    }
+  }
+  if (!range || !elements.docInput.contains(range.startContainer)) return;
+  const selection = window.getSelection?.();
+  if (!selection) return;
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+async function uploadAndInsertDocImages(files) {
+  const note = activeNote();
+  if (!note || note.mode !== "doc" || !files.length) return;
+  if (!getSyncToken()) {
+    showToast(t("docImageTokenRequired"));
+    return;
+  }
+
+  const images = files.filter((file) => DOC_IMAGE_TYPES.has(String(file.type || "").toLowerCase()));
+  if (!images.length) {
+    showToast(t("docImageTypeUnsupported"));
+    return;
+  }
+  if (images.length !== files.length) showToast(t("docImageTypeUnsupported"));
+
+  const noteId = note.id;
+  const currentCount = elements.docInput?.querySelectorAll("img").length || 0;
+  if (currentCount >= DOC_IMAGE_MAX_PER_NOTE) {
+    showToast(t("docImageCountLimit").replace("{count}", String(DOC_IMAGE_MAX_PER_NOTE)));
+    return;
+  }
+
+  setDocImageUploading(true);
+  let inserted = 0;
+  try {
+    for (const file of images.slice(0, Math.max(0, DOC_IMAGE_MAX_PER_NOTE - currentCount))) {
+      if (file.size > DOC_IMAGE_MAX_BYTES) {
+        showToast(t("docImageTooLarge").replace("{size}", formatBytes(DOC_IMAGE_MAX_BYTES)));
+        continue;
+      }
+      try {
+        const result = await fetchTransferJson("./api/assets", {
+          method: "POST",
+          body: file,
+          headers: {
+            "content-type": file.type,
+            "x-file-name": encodeURIComponent(file.name || "image"),
+            "x-file-size": String(file.size || 0),
+            "x-note-id": noteId
+          }
+        });
+        if (!result.asset?.src) throw new Error("Missing image URL");
+        if (activeNote()?.id === noteId && activeNote()?.mode === "doc") {
+          insertDocImageAsset(result.asset);
+        } else {
+          appendDocImageToNote(noteId, result.asset);
+        }
+        inserted += 1;
+      } catch (error) {
+        showToast(docImageErrorText(error));
+      }
+    }
+  } finally {
+    setDocImageUploading(false);
+  }
+  if (inserted) showToast(t("docImageUploaded"));
+}
+
+function setDocImageUploading(uploading) {
+  state.docImageUploading = Boolean(uploading);
+  if (elements.docImageUploadText) elements.docImageUploadText.textContent = t("docImageUploading");
+  if (elements.docImageUploadIndicator) elements.docImageUploadIndicator.hidden = !uploading;
+  const button = elements.toolbar?.querySelector('[data-doc-action="image"]');
+  if (button) button.disabled = uploading;
+}
+
+function insertDocImageAsset(asset) {
+  const src = safeDocImageSrc(asset.src);
+  if (!src || !elements.docInput) throw new Error("Invalid image URL");
+  restoreDocSelection();
+  const selection = window.getSelection?.();
+  if (!selection?.rangeCount) return;
+  const range = selection.getRangeAt(0);
+  if (!elements.docInput.contains(range.commonAncestorContainer)) return;
+
+  range.deleteContents();
+  const image = createDocImageElement(asset, src);
+  range.insertNode(image);
+  range.setStartAfter(image);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  state.docSelection = range.cloneRange();
+  image.addEventListener("load", () => positionDocImageSelection(), { once: true });
+  elements.docInput.dispatchEvent(new Event("input", { bubbles: true }));
+  selectDocImage(image);
+}
+
+function appendDocImageToNote(noteId, asset) {
+  const note = state.notes.find((item) => item.id === noteId && item.mode === "doc" && !isDeletedNote(item));
+  const src = safeDocImageSrc(asset.src);
+  if (!note || !src) return;
+  const image = createDocImageElement(asset, src);
+  note.body = sanitizeDocHtml(`${note.body || "<p></p>"}<p>${image.outerHTML}</p>`);
+  note.updatedAt = Date.now();
+  markNoteDirty(note.id);
+  saveNotes();
+  renderLists();
+  renderSyncMeta();
+}
+
+function createDocImageElement(asset, src) {
+  const image = document.createElement("img");
+  image.setAttribute("src", src);
+  image.setAttribute("alt", String(asset.name || "图片").slice(0, 160));
+  if (asset.id) image.setAttribute("data-doc-image-id", String(asset.id).slice(0, 80));
+  if (asset.name) image.setAttribute("data-doc-image-name", String(asset.name).slice(0, 160));
+  image.setAttribute("draggable", "false");
+  return image;
+}
+
+function docImageErrorText(error) {
+  const raw = String(error?.message || error || "");
+  let text = raw;
+  let payload = null;
+  try {
+    payload = JSON.parse(raw);
+    text = payload.error || raw;
+  } catch {}
+  if (text.includes("Missing R2") || text.includes("NANSTAR_NOTE_FILES")) return t("transferMissingBinding");
+  if (text.includes("Unauthorized")) return t("transferBadToken");
+  if (text.includes("Unsupported image type")) return t("docImageTypeUnsupported");
+  if (text.includes("Image is too large")) {
+    const limit = Number(payload?.maxImageBytes) || DOC_IMAGE_MAX_BYTES;
+    return t("docImageTooLarge").replace("{size}", formatBytes(limit));
+  }
+  if (text.includes("Too many note images")) {
+    const limit = Number(payload?.maxImagesPerNote) || DOC_IMAGE_MAX_PER_NOTE;
+    return t("docImageCountLimit").replace("{count}", String(limit));
+  }
+  if (text.includes("Total image size")) {
+    const limit = Number(payload?.maxTotalBytes) || DOC_IMAGE_MAX_TOTAL_BYTES;
+    return t("docImageTotalLimit").replace("{size}", formatBytes(limit));
+  }
+  if (text.includes("Failed to fetch") || text.includes("Not found")) return t("transferApiUnavailable");
+  return `${t("docImageUploadFailed")}：${text.slice(0, 120)}`;
+}
+
+function handleDocImageClick(event) {
+  const image = event.target.closest?.("img");
+  if (image && elements.docInput?.contains(image)) {
+    selectDocImage(image);
+    return;
+  }
+  clearDocImageSelection();
+}
+
+function handleDocImageKeydown(event) {
+  if (!state.docSelectedImage) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    clearDocImageSelection();
+    return;
+  }
+  if (event.key === "Backspace" || event.key === "Delete") {
+    event.preventDefault();
+    removeSelectedDocImage();
+  }
+}
+
+function selectDocImage(image) {
+  if (!image?.isConnected || !elements.docInput?.contains(image)) return;
+  state.docSelectedImage = image;
+  positionDocImageSelection();
+}
+
+function clearDocImageSelection() {
+  state.docSelectedImage = null;
+  state.docImageResize = null;
+  if (elements.docImageSelectionFrame) elements.docImageSelectionFrame.hidden = true;
+  if (elements.docImageControls) elements.docImageControls.hidden = true;
+  if (elements.docImageResizeHandle) elements.docImageResizeHandle.hidden = true;
+}
+
+function positionDocImageSelection() {
+  const image = state.docSelectedImage;
+  const shell = elements.textShell;
+  const editor = elements.docInput;
+  if (!image?.isConnected || !shell || !editor || activeNote()?.mode !== "doc") {
+    clearDocImageSelection();
+    return;
+  }
+
+  const imageRect = image.getBoundingClientRect();
+  const shellRect = shell.getBoundingClientRect();
+  const editorRect = editor.getBoundingClientRect();
+  const visible = imageRect.bottom > editorRect.top && imageRect.top < editorRect.bottom && imageRect.width > 0 && imageRect.height > 0;
+  if (!visible) {
+    if (elements.docImageSelectionFrame) elements.docImageSelectionFrame.hidden = true;
+    if (elements.docImageControls) elements.docImageControls.hidden = true;
+    if (elements.docImageResizeHandle) elements.docImageResizeHandle.hidden = true;
+    return;
+  }
+
+  const left = imageRect.left - shellRect.left;
+  const top = imageRect.top - shellRect.top;
+  const frame = elements.docImageSelectionFrame;
+  if (frame) {
+    frame.hidden = false;
+    frame.style.left = `${left}px`;
+    frame.style.top = `${top}px`;
+    frame.style.width = `${imageRect.width}px`;
+    frame.style.height = `${imageRect.height}px`;
+  }
+
+  const controls = elements.docImageControls;
+  if (controls) {
+    controls.hidden = false;
+    const controlWidth = Math.min(controls.scrollWidth || controls.offsetWidth, shellRect.width - 16);
+    const controlHeight = controls.offsetHeight || 34;
+    const controlLeft = Math.max(8, Math.min(left, shellRect.width - controlWidth - 8));
+    const above = top - controlHeight - 8;
+    const controlTop = above >= 8 ? above : Math.min(shellRect.height - controlHeight - 8, top + imageRect.height + 8);
+    controls.style.left = `${controlLeft}px`;
+    controls.style.top = `${Math.max(8, controlTop)}px`;
+    updateDocImageSizeButtons(image);
+  }
+
+  const handle = elements.docImageResizeHandle;
+  if (handle) {
+    handle.hidden = false;
+    handle.style.left = `${Math.max(0, Math.min(shellRect.width - 18, left + imageRect.width - 9))}px`;
+    handle.style.top = `${Math.max(0, Math.min(shellRect.height - 18, top + imageRect.height - 9))}px`;
+    handle.setAttribute("aria-valuenow", String(docImageDisplayPercent(image)));
+  }
+}
+
+function updateDocImageSizeButtons(image) {
+  const width = safeDocImageWidth(image.style.width);
+  elements.docImageControls?.querySelectorAll("[data-doc-image-size]").forEach((button) => {
+    const value = button.dataset.docImageSize;
+    button.classList.toggle("active", value === "auto" ? !width : width === `${value}%`);
+  });
+}
+
+function handleDocImageControlClick(event) {
+  const button = event.target.closest("button");
+  if (!button || !state.docSelectedImage) return;
+  if (button.dataset.docImageAction === "remove") {
+    removeSelectedDocImage();
+    return;
+  }
+  if (button.dataset.docImageSize) setSelectedDocImageSize(button.dataset.docImageSize);
+}
+
+function setSelectedDocImageSize(value) {
+  const image = state.docSelectedImage;
+  if (!image?.isConnected) return;
+  if (value === "auto") {
+    image.style.removeProperty("width");
+  } else {
+    const percent = Math.max(10, Math.min(100, Number(value) || 100));
+    image.style.width = `${percent}%`;
+  }
+  commitDocImageChange();
+}
+
+function removeSelectedDocImage() {
+  const image = state.docSelectedImage;
+  if (!image?.isConnected || !elements.docInput) return;
+  const parent = image.parentNode;
+  const index = parent ? Array.prototype.indexOf.call(parent.childNodes, image) : 0;
+  image.remove();
+  clearDocImageSelection();
+  if (!elements.docInput.innerHTML.trim()) elements.docInput.innerHTML = "<p><br></p>";
+  if (parent?.isConnected) {
+    const range = document.createRange();
+    range.setStart(parent, Math.min(index, parent.childNodes.length));
+    range.collapse(true);
+    const selection = window.getSelection?.();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    state.docSelection = range.cloneRange();
+  }
+  elements.docInput.dispatchEvent(new Event("input", { bubbles: true }));
+  elements.docInput.focus();
+}
+
+function startDocImageResize(event) {
+  const image = state.docSelectedImage;
+  if (!image?.isConnected || event.button !== 0) return;
+  event.preventDefault();
+  const style = getComputedStyle(elements.docInput);
+  const contentWidth = Math.max(1, elements.docInput.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
+  state.docImageResize = {
+    image,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startWidth: image.getBoundingClientRect().width,
+    contentWidth
+  };
+  elements.docImageResizeHandle?.setPointerCapture?.(event.pointerId);
+}
+
+function continueDocImageResize(event) {
+  const resize = state.docImageResize;
+  if (!resize || resize.pointerId !== event.pointerId || !resize.image?.isConnected) return;
+  event.preventDefault();
+  const width = Math.max(10, Math.min(100, ((resize.startWidth + event.clientX - resize.startX) / resize.contentWidth) * 100));
+  resize.image.style.width = `${Math.round(width)}%`;
+  positionDocImageSelection();
+}
+
+function finishDocImageResize(event) {
+  const resize = state.docImageResize;
+  if (!resize || (event.pointerId != null && resize.pointerId !== event.pointerId)) return;
+  try {
+    elements.docImageResizeHandle?.releasePointerCapture?.(resize.pointerId);
+  } catch {}
+  state.docImageResize = null;
+  commitDocImageChange();
+}
+
+function handleDocImageResizeKeydown(event) {
+  if (!state.docSelectedImage || !["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp"].includes(event.key)) return;
+  event.preventDefault();
+  const current = docImageDisplayPercent(state.docSelectedImage);
+  const delta = event.key === "ArrowLeft" || event.key === "ArrowDown" ? -5 : 5;
+  setSelectedDocImageSize(String(Math.max(10, Math.min(100, current + delta))));
+}
+
+function docImageDisplayPercent(image) {
+  const width = safeDocImageWidth(image?.style?.width);
+  if (width) return Math.round(parseFloat(width));
+  const style = getComputedStyle(elements.docInput);
+  const contentWidth = Math.max(1, elements.docInput.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
+  return Math.max(10, Math.min(100, Math.round((image.getBoundingClientRect().width / contentWidth) * 100)));
+}
+
+function commitDocImageChange() {
+  if (!state.docSelectedImage?.isConnected || !elements.docInput) return;
+  elements.docInput.dispatchEvent(new Event("input", { bubbles: true }));
+  window.requestAnimationFrame(positionDocImageSelection);
+}
+
 function queryDocCommandState(command) {
   try {
     return Boolean(document.queryCommandState?.(command));
@@ -5873,6 +6354,11 @@ function applyToolbarAction(button) {
   if (button.dataset.docColor) {
     const command = button.closest("[data-doc-color-menu]")?.dataset.docColorMenu || "foreColor";
     applyDocColor(command, button.dataset.docColor);
+    return;
+  }
+
+  if (button.dataset.docAction === "image") {
+    openDocImagePicker();
     return;
   }
 
@@ -6626,7 +7112,7 @@ function sanitizeDocHtml(html) {
   if (!source) return "<p></p>";
   if (typeof document === "undefined") return source.replace(/<script[\s\S]*?<\/script>/gi, "");
 
-  const allowedTags = new Set(["p", "br", "strong", "em", "u", "span", "mark", "h1", "h2", "h3", "ul", "ol", "li", "blockquote", "a"]);
+  const allowedTags = new Set(["p", "br", "strong", "em", "u", "span", "mark", "h1", "h2", "h3", "ul", "ol", "li", "blockquote", "a", "img"]);
   const blockAliases = new Map([
     ["div", "p"],
     ["section", "p"],
@@ -6654,6 +7140,20 @@ function sanitizeDocHtml(html) {
     }
 
     const element = document.createElement(tag);
+    if (tag === "img") {
+      const src = safeDocImageSrc(node.getAttribute("src"));
+      if (!src) return document.createDocumentFragment();
+      element.setAttribute("src", src);
+      element.setAttribute("alt", String(node.getAttribute("alt") || node.getAttribute("data-doc-image-name") || "图片").slice(0, 160));
+      const imageId = String(node.getAttribute("data-doc-image-id") || "").trim();
+      const imageName = String(node.getAttribute("data-doc-image-name") || "").trim();
+      if (/^[0-9a-f-]{36}$/i.test(imageId)) element.setAttribute("data-doc-image-id", imageId);
+      if (imageName) element.setAttribute("data-doc-image-name", imageName.slice(0, 160));
+      const width = safeDocImageWidth(node.style?.width || node.getAttribute("width"));
+      if (width) element.setAttribute("style", `width:${width}`);
+      element.setAttribute("draggable", "false");
+      return element;
+    }
     if (tag === "a") {
       const href = node.getAttribute("href") || "";
       if (/^(https?:|mailto:|tel:|#)/i.test(href)) {
@@ -6685,6 +7185,33 @@ function sanitizeDocHtml(html) {
   return result || "<p></p>";
 }
 
+function safeDocImageSrc(value) {
+  const raw = String(value || "").trim();
+  if (!raw || typeof document === "undefined") return "";
+  try {
+    const url = new URL(raw, document.baseURI);
+    const localHttp = url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+    if (url.protocol !== "https:" && !localHttp) return "";
+    const allowedOrigins = new Set([new URL(CLOUD_API_ORIGIN).origin]);
+    if (/^https?:$/i.test(window.location.protocol)) allowedOrigins.add(window.location.origin);
+    if (!allowedOrigins.has(url.origin) && !localHttp) return "";
+    if (!/^\/api\/assets\/?$/i.test(url.pathname)) return "";
+    if (!/^[0-9a-f-]{36}$/i.test(url.searchParams.get("id") || "")) return "";
+    url.hash = "";
+    return url.href;
+  } catch {
+    return "";
+  }
+}
+
+function safeDocImageWidth(value) {
+  const match = String(value || "").trim().match(/^(\d+(?:\.\d+)?)%$/);
+  if (!match) return "";
+  const percent = Number(match[1]);
+  if (!Number.isFinite(percent) || percent < 10 || percent > 100) return "";
+  return `${Math.round(percent)}%`;
+}
+
 function safeDocColor(value, kind = "any") {
   const color = String(value || "").trim();
   if (!color || color.length > 48) return "";
@@ -6698,6 +7225,7 @@ function docHtmlToText(html) {
   const sanitized = sanitizeDocHtml(html);
   if (typeof document === "undefined") {
     return sanitized
+      .replace(/<img\b[^>]*>/gi, "[图片]")
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<\/(p|h[1-3]|li|blockquote)>/gi, "\n")
       .replace(/<[^>]+>/g, "")
@@ -6714,6 +7242,7 @@ function docHtmlToText(html) {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent || "";
     if (node.nodeType !== Node.ELEMENT_NODE) return "";
     if (node.tagName === "BR") return "\n";
+    if (node.tagName === "IMG") return `[图片: ${node.getAttribute("alt") || node.getAttribute("data-doc-image-name") || "image"}]`;
     return Array.from(node.childNodes).map(inlineText).join("");
   };
 
@@ -6725,6 +7254,10 @@ function docHtmlToText(html) {
       return;
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return;
+    if (node.tagName === "IMG") {
+      lines.push(inlineText(node));
+      return;
+    }
     if (containerTags.has(node.tagName)) {
       node.childNodes.forEach(walk);
       return;
@@ -6770,7 +7303,8 @@ function formatDocHtmlExport(note) {
     h1{font-size:28px} h2{font-size:22px} h3{font-size:18px}
     blockquote{margin:16px 0;padding:10px 14px;border-left:4px solid #2f5bea;background:#f4f7ff;color:#41516a}
     a{color:#2f5bea}
-    p{margin:0.75em 0}
+    p{margin:0 0 .3em}
+    img{display:block;max-width:100%;height:auto;margin:.55em 0;border-radius:6px}
   </style>
 </head>
 <body>

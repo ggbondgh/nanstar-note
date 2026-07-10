@@ -14,7 +14,7 @@
     <title>NanStar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=38" />
+    <link rel="stylesheet" href="./styles.css?v=39" />
   </head>
   <body>
     <div class="app-shell">
@@ -259,6 +259,10 @@
                   <details class="toolbar-menu doc-tool doc-more-menu">
                     <summary title="更多格式" aria-label="更多格式">···</summary>
                     <div class="toolbar-menu-panel">
+                      <button type="button" data-doc-action="image" title="插入图片">
+                        <span aria-hidden="true">▧</span>
+                        <span>插入图片</span>
+                      </button>
                       <button type="button" data-doc-action="link" title="插入链接">
                         <span aria-hidden="true">↗</span>
                         <span>链接</span>
@@ -349,6 +353,39 @@
                   spellcheck="true"
                   data-placeholder="像微信收藏/飞书文档一样编辑：标题、加粗、斜体、颜色、高亮、列表。"
                 ></div>
+                <input
+                  id="docImageInput"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+                  multiple
+                  hidden
+                />
+                <div class="doc-image-selection-frame" id="docImageSelectionFrame" aria-hidden="true" hidden></div>
+                <div class="doc-image-controls" id="docImageControls" role="toolbar" aria-label="图片大小" hidden>
+                  <span class="doc-image-control-label" id="docImageControlLabel">图片大小</span>
+                  <button type="button" data-doc-image-size="25">25%</button>
+                  <button type="button" data-doc-image-size="50">50%</button>
+                  <button type="button" data-doc-image-size="75">75%</button>
+                  <button type="button" data-doc-image-size="100">100%</button>
+                  <button type="button" data-doc-image-size="auto" id="docImageOriginalButton">原始</button>
+                  <span class="doc-image-controls-separator" aria-hidden="true"></span>
+                  <button class="doc-image-remove-button" id="docImageRemoveButton" type="button" data-doc-image-action="remove" title="删除图片" aria-label="删除图片">×</button>
+                </div>
+                <button
+                  class="doc-image-resize-handle"
+                  id="docImageResizeHandle"
+                  type="button"
+                  role="slider"
+                  aria-label="拖动调整图片大小"
+                  aria-valuemin="10"
+                  aria-valuemax="100"
+                  aria-valuenow="100"
+                  hidden
+                ></button>
+                <div class="doc-image-upload-indicator" id="docImageUploadIndicator" role="status" aria-live="polite" hidden>
+                  <span class="doc-image-upload-spinner" aria-hidden="true"></span>
+                  <span id="docImageUploadText">图片上传中...</span>
+                </div>
               </div>
             </section>
 
@@ -524,7 +561,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-    <script src="./script.js?v=36"></script>
+    <script src="./script.js?v=37"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })

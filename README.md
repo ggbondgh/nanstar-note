@@ -74,6 +74,28 @@ NOTE_SYNC_TOKEN=choose-a-long-private-token
 
 After deployment, open the sync dialog in NanStar Note and enter the same token.
 
+## DOC images
+
+DOC notes can insert images from the toolbar, paste, or drag and drop. Image bytes are stored in the same Cloudflare R2 bucket as the file-transfer module, and the DOC body stores only a `/api/assets?id=...` image URL plus display width.
+
+The Pages Functions route is `GET/POST/DELETE /api/assets`. Upload and delete use the same `NOTE_SYNC_TOKEN` bearer token as note sync. Image display is unauthenticated because browser `<img>` requests cannot send the bearer token, so image URLs use random UUID ids.
+
+Current DOC image limits are 20 images per DOC note, 8 MB per image, and 250 MB total DOC image storage. Supported formats are PNG, JPEG, WebP, GIF, and AVIF. SVG is rejected.
+
+The function creates this D1 table automatically:
+
+```sql
+CREATE TABLE IF NOT EXISTS note_doc_images (
+  id TEXT PRIMARY KEY,
+  note_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  r2_key TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+```
+
 ## File transfer module
 
 The file-transfer assistant is separate from TXT/MD notes. It stores file bytes in Cloudflare R2 and stores only file metadata in D1. Current limits are 8 files, 20 MB per file, and 50 MB total.
