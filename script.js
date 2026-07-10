@@ -273,6 +273,10 @@ const i18n = {
     newNoteDialogTitle: "新建笔记",
     newNoteTitleLabel: "笔记名",
     newNoteTitlePlaceholder: "留空则使用默认名称",
+    newNoteTypeLabel: "笔记类型",
+    newNoteTypeTxt: "TXT 纯文本",
+    newNoteTypeMd: "MD Markdown",
+    newNoteTypeDoc: "DOC 文档",
     newNoteFolderLabel: "文件夹",
     create: "创建",
     searchPlaceholderShort: "搜索笔记...",
@@ -538,6 +542,10 @@ const i18n = {
     newNoteDialogTitle: "New Note",
     newNoteTitleLabel: "Name",
     newNoteTitlePlaceholder: "Leave empty to use the default name",
+    newNoteTypeLabel: "Type",
+    newNoteTypeTxt: "TXT Plain text",
+    newNoteTypeMd: "MD Markdown",
+    newNoteTypeDoc: "DOC Document",
     newNoteFolderLabel: "Folder",
     create: "Create",
     searchPlaceholderShort: "Search notes...",
@@ -943,6 +951,7 @@ const elements = {
   filterTabs: $$(".filter-tab"),
   newNoteDialog: $("#newNoteDialog"),
   newNoteTitleInput: $("#newNoteTitleInput"),
+  newNoteTypeSelect: $("#newNoteTypeSelect"),
   newNoteFolderSelect: $("#newNoteFolderSelect"),
   newNoteConfirmBtn: $("#newNoteConfirmBtn"),
   floatingOutline: $("#floatingOutline"),
@@ -1299,17 +1308,10 @@ function bindEvents() {
     elements.newNoteConfirmBtn.addEventListener("click", () => {
       const folder = elements.newNoteFolderSelect?.value || INBOX_FOLDER;
       const title = elements.newNoteTitleInput?.value || "";
-      const tpl = document.querySelector('#newNoteTxtBtn.active, #newNoteMDBtn.active')?.dataset?.tpl || "txt";
+      const tpl = normalizeNewNoteType(elements.newNoteTypeSelect?.value);
       elements.newNoteDialog.close();
       createNote(tpl, folder, title);
       closeMobileSidebar();
-    });
-    document.querySelectorAll('#newNoteTxtBtn, #newNoteMDBtn').forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        document.querySelectorAll('#newNoteTxtBtn, #newNoteMDBtn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-      });
     });
   }
 
@@ -3934,12 +3936,34 @@ function openNewNoteDialog() {
   const folders = getFolderNames();
   const defaultFolder = canonicalSelectedFolder(state.selectedFolder) || INBOX_FOLDER;
   if (elements.newNoteTitleInput) elements.newNoteTitleInput.value = "";
+  if (elements.newNoteTypeSelect) elements.newNoteTypeSelect.value = "txt";
+  updateNewNoteTypeLabels();
   elements.newNoteFolderSelect.innerHTML = folders.length
     ? folders.map(f => `<option value="${escapeAttribute(f)}" ${f === defaultFolder ? "selected" : ""}>${escapeHtml(displayFolderLabel(f))}</option>`).join("")
     : `<option value="${INBOX_FOLDER}">${INBOX_FOLDER}</option>`;
   elements.newNoteFolderSelect.disabled = !folderManagementEnabled();
   elements.newNoteDialog.showModal();
   window.setTimeout(() => elements.newNoteTitleInput?.focus(), 0);
+}
+
+function normalizeNewNoteType(value) {
+  return ["txt", "md", "doc"].includes(value) ? value : "txt";
+}
+
+function updateNewNoteTypeLabels() {
+  const select = elements.newNoteTypeSelect;
+  if (!select) return;
+  const current = normalizeNewNoteType(select.value);
+  const labels = {
+    txt: t("newNoteTypeTxt"),
+    md: t("newNoteTypeMd"),
+    doc: t("newNoteTypeDoc")
+  };
+  select.querySelectorAll("option").forEach((option) => {
+    const value = normalizeNewNoteType(option.value);
+    option.textContent = labels[value];
+  });
+  select.value = current;
 }
 
 function createNote(templateName, folder, title = "") {
@@ -3961,7 +3985,7 @@ function createNoteInFolder(folder) {
 function createNoteObject(templateName) {
   const template = templates[templateName] || templates.txt;
   const now = Date.now();
-  const isBaseTemplate = templateName === "txt" || templateName === "md" || templateName === "blank";
+  const isBaseTemplate = templateName === "txt" || templateName === "md" || templateName === "doc" || templateName === "blank";
   return normalizeNote({
     id: createId(),
     title: template.title,
@@ -5172,6 +5196,9 @@ function applyLanguage(language, initial = false) {
   const newNoteTitleLabel = document.getElementById("newNoteTitleLabel");
   if (newNoteTitleLabel) newNoteTitleLabel.textContent = t("newNoteTitleLabel");
   if (elements.newNoteTitleInput) elements.newNoteTitleInput.placeholder = t("newNoteTitlePlaceholder");
+  const newNoteTypeLabel = document.getElementById("newNoteTypeLabel");
+  if (newNoteTypeLabel) newNoteTypeLabel.textContent = t("newNoteTypeLabel");
+  updateNewNoteTypeLabels();
   const newNoteFolderLabel = document.getElementById("newNoteFolderLabel");
   if (newNoteFolderLabel) newNoteFolderLabel.textContent = t("newNoteFolderLabel");
   if (elements.newNoteConfirmBtn) elements.newNoteConfirmBtn.textContent = t("create");

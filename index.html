@@ -14,7 +14,7 @@
     <title>NanStar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=39" />
+    <link rel="stylesheet" href="./styles.css?v=40" />
   </head>
   <body>
     <div class="app-shell">
@@ -429,6 +429,14 @@
           <input id="newNoteTitleInput" type="text" placeholder="留空则使用默认名称" autocomplete="off" />
         </label>
         <div class="field">
+          <span id="newNoteTypeLabel">笔记类型</span>
+          <select id="newNoteTypeSelect">
+            <option value="txt">TXT 纯文本</option>
+            <option value="md">MD Markdown</option>
+            <option value="doc">DOC 文档</option>
+          </select>
+        </div>
+        <div class="field">
           <span id="newNoteFolderLabel">文件夹</span>
           <select id="newNoteFolderSelect"></select>
         </div>
@@ -561,7 +569,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-    <script src="./script.js?v=37"></script>
+    <script src="./script.js?v=38"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
