@@ -240,7 +240,7 @@ const i18n = {
     transferBadToken: "Token 不正确。",
     transferApiUnavailable: "文件接口不可用，部署到 Cloudflare 后才能使用。",
     transferClipboardDenied: "当前浏览器不允许复制图片。",
-    imageTooLarge: "图片太大，已跳过。建议单张图片小于 900KB。",
+    imageTooLarge: "图片太大，已跳过。建议单张图片小于 2MB。",
     imagePasteFailed: "图片粘贴失败",
     imagePasted: "已插入图片",
     inputComposing: "正在确认中文输入，确认后再同步。",
@@ -509,7 +509,7 @@ const i18n = {
     transferBadToken: "Token is incorrect.",
     transferApiUnavailable: "File API is unavailable. It works after Cloudflare deployment.",
     transferClipboardDenied: "This browser does not allow copying images.",
-    imageTooLarge: "Image is too large and was skipped. Keep each image under 900KB.",
+    imageTooLarge: "Image is too large and was skipped. Keep each image under 2MB.",
     imagePasteFailed: "Failed to paste image",
     imagePasted: "Image inserted",
     inputComposing: "Finish IME input before syncing.",
@@ -854,8 +854,8 @@ const DEFAULT_FOLDER_ALIASES = new Set([
   "Import",
   "import"
 ]);
-const MAX_PASTE_IMAGE_BYTES = 900 * 1024;
-const MAX_TRANSFER_IMAGES = 4;
+const MAX_PASTE_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_TRANSFER_IMAGES = 8;
 const TRANSFER_MAX_FILES = 8;
 const TRANSFER_MAX_FILE_BYTES = 20 * 1024 * 1024;
 const TRANSFER_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
@@ -6584,7 +6584,7 @@ function handleEditorPaste(event) {
     return;
   }
   if (countMarkdownImages(note.body) >= MAX_TRANSFER_IMAGES) {
-    showToast(`文件传输助手最多保存 ${MAX_TRANSFER_IMAGES} 张图片`);
+    showToast(`MD 最多保存 ${MAX_TRANSFER_IMAGES} 张图片`);
     return;
   }
 
