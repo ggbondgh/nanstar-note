@@ -17,6 +17,15 @@ const storageKeys = {
 const i18n = {
   zh: {
     workspaceTitle: "内容工作台",
+    overviewCurrentNote: "当前笔记",
+    overviewSyncStatus: "同步状态",
+    overviewContentStats: "内容统计",
+    overviewLibrary: "笔记库",
+    overviewNoNote: "暂无打开笔记",
+    overviewDefaultFolder: "默认文件夹",
+    overviewNotConnected: "未连接云同步",
+    overviewAllNotes: "全部笔记",
+    overviewCurrentLine: "当前行",
     mobileNotes: "笔记",
     openNotes: "打开笔记列表",
     closeNotes: "关闭笔记列表",
@@ -288,6 +297,15 @@ const i18n = {
   },
   en: {
     workspaceTitle: "Content Desk",
+    overviewCurrentNote: "Current Note",
+    overviewSyncStatus: "Sync Status",
+    overviewContentStats: "Content Stats",
+    overviewLibrary: "Library",
+    overviewNoNote: "No note open",
+    overviewDefaultFolder: "Default folder",
+    overviewNotConnected: "Cloud sync not connected",
+    overviewAllNotes: "All notes",
+    overviewCurrentLine: "Current line",
     mobileNotes: "Notes",
     openNotes: "Open notes",
     closeNotes: "Close notes",
@@ -973,6 +991,19 @@ const elements = {
   bulkDeleteButton: $("#bulkDeleteButton"),
   bulkClearButton: $("#bulkClearButton"),
   editorCard: $("#editorCard"),
+  dashboardOverview: $("#dashboardOverview"),
+  overviewNoteLabel: $("#overviewNoteLabel"),
+  overviewSyncLabel: $("#overviewSyncLabel"),
+  overviewContentLabel: $("#overviewContentLabel"),
+  overviewLibraryLabel: $("#overviewLibraryLabel"),
+  overviewNoteTitle: $("#overviewNoteTitle"),
+  overviewNoteMeta: $("#overviewNoteMeta"),
+  overviewSyncStatus: $("#overviewSyncStatus"),
+  overviewSyncMeta: $("#overviewSyncMeta"),
+  overviewContentStats: $("#overviewContentStats"),
+  overviewContentMeta: $("#overviewContentMeta"),
+  overviewLibraryStats: $("#overviewLibraryStats"),
+  overviewLibraryMeta: $("#overviewLibraryMeta"),
   editorSection: $("#editorSection"),
   editorSectionState: $("#editorSectionState"),
   editorTitle: $("#editorTitle"),
@@ -3132,6 +3163,50 @@ function renderPreview() {
   }
 }
 
+function renderDashboardOverview() {
+  const note = activeNote();
+  const syncMeta = readSyncMeta();
+  const noteTitle = note ? note.title : t("overviewNoNote");
+  const folderLabel = note ? displayFolderLabel(canonicalFolderName(note.folder)) : displayFolderLabel(INBOX_FOLDER);
+  const modeLabel = note ? (note.mode === "md" ? "MD" : note.mode === "doc" ? "DOC" : "TXT") : "TXT";
+  const plainBody = note ? (note.mode === "doc" ? docHtmlToText(note.body || "") : note.body || "") : "";
+  const charCount = countWords(plainBody);
+  const lineCount = countLines(plainBody);
+  const currentLine = note && note.mode === "doc" ? 1 : state.currentLine || 1;
+  const noteCount = regularNotes().length;
+  const folderCount = getFolderNames().length;
+  const dirtyCount = dirtyNoteIds().length;
+  const syncLabel = elements.cloudStatus?.textContent || t("localMode");
+  const syncDetail = syncMeta.lastVerifiedAt
+    ? `${t("syncVerifiedAt").replace("{time}", formatTime(Number(syncMeta.lastVerifiedAt)))}`
+    : syncMeta.lastPushAt
+      ? `${t("syncPushedAt").replace("{time}", formatTime(Number(syncMeta.lastPushAt)))}`
+      : syncMeta.lastPullAt
+        ? `${t("syncPulledAt").replace("{time}", formatTime(Number(syncMeta.lastPullAt)))}`
+        : syncMeta.pending
+          ? t("syncPending")
+          : t("overviewNotConnected");
+
+  if (elements.dashboardOverview) elements.dashboardOverview.hidden = false;
+  if (elements.overviewNoteLabel) elements.overviewNoteLabel.textContent = t("overviewCurrentNote");
+  if (elements.overviewSyncLabel) elements.overviewSyncLabel.textContent = t("overviewSyncStatus");
+  if (elements.overviewContentLabel) elements.overviewContentLabel.textContent = t("overviewContentStats");
+  if (elements.overviewLibraryLabel) elements.overviewLibraryLabel.textContent = t("overviewLibrary");
+  if (elements.overviewNoteTitle) elements.overviewNoteTitle.textContent = noteTitle;
+  if (elements.overviewNoteMeta) elements.overviewNoteMeta.textContent = `${modeLabel} · ${folderLabel}`;
+  if (elements.overviewSyncStatus) elements.overviewSyncStatus.textContent = syncLabel;
+  if (elements.overviewSyncMeta) elements.overviewSyncMeta.textContent = `${syncDetail}${dirtyCount ? ` · ${dirtyCount} ${t("items")}` : ""}`;
+  if (elements.overviewContentStats) elements.overviewContentStats.textContent = `${charCount} ${t("characters")} / ${lineCount} ${t("lines")}`;
+  if (elements.overviewContentMeta) elements.overviewContentMeta.textContent = `${t("overviewCurrentLine")} ${currentLine}`;
+  if (elements.overviewLibraryStats) elements.overviewLibraryStats.textContent = `${noteCount} ${t("items")} / ${folderCount} ${t("files")}`;
+  const scopeLabel = state.selectionMode
+    ? t("multiSelect")
+    : state.selectedFolder
+      ? displayFolderLabel(state.selectedFolder)
+      : t("overviewAllNotes");
+  if (elements.overviewLibraryMeta) elements.overviewLibraryMeta.textContent = scopeLabel;
+}
+
 function renderFloatingOutline() {
   if (!elements.floatingOutline || !elements.outlineDots || !elements.outlinePanelBody) return;
   const note = activeNote();
@@ -4059,6 +4134,7 @@ function renderSyncMeta() {
     }
   }
   renderActiveNoteCloudStatus(syncMeta);
+  renderDashboardOverview();
 }
 
 function renderActiveNoteCloudStatus(syncMeta = readSyncMeta()) {
@@ -5687,6 +5763,7 @@ function selectMatch(match) {
 
 function handleEditorCursorChange() {
   updateCurrentLineIndicator();
+  renderDashboardOverview();
   if (!state.editorSearch.query.trim()) {
     renderEditorSearchCount();
   }
