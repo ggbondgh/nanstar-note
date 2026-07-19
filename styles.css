@@ -879,6 +879,14 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   border-color: #efc2c2;
   background: #fff7f7;
 }
+.transfer-file.done {
+  border-color: rgba(34, 197, 94, 0.22);
+  background: #f7fff9;
+}
+.transfer-file.downloading {
+  border-color: rgba(47,91,234,0.24);
+  background: #f5f8ff;
+}
 .transfer-upload-status {
   display: inline-flex;
   align-items: center;
@@ -896,16 +904,48 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   background: #ffe5e5;
   color: #9d3535;
 }
+.transfer-file.done .transfer-upload-status {
+  background: #dcfce7;
+  color: #166534;
+}
 .transfer-file-name {
   overflow: hidden;
   font-weight: 720;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.transfer-file-main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
 .transfer-file-meta {
-  margin-top: 3px;
   color: var(--muted);
   font-size: 11px;
+}
+.transfer-progress {
+  display: grid;
+  gap: 5px;
+}
+.transfer-progress-track {
+  overflow: hidden;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(145, 163, 196, 0.28);
+}
+.transfer-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4f7cff, #2f5bea);
+  transition: width 120ms linear;
+}
+.transfer-progress-text {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
 }
 .transfer-file-actions {
   display: inline-flex;
@@ -2069,6 +2109,10 @@ body.preview-focus-mode .preview-content {
   .transfer-file {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
+  }
+
+  .transfer-progress-text {
+    white-space: normal;
   }
 
   .transfer-file-actions {

@@ -229,7 +229,9 @@ const i18n = {
     transferCopyImage: "复制图片",
     transferDelete: "删除",
     transferUploading: "正在上传...",
+    transferDownloading: "正在下载...",
     transferUploaded: "文件已上传",
+    transferDownloaded: "文件已下载",
     transferDeleted: "文件已删除",
     transferTooLarge: "文件太大，单文件上限 {size}。",
     transferCountLimit: "最多保存 {count} 个文件。",
@@ -498,7 +500,9 @@ const i18n = {
     transferCopyImage: "Copy Image",
     transferDelete: "Delete",
     transferUploading: "Uploading...",
+    transferDownloading: "Downloading...",
     transferUploaded: "File uploaded",
+    transferDownloaded: "File downloaded",
     transferDeleted: "File deleted",
     transferTooLarge: "File is too large. Limit: {size}.",
     transferCountLimit: "Keep at most {count} files.",
@@ -808,6 +812,7 @@ const state = {
   noteInputComposing: false,
   transferFiles: [],
   transferUploads: [],
+  transferDownloads: [],
   transferLoading: false,
   transferError: "",
   transferLastFetchAt: 0,
@@ -869,6 +874,7 @@ let appRuntimeInfoPromise = null;
 let editorLineMeasureNode = null;
 let editorLineLayoutCache = null;
 let editorLineLayoutFrame = 0;
+let transferPanelRenderFrame = 0;
 
 function nativeRuntime() {
   const capacitor = window.Capacitor;
@@ -1636,6 +1642,7 @@ function transferEnabled() {
 function resetTransferState() {
   state.transferFiles = [];
   state.transferUploads = [];
+  state.transferDownloads = [];
   state.transferLoading = false;
   state.transferError = "";
   state.transferLastFetchAt = 0;
@@ -1649,6 +1656,37 @@ function transferLimits() {
     maxFileBytes: Number(limits.maxFileBytes) || TRANSFER_MAX_FILE_BYTES,
     maxTotalBytes: Number(limits.maxTotalBytes) || TRANSFER_MAX_TOTAL_BYTES
   };
+}
+
+function scheduleTransferPanelRender() {
+  if (transferPanelRenderFrame) return;
+  transferPanelRenderFrame = window.requestAnimationFrame(() => {
+    transferPanelRenderFrame = 0;
+    renderTransferPanel();
+  });
+}
+
+function clampTransferPercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.max(0, Math.min(100, Math.round(number)));
+}
+
+function transferProgressSnapshot(item) {
+  const loaded = Math.max(0, Number(item?.loaded) || 0);
+  const total = Math.max(0, Number(item?.total) || Number(item?.size) || 0);
+  const percent = total > 0
+    ? clampTransferPercent((loaded / total) * 100)
+    : clampTransferPercent(item?.progress);
+  return { loaded, total, percent };
+}
+
+function updateTransferProgress(item, snapshot = {}) {
+  if (!item) return;
+  item.loaded = Math.max(0, Number(snapshot.loaded) || 0);
+  item.total = Math.max(0, Number(snapshot.total) || 0);
+  item.progress = clampTransferPercent(snapshot.percent ?? transferProgressSnapshot(item).percent);
+  scheduleTransferPanelRender();
 }
 
 function renderTransferPanel() {
@@ -1686,8 +1724,9 @@ function renderTransferPanel() {
   }
 
   const uploadRows = state.transferUploads.map(renderTransferUploadRow);
+  const downloadRows = state.transferDownloads.map(renderTransferDownloadRow);
   const fileRows = state.transferFiles.map(renderTransferFileRow);
-  const rows = [...uploadRows, ...fileRows];
+  const rows = [...uploadRows, ...downloadRows, ...fileRows];
 
   if (state.transferLoading && !rows.length) {
     elements.transferFileList.innerHTML = `<div class="transfer-empty">${t("transferLoading")}</div>`;
@@ -1703,36 +1742,61 @@ function renderTransferPanel() {
 }
 
 function renderTransferUploadRow(upload) {
-  const failed = upload.status === "error";
-  const status = failed ? upload.error || t("transferFailed") : t("transferUploading");
+  return renderTransferTaskRow(upload, "upload", t("transferUploading"), t("transferUploaded"));
+}
+
+function renderTransferDownloadRow(download) {
+  return renderTransferTaskRow(download, "download", t("transferDownloading"), t("transferDownloaded"));
+}
+
+function renderTransferTaskRow(item, kind, actionLabel, doneLabel) {
+  const failed = item.status === "error";
+  const done = item.status === "done";
+  const { loaded, total, percent } = transferProgressSnapshot(item);
+  const currentPercent = failed ? 0 : done ? 100 : percent;
+  const statusLabel = failed ? item.error || t("transferFailed") : done ? doneLabel : actionLabel;
+  const metaText = formatBytes(item.size || total || loaded);
+  const progressText = total > 0
+    ? `${formatBytes(loaded)} / ${formatBytes(total)} · ${currentPercent}%`
+    : `${formatBytes(loaded)} · ${currentPercent}%`;
   return `
-    <div class="transfer-file ${failed ? "failed" : "uploading"}" ${failed ? "" : 'aria-busy="true"'}>
-      <div>
-        <div class="transfer-file-name">${escapeHtml(upload.name)}</div>
-        <div class="transfer-file-meta">${formatBytes(upload.size)} · ${escapeHtml(status)}</div>
+    <div class="transfer-file ${failed ? "failed" : done ? "done" : kind === "download" ? "downloading" : "uploading"}" ${failed || done ? "" : 'aria-busy="true"'}>
+      <div class="transfer-file-main">
+        <div class="transfer-file-name">${escapeHtml(item.name)}</div>
+        <div class="transfer-file-meta">${escapeHtml(metaText)} · ${escapeHtml(statusLabel)}</div>
+        <div class="transfer-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${currentPercent}" aria-label="${escapeAttribute(statusLabel)}">
+          <div class="transfer-progress-track">
+            <div class="transfer-progress-fill" style="width:${currentPercent}%"></div>
+          </div>
+          <div class="transfer-progress-text">
+            <span>${escapeHtml(statusLabel)}</span>
+            <span>${escapeHtml(progressText)}</span>
+          </div>
+        </div>
       </div>
-      <div class="transfer-upload-status">${failed ? t("transferFailed") : t("transferUploading")}</div>
+      <div class="transfer-upload-status">${escapeHtml(failed ? t("transferFailed") : doneLabel)}</div>
     </div>
   `;
 }
 
 function renderTransferFileRow(file) {
   const image = isTransferImage(file);
+  const downloadingTask = state.transferDownloads.find((item) => item.fileId === file.id && item.status !== "error" && item.status !== "done");
+  const downloading = Boolean(downloadingTask);
   return `
     <div class="transfer-file" data-file-id="${escapeAttribute(file.id)}">
-      <div>
+      <div class="transfer-file-main">
         <div class="transfer-file-name">${escapeHtml(file.name)}</div>
         <div class="transfer-file-meta">${escapeHtml(file.mimeType || "file")} · ${formatBytes(file.size)} · ${formatShortDate(file.createdAt)}</div>
       </div>
       <div class="transfer-file-actions">
-        <button class="ghost-button" type="button" data-transfer-action="download" data-id="${escapeAttribute(file.id)}">${t("transferDownload")}</button>
+        <button class="ghost-button" type="button" data-transfer-action="download" data-id="${escapeAttribute(file.id)}" ${downloading ? "disabled" : ""}>${downloading ? `${t("transferDownloading")} ${downloadingTask.progress ?? 0}%` : t("transferDownload")}</button>
         ${image ? `<button class="ghost-button" type="button" data-transfer-action="copy-image" data-id="${escapeAttribute(file.id)}">${t("transferCopyImage")}</button>` : ""}
         <button class="danger-button" type="button" data-transfer-action="delete" data-id="${escapeAttribute(file.id)}">${t("transferDelete")}</button>
       </div>
     </div>
   `;
 }
-
 async function fetchTransferFiles(options = {}) {
   if (!transferEnabled()) {
     state.transferFiles = [];
@@ -1793,27 +1857,29 @@ async function uploadSingleTransferFile(file) {
     id: createId(),
     name: file.name || "file",
     size: file.size || 0,
+    loaded: 0,
+    total: file.size || 0,
+    progress: 0,
     status: "uploading",
     error: ""
   };
   state.transferUploads.unshift(upload);
   renderTransferPanel();
   try {
-    const result = await fetchTransferJson("./api/files", {
-      method: "POST",
-      body: file,
-      headers: {
-        "content-type": file.type || "application/octet-stream",
-        "x-file-name": encodeURIComponent(file.name || "file"),
-        "x-file-size": String(file.size || 0)
-      }
+    const result = await uploadTransferFileWithProgress(file, (snapshot) => {
+      updateTransferProgress(upload, snapshot);
     });
-    state.transferUploads = state.transferUploads.filter((item) => item.id !== upload.id);
+    upload.status = "done";
+    updateTransferProgress(upload, { loaded: file.size || 0, total: file.size || 0, percent: 100 });
     if (result.file) {
       state.transferFiles = [normalizeTransferFile(result.file), ...state.transferFiles.filter((item) => item.id !== result.file.id)];
     }
     state.transferLastFetchAt = Date.now();
     showToast(t("transferUploaded"));
+    window.setTimeout(() => {
+      state.transferUploads = state.transferUploads.filter((item) => item.id !== upload.id);
+      renderTransferPanel();
+    }, 900);
   } catch (error) {
     upload.status = "error";
     upload.error = transferErrorText(error);
@@ -1826,11 +1892,36 @@ async function uploadSingleTransferFile(file) {
 async function downloadTransferFile(id) {
   const file = state.transferFiles.find((item) => item.id === id);
   if (!file) return;
+  const task = {
+    id: createId(),
+    fileId: file.id,
+    name: file.name || "file",
+    size: file.size || 0,
+    loaded: 0,
+    total: file.size || 0,
+    progress: 0,
+    status: "downloading",
+    error: ""
+  };
+  state.transferDownloads.unshift(task);
+  renderTransferPanel();
   try {
-    const blob = await fetchTransferBlob(`./api/files?id=${encodeURIComponent(id)}`);
+    const blob = await fetchTransferBlob(`./api/files?id=${encodeURIComponent(id)}`, (snapshot) => {
+      updateTransferProgress(task, snapshot);
+    });
+    task.status = "done";
+    updateTransferProgress(task, { loaded: file.size || task.size || 0, total: file.size || task.size || 0, percent: 100 });
     downloadBlob(file.name, blob);
+    showToast(t("transferDownloaded"));
+    window.setTimeout(() => {
+      state.transferDownloads = state.transferDownloads.filter((item) => item.id !== task.id);
+      renderTransferPanel();
+    }, 900);
   } catch (error) {
-    showToast(transferErrorText(error));
+    task.status = "error";
+    task.error = transferErrorText(error);
+    showToast(task.error);
+    renderTransferPanel();
   }
 }
 
@@ -1877,17 +1968,70 @@ async function fetchTransferJson(url, options = {}) {
   return text ? JSON.parse(text) : {};
 }
 
-async function fetchTransferBlob(url) {
-  const response = await fetch(apiUrl(url), {
-    cache: "no-store",
-    headers: {
-      authorization: `Bearer ${getSyncToken()}`
-    }
+function fetchTransferBlob(url, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", apiUrl(url), true);
+    xhr.responseType = "blob";
+    xhr.setRequestHeader("authorization", `Bearer ${getSyncToken()}`);
+    xhr.onprogress = (event) => {
+      if (!onProgress) return;
+      const total = event.lengthComputable ? Number(event.total) || 0 : 0;
+      const loaded = Number(event.loaded) || 0;
+      onProgress({
+        loaded,
+        total,
+        progress: total > 0 ? (loaded / total) * 100 : 0
+      });
+    };
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(xhr.responseText || xhr.statusText || `HTTP ${xhr.status}`));
+        return;
+      }
+      resolve(xhr.response);
+    };
+    xhr.onerror = () => reject(new Error("Failed to fetch"));
+    xhr.onabort = () => reject(new Error("Aborted"));
+    xhr.send();
   });
-  if (!response.ok) throw new Error(await response.text());
-  return response.blob();
 }
 
+function uploadTransferFileWithProgress(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", apiUrl("./api/files"), true);
+    xhr.responseType = "text";
+    xhr.setRequestHeader("authorization", `Bearer ${getSyncToken()}`);
+    xhr.setRequestHeader("content-type", file.type || "application/octet-stream");
+    xhr.setRequestHeader("x-file-name", encodeURIComponent(file.name || "file"));
+    xhr.setRequestHeader("x-file-size", String(file.size || 0));
+    xhr.upload.onprogress = (event) => {
+      if (!onProgress) return;
+      const total = event.lengthComputable ? Number(event.total) || file.size || 0 : file.size || 0;
+      const loaded = Number(event.loaded) || 0;
+      onProgress({
+        loaded,
+        total,
+        progress: total > 0 ? (loaded / total) * 100 : 0
+      });
+    };
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(xhr.responseText || xhr.statusText || `HTTP ${xhr.status}`));
+        return;
+      }
+      try {
+        resolve(xhr.responseText ? JSON.parse(xhr.responseText) : {});
+      } catch (error) {
+        reject(error);
+      }
+    };
+    xhr.onerror = () => reject(new Error("Failed to fetch"));
+    xhr.onabort = () => reject(new Error("Aborted"));
+    xhr.send(file);
+  });
+}
 function normalizeTransferFile(file) {
   return {
     id: String(file.id || ""),
