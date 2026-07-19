@@ -4065,3 +4065,34 @@ body,
     color: #fff;
   }
 }
+
+.toolbar .doc-palette-grid button,
+.doc-palette-grid button {
+  display: block;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  border: 1px solid rgba(31, 41, 55, 0.14);
+  border-radius: 5px;
+  background: var(--swatch, #fff) !important;
+  color: transparent;
+  font-size: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.52);
+}
+
+.toolbar .doc-palette-grid button:hover,
+.doc-palette-grid button:hover {
+  border-color: rgba(24, 24, 27, 0.42);
+  background: var(--swatch, #fff) !important;
+}
+
+.mode-button.active,
+.editor-card[data-mode="txt"] .mode-button[data-mode="txt"],
+.editor-card[data-mode="md"] .mode-button[data-mode="md"],
+.editor-card[data-mode="doc"] .mode-button[data-mode="doc"] {
+  border-color: #18181b;
+  background: #18181b;
+  color: #fff;
+}
