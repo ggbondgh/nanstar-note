@@ -2626,6 +2626,11 @@ body,
   border-top-color: var(--foreground);
 }
 
+/* Plain text has no formatting toolbar, so do not reserve an empty accordion row. */
+.editor-card[data-mode="txt"] .editor-section {
+  display: none !important;
+}
+
 @media (max-width: 760px) {
   .sidebar {
     border-right: 1px solid var(--border);
