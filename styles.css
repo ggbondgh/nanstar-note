@@ -3986,3 +3986,82 @@ body,
     display: none;
   }
 }
+
+@media (min-width: 761px) {
+  .dashboard-overview {
+    display: none !important;
+  }
+
+  .main {
+    padding: 10px 12px 12px;
+    gap: 8px;
+  }
+
+  .topbar {
+    min-height: 38px;
+    padding: 0 0 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .topbar-title .eyebrow {
+    display: none;
+  }
+
+  .topbar h2 {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  .editor-card:not(.transfer-mode) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .editor-header {
+    position: relative;
+    z-index: 30;
+    overflow: visible;
+  }
+
+  .editor-section,
+  .editor-section-body,
+  .toolbar,
+  .toolbar-menu {
+    overflow: visible;
+  }
+
+  .toolbar-menu-panel {
+    z-index: 120;
+  }
+
+  .split-editor {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+  }
+
+  .note-meta {
+    display: flex;
+    flex-wrap: nowrap;
+  }
+
+  .mode-button.active {
+    border-color: #18181b;
+    background: #18181b;
+    color: #fff;
+  }
+
+  .mode-button.active:hover {
+    background: #09090b;
+    color: #fff;
+  }
+
+  .editor-card[data-mode="txt"] .mode-button[data-mode="txt"],
+  .editor-card[data-mode="md"] .mode-button[data-mode="md"],
+  .editor-card[data-mode="doc"] .mode-button[data-mode="doc"] {
+    border-color: #18181b;
+    background: #18181b;
+    color: #fff;
+  }
+}
