@@ -1,4 +1,4 @@
-const CACHE = "nanstar-note-v46";
+const CACHE = "nanstar-note-v47";
 const ASSETS = [
   "./",
   "./index.html",
