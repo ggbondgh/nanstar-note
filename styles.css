@@ -7638,29 +7638,32 @@ body.is-dragging-split * {
 
   body[data-youdao-layout="two"] .youdao-rail-footer {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     width: 100%;
     margin-top: auto;
     padding-bottom: 12px;
     border-bottom: 1px solid #e4e8f0;
-    gap: 12px;
+    gap: 8px;
   }
 
   body[data-youdao-layout="two"] .youdao-view-tabs {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr;
     justify-content: center;
+    justify-items: center;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     width: 100%;
     margin-top: 12px;
   }
 
   body[data-youdao-layout="two"] .youdao-layout-button {
-    width: 30px;
-    min-width: 30px;
-    height: 28px;
-    min-height: 28px;
+    width: 42px;
+    min-width: 42px;
+    height: 34px;
+    min-height: 34px;
   }
 
   body[data-youdao-layout="one"] .youdao-view-tabs {
@@ -8162,8 +8165,8 @@ body.is-dragging-split * {
   }
 
   body[data-youdao-layout="two"] .youdao-layout-button {
-    width: 30px;
-    min-width: 30px;
+    width: 38px;
+    min-width: 38px;
     height: 28px;
     min-height: 28px;
   }
