@@ -7370,10 +7370,13 @@ body.is-dragging-split * {
 }
 
 .youdao-rail-footer {
-  display: grid;
-  grid-template-columns: auto auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
   gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e4e8f0;
 }
 
 .youdao-client-menu {
@@ -7423,22 +7426,30 @@ body.is-dragging-split * {
 }
 
 .youdao-view-tabs {
+  display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
 }
 
 .youdao-layout-button {
   width: 30px;
   height: 28px;
-  border-radius: 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #98a3b7;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .youdao-view-tabs .youdao-layout-icon {
-  width: 23px !important;
-  height: 17px !important;
+  width: 16px !important;
+  height: 14px !important;
   display: grid !important;
   align-items: stretch;
-  gap: 3px;
+  gap: 2px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -7446,23 +7457,37 @@ body.is-dragging-split * {
 
 .youdao-view-tabs .youdao-layout-icon i {
   display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   min-width: 0;
   min-height: 0;
-  border: 1.5px solid #9eabc0;
+  border: 1px solid currentColor;
   border-radius: 2px;
   background: transparent;
 }
 
 .youdao-view-tabs .youdao-layout-icon-three {
-  grid-template-columns: 6px 6px 6px;
+  grid-template-columns: 4px 4px 4px;
 }
 
 .youdao-view-tabs .youdao-layout-icon-two {
-  grid-template-columns: 9px 9px;
+  grid-template-columns: 6px 6px;
 }
 
 .youdao-view-tabs .youdao-layout-icon-one {
-  grid-template-columns: 21px;
+  grid-template-columns: 12px;
+}
+
+.youdao-layout-button:hover {
+  border-color: #dfe4ec;
+  background: #f4f6fa;
+}
+
+.youdao-layout-button.active {
+  border-color: #d9dfeb;
+  background: #f3f5f9;
+  color: #7f889a;
 }
 
 .youdao-layout-button.active .youdao-layout-icon {
@@ -7470,8 +7495,8 @@ body.is-dragging-split * {
 }
 
 .youdao-layout-button.active .youdao-layout-icon i {
-  border-color: #8e99ae;
-  background: #8e99ae;
+  border-color: currentColor;
+  background: transparent;
 }
 
 .doc-highlight-icon {
@@ -7612,25 +7637,30 @@ body.is-dragging-split * {
   }
 
   body[data-youdao-layout="two"] .youdao-rail-footer {
-    display: grid;
-    grid-template-columns: 1fr;
-    justify-items: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     width: 100%;
     margin-top: auto;
-    gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e4e8f0;
+    gap: 12px;
   }
 
   body[data-youdao-layout="two"] .youdao-view-tabs {
-    display: grid;
-    justify-items: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     gap: 10px;
+    width: 100%;
     margin-top: 12px;
   }
 
   body[data-youdao-layout="two"] .youdao-layout-button {
-    width: 42px;
-    min-width: 42px;
-    height: 34px;
+    width: 30px;
+    min-width: 30px;
+    height: 28px;
+    min-height: 28px;
   }
 
   body[data-youdao-layout="one"] .youdao-view-tabs {
@@ -8132,8 +8162,8 @@ body.is-dragging-split * {
   }
 
   body[data-youdao-layout="two"] .youdao-layout-button {
-    width: 38px;
-    min-width: 38px;
+    width: 30px;
+    min-width: 30px;
     height: 28px;
     min-height: 28px;
   }
