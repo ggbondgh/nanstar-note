@@ -4412,6 +4412,7 @@ function renderNoteList() {
     return;
   }
 
+  const syncMeta = readSyncMeta();
   elements.noteList.innerHTML = notes
     .map((note) => {
       const transfer = isTransferAssistant(note);
@@ -4419,6 +4420,12 @@ function renderNoteList() {
       const flags = transfer ? "" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
       const title = transfer ? t("transferAssistantTitle") : note.title;
       const body = transfer ? "" : excerpt(note.mode === "doc" ? docHtmlToText(note.body) : note.body);
+      const syncStatus = transfer ? null : noteCloudStatus(note, syncMeta);
+      const syncClass = syncStatus?.status === "synced" ? "synced" : "dirty";
+      const syncLabel = syncStatus?.label || (syncClass === "synced" ? t("syncStatusSynced") : t("syncStatusDirty"));
+      const syncIndicator = transfer
+        ? ""
+        : `<span class="note-sync-indicator ${syncClass}" title="${escapeAttribute(syncLabel)}" aria-label="${escapeAttribute(syncLabel)}"></span>`;
       const folder = canonicalFolderName(note.folder);
       const folderLabel = displayFolderLabel(folder);
       const folderTag = !transfer && folder !== INBOX_FOLDER
@@ -4445,6 +4452,7 @@ function renderNoteList() {
               <h3>${escapeHtml(title)}</h3>
               <span class="note-item-side">
                 <span class="note-flags-text">${flags}</span>
+                ${syncIndicator}
               </span>
             </span>
             ${transfer ? "" : `<p>${escapeHtml(body)}</p>`}

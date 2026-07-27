@@ -7297,24 +7297,48 @@ body.is-dragging-split * {
   color: #9aa4b7;
   font-size: 14px;
   font-weight: 500;
+  line-height: 20px;
   white-space: nowrap;
 }
 
 .title-save-icon {
-  display: inline-grid;
+  position: relative;
+  display: inline-block;
+  flex: 0 0 18px;
   width: 18px;
   height: 18px;
-  place-items: center;
+  box-sizing: border-box;
   border: 2px solid #c4ccda;
   border-radius: 50%;
   color: #9aa4b7;
-  font-size: 11px;
-  line-height: 1;
+  font-size: 0;
+  line-height: 0;
+}
+
+.title-save-icon::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  box-sizing: border-box;
+}
+
+#titleSaveStatusText {
+  display: inline-block;
+  line-height: 20px;
 }
 
 .title-save-status.saved .title-save-icon {
   border-color: #c4ccda;
   color: #9aa4b7;
+}
+
+.title-save-status.saved .title-save-icon::before {
+  width: 8px;
+  height: 5px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translate(-50%, -58%) rotate(-45deg);
 }
 
 .title-save-status.unsaved {
@@ -7324,7 +7348,14 @@ body.is-dragging-split * {
 .title-save-status.unsaved .title-save-icon {
   border-color: #e7a35c;
   color: #d27a2c;
-  font-size: 14px;
+}
+
+.title-save-status.unsaved .title-save-icon::before {
+  width: 8px;
+  height: 8px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
 }
 
 @media (min-width: 901px) {
@@ -8421,7 +8452,77 @@ body.is-dragging-split * {
 }
 
 .editor-status-bar #saveStatus,
-.editor-status-bar #syncState,
-.note-list .note-sync-indicator {
+.editor-status-bar #syncState {
   display: none !important;
+}
+
+.note-list .note-sync-indicator {
+  display: inline-block !important;
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #e5484d;
+  box-shadow: 0 0 0 1px rgba(229, 72, 77, 0.38), 0 0 0 4px rgba(229, 72, 77, 0.08);
+}
+
+.note-list .note-sync-indicator.synced {
+  background: #1aa66a;
+  box-shadow: 0 0 0 1px rgba(26, 166, 106, 0.38), 0 0 0 4px rgba(26, 166, 106, 0.08);
+}
+
+.note-list .note-sync-indicator.dirty {
+  background: #e5484d;
+  box-shadow: 0 0 0 1px rgba(229, 72, 77, 0.38), 0 0 0 4px rgba(229, 72, 77, 0.08);
+}
+
+/* Match Youdao's clearer rail icon contrast without changing icon weight. */
+.youdao-nav-item > span:first-child,
+.youdao-sync-button > span:first-child {
+  color: #46546b !important;
+}
+
+.youdao-nav-item:hover > span:first-child,
+.youdao-sync-button:hover > span:first-child {
+  color: #303b4f !important;
+}
+
+.youdao-nav-item.active > span:first-child,
+.youdao-sync-button:active > span:first-child {
+  color: #5d78f2 !important;
+}
+
+.youdao-sync-button:disabled {
+  opacity: 0.86 !important;
+}
+
+.folder-panel-summary .summary-mark,
+.folder-add-button {
+  color: #4b556b !important;
+}
+
+.folder-panel-summary:hover .summary-mark {
+  color: #5d78f2 !important;
+}
+
+.youdao-footer-icon {
+  color: #59667c !important;
+}
+
+.youdao-client-menu > summary:hover .youdao-footer-icon,
+#youdaoSyncSettingsButton:hover .youdao-footer-icon {
+  color: #303b4f !important;
+}
+
+.youdao-layout-button {
+  color: #5f6b82 !important;
+}
+
+.youdao-layout-button:hover {
+  color: #46546b !important;
+}
+
+.youdao-layout-button.active {
+  color: #536078 !important;
 }
