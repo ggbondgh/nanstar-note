@@ -7048,15 +7048,32 @@ body.is-dragging-split * {
 }
 
 .doc-plus-icon {
-  display: inline-grid;
+  position: relative;
+  display: inline-block;
   width: 22px;
   height: 22px;
-  place-items: center;
+  flex: 0 0 22px;
   border-radius: 50%;
   background: #5d78f2;
-  color: #fff;
-  font-size: 18px;
-  line-height: 1;
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+}
+.doc-plus-icon::before,
+.doc-plus-icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  border-radius: 999px;
+  background: #fff;
+  transform: translate(-50%, -50%);
+}
+.doc-plus-icon::after {
+  width: 2px;
+  height: 10px;
 }
 
 .doc-color-split {
