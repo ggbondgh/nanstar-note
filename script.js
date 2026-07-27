@@ -6778,6 +6778,24 @@ function normalizeDocTaskBlock(paragraph, emptyText = "待办") {
   return paragraph;
 }
 
+function removeDocTaskBlock(paragraph) {
+  if (!paragraph) return null;
+  const box = Array.from(paragraph.children).find((child) => child.classList?.contains("doc-task-box"));
+  if (!box) return null;
+  const label = Array.from(paragraph.children).find((child) => child.classList?.contains("doc-task-label"));
+  const content = document.createDocumentFragment();
+  if (label) {
+    while (label.firstChild) content.appendChild(label.firstChild);
+  } else {
+    Array.from(paragraph.childNodes).forEach((node) => {
+      if (node !== box) content.appendChild(node);
+    });
+  }
+  paragraph.classList.remove("doc-task-line");
+  paragraph.replaceChildren(content);
+  return paragraph;
+}
+
 function docStyleAncestor(command) {
   if (!elements.docInput) return null;
   const selection = window.getSelection?.();
@@ -6797,6 +6815,67 @@ function docStyleAncestor(command) {
     node = node.parentNode;
   }
   return match;
+}
+
+function normalizeDocComparableColor(value, kind = "text") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (kind === "background" && /^(transparent|rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\))$/i.test(raw)) return "";
+  if (typeof document === "undefined") return raw.toLowerCase();
+  const probe = document.createElement("span");
+  probe.style.color = raw;
+  return (probe.style.color || raw).toLowerCase();
+}
+
+function docEffectiveStyleColor(node, command) {
+  if (!elements.docInput || !node) return "";
+  let element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+  if (!element || !elements.docInput.contains(element)) return "";
+  if (command === "foreColor") {
+    return normalizeDocComparableColor(window.getComputedStyle(element).color, "text");
+  }
+  while (element && element !== elements.docInput) {
+    const computed = window.getComputedStyle(element);
+    const color = normalizeDocComparableColor(element.style?.backgroundColor || computed.backgroundColor, "background");
+    if (color) return color;
+    element = element.parentElement;
+  }
+  return "";
+}
+
+function selectedDocTextNodes(range) {
+  if (!elements.docInput || !range) return [];
+  const nodes = [];
+  const walker = document.createTreeWalker(elements.docInput, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.textContent.replace(/\u00a0/g, "").replace(/\u200b/g, "").trim()) return NodeFilter.FILTER_REJECT;
+      try {
+        return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      } catch {
+        return NodeFilter.FILTER_REJECT;
+      }
+    }
+  });
+  let node = walker.nextNode();
+  while (node) {
+    nodes.push(node);
+    node = walker.nextNode();
+  }
+  return nodes;
+}
+
+function docSelectionStyleMatches(command, color) {
+  if (!elements.docInput) return false;
+  const target = normalizeDocComparableColor(color, command === "hiliteColor" ? "background" : "text");
+  if (!target) return false;
+  const selection = window.getSelection?.();
+  if (!selection || !selection.rangeCount) return false;
+  const range = selection.getRangeAt(0);
+  if (!elements.docInput.contains(range.commonAncestorContainer)) return false;
+  if (range.collapsed) return docEffectiveStyleColor(range.startContainer, command) === target;
+  const nodes = selectedDocTextNodes(range);
+  if (!nodes.length) return docEffectiveStyleColor(range.commonAncestorContainer, command) === target;
+  return nodes.every((node) => docEffectiveStyleColor(node, command) === target);
 }
 
 function moveCollapsedDocSelectionOutOfStyle(command) {
@@ -7049,20 +7128,36 @@ function applyDocFontSize(size) {
   applyDocCommand("fontSize", commandSize);
 }
 
-function applyDocColor(command, color) {
-  if (!color) return;
+function setDocColorControl(command, color) {
   const input = command === "foreColor" ? elements.docTextColorInput : elements.docHighlightInput;
   const swatch = command === "foreColor" ? elements.docTextColorSwatch : elements.docHighlightSwatch;
   if (input) input.value = color;
   if (swatch) swatch.style.background = color;
+}
+
+function applyDocColor(command, color) {
+  if (!color) return;
+  setDocColorControl(command, color);
+  applyDocCommand(command, color);
+}
+
+function toggleDocColor(command, color) {
+  if (!color) return;
+  setDocColorControl(command, color);
+  restoreDocSelection();
+  if (docSelectionStyleMatches(command, color)) {
+    clearDocColor(command);
+    return;
+  }
   applyDocCommand(command, color);
 }
 
 function applyCurrentDocColor(command) {
   const input = command === "foreColor" ? elements.docTextColorInput : elements.docHighlightInput;
   const fallback = command === "foreColor" ? DOC_DEFAULT_TEXT_COLOR : DOC_DEFAULT_HIGHLIGHT_COLOR;
+  const color = input?.value || fallback;
   closeToolbarMenus();
-  applyDocColor(command, input?.value || fallback);
+  toggleDocColor(command, color);
 }
 
 function insertDocChecklist() {
@@ -7070,21 +7165,28 @@ function insertDocChecklist() {
   if (!note || note.mode !== "doc") return;
   recordDocHistoryBeforeChange();
   restoreDocSelection();
-  const [block] = selectedDocBlocks();
-  if (block) {
-    if (!block.querySelector(".doc-task-box")) {
-      const box = createDocTaskBox(false);
-      const label = document.createElement("span");
-      label.className = "doc-task-label";
-      const nodes = Array.from(block.childNodes);
-      nodes.forEach((node) => label.appendChild(node));
-      if (!label.textContent.replace(/\u00a0/g, "").replace(/\u200b/g, "").trim() && !label.querySelector("img")) {
-        label.textContent = "待办";
+  const blocks = selectedDocBlocks();
+  if (blocks.length) {
+    const allTaskBlocks = blocks.every((block) => block.querySelector(".doc-task-box"));
+    blocks.forEach((block) => {
+      if (allTaskBlocks) {
+        removeDocTaskBlock(block);
+        return;
       }
-      block.replaceChildren(box, label);
-    } else {
-      normalizeDocTaskBlock(block);
-    }
+      if (!block.querySelector(".doc-task-box")) {
+        const box = createDocTaskBox(false);
+        const label = document.createElement("span");
+        label.className = "doc-task-label";
+        const nodes = Array.from(block.childNodes);
+        nodes.forEach((node) => label.appendChild(node));
+        if (!label.textContent.replace(/\u00a0/g, "").replace(/\u200b/g, "").trim() && !label.querySelector("img")) {
+          label.textContent = "待办";
+        }
+        block.replaceChildren(box, label);
+      } else {
+        normalizeDocTaskBlock(block);
+      }
+    });
     finishDocFormatting({ compactGeneratedSpacing: true });
     return;
   }
@@ -7650,6 +7752,12 @@ function updateDocToolbarState() {
     ]);
     button.classList.toggle("active", stateCommands.has(command) && queryDocCommandState(command));
   });
+  const taskButton = elements.toolbar.querySelector('[data-doc-action="checklist"]');
+  if (taskButton) {
+    const taskBlocks = selectedDocBlocks();
+    const taskActive = Boolean(taskBlocks.length) && taskBlocks.every((block) => block.querySelector(".doc-task-box"));
+    taskButton.classList.toggle("active", taskActive);
+  }
   if (elements.docTextColorSwatch) {
     const color = elements.docTextColorInput?.value || DOC_DEFAULT_TEXT_COLOR;
     elements.docTextColorSwatch.style.background = color;
@@ -7732,7 +7840,7 @@ function applyToolbarAction(button) {
 
   if (button.dataset.docColor) {
     const command = button.closest("[data-doc-color-menu]")?.dataset.docColorMenu || "foreColor";
-    applyDocColor(command, button.dataset.docColor);
+    toggleDocColor(command, button.dataset.docColor);
     return;
   }
 
