@@ -7706,22 +7706,30 @@ body.is-dragging-split * {
 .doc-input .doc-task-line,
 .doc-input p:has(.doc-task-box),
 .doc-input li:has(.doc-task-box) {
-  display: flex;
-  min-height: 1.86em;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
   align-items: center;
-  gap: 7px;
+  column-gap: 10px;
+  min-height: 1.86em;
   margin-bottom: 0.24em;
+}
+
+.doc-task-label {
+  min-width: 0;
+  display: block;
+  line-height: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .doc-task-box {
   position: relative;
-  display: inline-flex;
-  flex: 0 0 auto;
+  display: inline-grid;
   width: 16px;
   height: 16px;
   place-items: center;
-  align-items: center;
-  justify-content: center;
+  justify-self: center;
+  align-self: center;
   margin-right: 0;
   border: 1.6px solid #7f8ba3;
   border-radius: 3px;

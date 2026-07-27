@@ -6759,6 +6759,25 @@ function createDocTaskBox(checked = false) {
   return box;
 }
 
+function normalizeDocTaskBlock(paragraph, emptyText = "待办") {
+  if (!paragraph || !["P", "LI"].includes(paragraph.tagName)) return null;
+  const box = Array.from(paragraph.children).find((child) => child.classList?.contains("doc-task-box"));
+  if (!box) return null;
+  const label = Array.from(paragraph.children).find((child) => child.classList?.contains("doc-task-label"))
+    || document.createElement("span");
+  label.className = "doc-task-label";
+  const nodes = Array.from(paragraph.childNodes);
+  nodes.forEach((node) => {
+    if (node !== box && node !== label) label.appendChild(node);
+  });
+  if (!label.textContent.replace(/\u00a0/g, "").replace(/\u200b/g, "").trim() && !label.querySelector("img")) {
+    label.textContent = emptyText;
+  }
+  paragraph.classList.add("doc-task-line");
+  paragraph.replaceChildren(box, label);
+  return paragraph;
+}
+
 function docStyleAncestor(command) {
   if (!elements.docInput) return null;
   const selection = window.getSelection?.();
@@ -7053,13 +7072,18 @@ function insertDocChecklist() {
   restoreDocSelection();
   const [block] = selectedDocBlocks();
   if (block) {
-    const existing = block.querySelector(".doc-task-box");
-    if (!existing) {
-      const isEmpty = !block.querySelector("img") && !(block.textContent || "").replace(/\u00a0/g, "").trim();
-      if (isEmpty) block.textContent = "";
-      block.classList.add("doc-task-line");
-      block.insertBefore(createDocTaskBox(false), block.firstChild);
-      if (isEmpty) block.appendChild(document.createTextNode("待办"));
+    if (!block.querySelector(".doc-task-box")) {
+      const box = createDocTaskBox(false);
+      const label = document.createElement("span");
+      label.className = "doc-task-label";
+      const nodes = Array.from(block.childNodes);
+      nodes.forEach((node) => label.appendChild(node));
+      if (!label.textContent.replace(/\u00a0/g, "").replace(/\u200b/g, "").trim() && !label.querySelector("img")) {
+        label.textContent = "待办";
+      }
+      block.replaceChildren(box, label);
+    } else {
+      normalizeDocTaskBlock(block);
     }
     finishDocFormatting({ compactGeneratedSpacing: true });
     return;
@@ -8534,6 +8558,9 @@ function sanitizeDocHtml(html) {
         element.textContent = taskState === "checked" ? "☑" : "☐";
         return element;
       }
+      if (node.classList.contains("doc-task-label")) {
+        element.className = "doc-task-label";
+      }
     }
 
     const styles = [];
@@ -8555,7 +8582,7 @@ function sanitizeDocHtml(html) {
 
     const childFragment = document.createDocumentFragment();
     node.childNodes.forEach((child) => childFragment.appendChild(cleanNode(child)));
-    if (tag === "span" && !styles.length) return childFragment;
+    if (tag === "span" && !styles.length && !node.classList.contains("doc-task-label")) return childFragment;
     element.appendChild(childFragment);
     return element;
   };
@@ -8571,15 +8598,7 @@ function sanitizeDocHtml(html) {
 
 function normalizeDocTaskLineMarkup(container) {
   container.querySelectorAll?.("p,li").forEach((paragraph) => {
-    const boxes = Array.from(paragraph.querySelectorAll(".doc-task-box"));
-    if (!boxes.length) return;
-    paragraph.classList.add("doc-task-line");
-    boxes.forEach((box) => {
-      const next = box.nextSibling;
-      if (next?.nodeType !== Node.TEXT_NODE) return;
-      next.textContent = (next.textContent || "").replace(/^[\s\u00a0]+/, "");
-      if (!next.textContent) next.remove();
-    });
+    normalizeDocTaskBlock(paragraph);
   });
 }
 
