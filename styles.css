@@ -7703,8 +7703,9 @@ body.is-dragging-split * {
   line-height: inherit;
 }
 
-.doc-input p.doc-task-line,
-.doc-input p:has(.doc-task-box) {
+.doc-input .doc-task-line,
+.doc-input p:has(.doc-task-box),
+.doc-input li:has(.doc-task-box) {
   display: flex;
   min-height: 1.86em;
   align-items: center;
@@ -8272,4 +8273,97 @@ body.is-dragging-split * {
     height: 32px !important;
     min-height: 32px !important;
   }
+}
+
+@media (min-width: 901px) {
+  body[data-youdao-layout="two"] .youdao-sync-stack {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+}
+
+/* Prevent toolbar labels from stacking vertically when the editor narrows. */
+.toolbar {
+  container-name: editor-toolbar;
+  container-type: inline-size;
+}
+
+.toolbar button,
+.toolbar-menu,
+.toolbar-menu > summary,
+.doc-color-split,
+.doc-style-select,
+.toolbar-separator {
+  flex: 0 0 auto;
+}
+
+.toolbar > button,
+.toolbar > .toolbar-menu,
+.toolbar > .doc-color-split,
+.toolbar > .doc-style-select {
+  min-inline-size: max-content;
+}
+
+.toolbar button,
+.toolbar-menu > summary,
+.doc-style-select,
+.doc-insert-menu > summary span,
+.doc-more-menu > summary span {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+}
+
+.doc-insert-menu > summary,
+.doc-more-menu > summary {
+  flex-wrap: nowrap !important;
+  min-width: max-content;
+}
+
+@container editor-toolbar (max-width: 1320px) {
+  .doc-insert-menu > summary span:not(.doc-plus-icon):not(.doc-menu-caret) {
+    display: none !important;
+  }
+
+  .doc-insert-menu > summary {
+    min-width: 52px !important;
+    gap: 4px !important;
+    padding: 0 6px !important;
+  }
+
+  .doc-more-menu > summary {
+    gap: 4px !important;
+    padding: 0 7px !important;
+    font-size: 13px !important;
+  }
+}
+
+@container editor-toolbar (max-width: 1160px) {
+  .doc-more-menu > summary span:first-child {
+    width: 18px;
+    overflow: hidden;
+    color: transparent;
+    font-size: 0;
+    line-height: 1;
+  }
+
+  .doc-more-menu > summary span:first-child::before {
+    content: "...";
+    color: #4b556b;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .doc-more-menu > summary {
+    min-width: 36px !important;
+    padding: 0 8px !important;
+  }
+}
+
+.editor-status-bar #saveStatus,
+.editor-status-bar #syncState,
+.note-list .note-sync-indicator {
+  display: none !important;
 }

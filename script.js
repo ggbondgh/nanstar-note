@@ -1445,6 +1445,7 @@ function bindEvents() {
   elements.docInput?.addEventListener("click", handleDocTaskBoxClick);
   elements.docInput?.addEventListener("click", handleDocImageClick);
   elements.docInput?.addEventListener("keydown", handleDocImageKeydown);
+  elements.docInput?.addEventListener("beforeinput", handleDocBeforeInput);
   elements.docInput?.addEventListener("blur", normalizeDocInputHtml);
   ["keyup", "mouseup", "click"].forEach((eventName) => {
     elements.docInput?.addEventListener(eventName, () => {
@@ -1609,6 +1610,7 @@ function bindEvents() {
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
+    if (handleDocEditorShortcut(event, key)) return;
     if ((event.ctrlKey || event.metaKey) && key === "f") {
       if (activeNote()?.mode === "doc") return;
       event.preventDefault();
@@ -3023,6 +3025,9 @@ function writeKnownCloudNote(note, patch = {}) {
 function noteCloudStatus(note, syncMeta = readSyncMeta()) {
   if (!note || isTransferAssistant(note) || isFolderRegistry(note)) return { status: "hidden", label: "" };
   if (!getSyncToken()) return { status: "offline", label: t("syncStatusOffline") };
+  if (state.syncInFlight && state.syncAction === "pushing" && note.id === state.activeId) {
+    return { status: "saving", label: t("syncPushing") };
+  }
   const pendingInput = state.savePendingNoteId === note.id;
   const knownSignature = syncMeta.cloudNoteSignatures?.[note.id] || "";
   const localSignature = notesSignature([note]);
@@ -3063,16 +3068,35 @@ function saveNotes() {
 }
 
 function scheduleSave(message = "已保存本地") {
-  setSaveStatus(t("saving"));
   clearTimeout(state.saveTimer);
   state.savePendingNoteId = state.activeId;
   markNoteDirty(state.savePendingNoteId);
+  setSaveStatus(t("saving"));
   state.saveTimer = window.setTimeout(() => {
     saveNotes();
     setSaveStatus(getSyncToken() ? t("syncPending") : message);
     markSyncPending(state.savePendingNoteId);
     state.savePendingNoteId = null;
   }, 140);
+}
+
+function clearNotePendingState(noteId) {
+  if (!noteId) return;
+  if (state.savePendingNoteId === noteId) {
+    clearTimeout(state.saveTimer);
+    state.saveTimer = null;
+    state.savePendingNoteId = null;
+  }
+  state.dirtyNoteIds.delete(noteId);
+  const meta = readSyncMeta();
+  const dirtyIds = Array.isArray(meta.dirtyNoteIds)
+    ? meta.dirtyNoteIds.filter((id) => id && id !== noteId)
+    : dirtyNoteIds();
+  writeSyncMeta({
+    pending: dirtyIds.length > 0,
+    dirtyNoteIds: dirtyIds,
+    lastError: ""
+  });
 }
 
 function flushPendingSave(noteId = state.activeId) {
@@ -4366,7 +4390,6 @@ function renderFolders() {
 
 function renderNoteList() {
   const notes = sortedNotes();
-  const syncMeta = readSyncMeta();
   if (elements.listStatus) elements.listStatus.textContent = `${notes.length} ${t("items")}`;
   pruneNoteSelection();
   renderBulkActionBar();
@@ -4391,8 +4414,6 @@ function renderNoteList() {
       const folderTag = !transfer && folder !== INBOX_FOLDER
         ? `<span class="note-folder-tag" title="${escapeAttribute(folderLabel)}">${escapeHtml(folderLabel)}</span>`
         : "";
-      const cloudStatus = noteCloudStatus(note, syncMeta);
-      const statusDot = transfer ? "" : `<span class="note-sync-indicator ${cloudStatus.status}" title="${escapeAttribute(cloudStatus.label)}" aria-label="${escapeAttribute(cloudStatus.label)}"></span>`;
       const classes = ["note-item"];
       const rowClasses = ["note-row"];
       const selectable = !transfer;
@@ -4414,7 +4435,6 @@ function renderNoteList() {
               <h3>${escapeHtml(title)}</h3>
               <span class="note-item-side">
                 <span class="note-flags-text">${flags}</span>
-                ${statusDot}
               </span>
             </span>
             ${transfer ? "" : `<p>${escapeHtml(body)}</p>`}
@@ -4574,31 +4594,33 @@ function renderSyncMeta() {
 
   if (!token) {
     elements.cloudStatus.textContent = t("localMode");
-    elements.syncState.textContent = t("local");
+    if (elements.syncState) elements.syncState.textContent = t("local");
   } else if (state.syncInFlight) {
     const label = state.syncAction === "pulling" ? t("syncPulling") : t("syncPushing");
     elements.cloudStatus.textContent = label;
-    elements.syncState.textContent = label;
+    if (elements.syncState) elements.syncState.textContent = label;
   } else if (syncMeta.lastError) {
     elements.cloudStatus.textContent = t("syncFailed");
-    elements.syncState.textContent = t("syncRetry");
+    if (elements.syncState) elements.syncState.textContent = t("syncRetry");
   } else if (syncMeta.pending) {
     elements.cloudStatus.textContent = t("syncPending");
-    elements.syncState.textContent = t("syncPendingShort");
+    if (elements.syncState) elements.syncState.textContent = t("syncPendingShort");
   } else if (syncMeta.lastVerifiedAt) {
     elements.cloudStatus.textContent = auto ? t("cloudAuto") : t("cloudReady");
-    elements.syncState.textContent = t("syncVerifiedAt").replace("{time}", formatTime(Number(syncMeta.lastVerifiedAt)));
+    if (elements.syncState) elements.syncState.textContent = t("syncVerifiedAt").replace("{time}", formatTime(Number(syncMeta.lastVerifiedAt)));
   } else if (syncMeta.lastPushAt) {
     elements.cloudStatus.textContent = auto ? t("cloudAuto") : t("cloudReady");
-    elements.syncState.textContent = t("syncPushedAt").replace("{time}", formatTime(Number(syncMeta.lastPushAt)));
+    if (elements.syncState) elements.syncState.textContent = t("syncPushedAt").replace("{time}", formatTime(Number(syncMeta.lastPushAt)));
   } else if (syncMeta.lastPullAt) {
     elements.cloudStatus.textContent = auto ? t("cloudAuto") : t("cloudReady");
-    elements.syncState.textContent = t("syncPulledAt").replace("{time}", formatTime(Number(syncMeta.lastPullAt)));
+    if (elements.syncState) elements.syncState.textContent = t("syncPulledAt").replace("{time}", formatTime(Number(syncMeta.lastPullAt)));
   } else {
     elements.cloudStatus.textContent = auto ? t("cloudAuto") : t("cloudReady");
-    elements.syncState.textContent = lastSync
-      ? `${t("synced")} ${formatDate(Number(lastSync))}`
-      : t("cloudUnsynced");
+    if (elements.syncState) {
+      elements.syncState.textContent = lastSync
+        ? `${t("synced")} ${formatDate(Number(lastSync))}`
+        : t("cloudUnsynced");
+    }
   }
   const note = activeNote();
   if (elements.createdAt) {
@@ -4617,6 +4639,7 @@ function renderSyncMeta() {
     }
   }
   renderActiveNoteCloudStatus(syncMeta);
+  updateTitleSaveStatusFromNote(syncMeta);
   renderDashboardOverview();
 }
 
@@ -5277,9 +5300,9 @@ async function saveNoteToCloud(noteId) {
       return false;
     }
 
-    state.dirtyNoteIds.delete(localNote.id);
+    clearNotePendingState(localNote.id);
     localStorage.setItem(storageKeys.lastSyncAt, String(now));
-    writeKnownCloudNote(remoteNote, {
+    writeKnownCloudNote(localNote, {
       cloudFoldersSignature: foldersSignature(nextFolders),
       pending: dirtyNoteIds().length > 0,
       dirtyNoteIds: dirtyNoteIds(),
@@ -5348,7 +5371,7 @@ async function syncCurrentNoteFromCloud() {
     if (index >= 0) state.notes[index] = normalized;
     else state.notes.unshift(normalized);
     setStoredFolders(mergeFolderLists(storedFolders(), cloudSnapshotFolders(remotePayload), [normalized.folder]));
-    state.dirtyNoteIds.delete(noteId);
+    clearNotePendingState(noteId);
     ensureActiveNote();
     saveNotes();
 
@@ -6002,27 +6025,47 @@ function persistAndRender(message, options = {}) {
   const dirtyId = options.dirtyNoteId || state.activeId;
   saveNotes();
   renderAll();
-  setSaveStatus(getSyncToken() ? t("syncPending") : t("savedLocal"));
+  if (elements.saveStatus) elements.saveStatus.textContent = getSyncToken() ? t("syncPending") : t("savedLocal");
+  updateTitleSaveStatusFromNote();
   markSyncPending(dirtyId);
   if (message) showToast(message);
 }
 
 function setSaveStatus(message) {
-  elements.saveStatus.textContent = message;
-  updateTitleSaveStatus(message);
+  if (elements.saveStatus) elements.saveStatus.textContent = message;
 }
 
-function updateTitleSaveStatus(message = "") {
+function updateTitleSaveStatusFromNote(syncMeta = readSyncMeta()) {
   if (!elements.titleSaveStatus || !elements.titleSaveStatusText) return;
-  const raw = String(message || "");
-  const unsaved = !raw
-    || raw === t("saving")
-    || /保存中|saving|失败|failed|重试|retry/i.test(raw);
+  const note = activeNote();
+  const status = noteCloudStatus(note, syncMeta);
+  let label = t("titleSaved");
+  let iconText = "✓";
+  let unsaved = false;
+
+  if (status.status === "dirty") {
+    label = t("syncPendingShort");
+    iconText = "○";
+    unsaved = true;
+  } else if (status.status === "saving") {
+    label = t("syncPushing");
+    iconText = "○";
+    unsaved = true;
+  } else if (status.status === "synced") {
+    label = t("synced");
+  } else if (status.status === "offline") {
+    label = t("titleSaved");
+  } else if (status.label) {
+    label = status.label;
+  }
+
   elements.titleSaveStatus.classList.toggle("unsaved", unsaved);
   elements.titleSaveStatus.classList.toggle("saved", !unsaved);
   const icon = elements.titleSaveStatus.querySelector(".title-save-icon");
-  if (icon) icon.textContent = unsaved ? "○" : "✓";
-  elements.titleSaveStatusText.textContent = unsaved ? t("titleUnsaved") : t("titleSaved");
+  if (icon) icon.textContent = iconText;
+  elements.titleSaveStatusText.textContent = label;
+  elements.titleSaveStatus.title = status.label || label;
+  elements.titleSaveStatus.setAttribute("aria-label", status.label || label);
 }
 
 function t(key) {
@@ -6131,7 +6174,7 @@ function applyLanguage(language, initial = false) {
     elements.saveNoteButton.title = t("saveNoteShortcut");
     elements.saveNoteButton.setAttribute("aria-label", t("saveNoteShortcut"));
   }
-  updateTitleSaveStatus(elements.saveStatus?.textContent || t("savedLocal"));
+  updateTitleSaveStatusFromNote();
   if (elements.syncNoteButton) elements.syncNoteButton.textContent = t("syncNote");
   const topbarMenuButton = document.querySelector(".topbar-menu-button");
   if (topbarMenuButton) {
@@ -6641,6 +6684,81 @@ function activeDocElement() {
   return null;
 }
 
+function docSelectionInsideEditor() {
+  if (!elements.docInput || activeNote()?.mode !== "doc") return false;
+  if (document.activeElement === elements.docInput) return true;
+  const selection = window.getSelection?.();
+  if (!selection || !selection.rangeCount) return false;
+  const range = selection.getRangeAt(0);
+  return elements.docInput.contains(range.commonAncestorContainer);
+}
+
+function handleDocEditorShortcut(event, key = String(event?.key || "").toLowerCase()) {
+  if (!docSelectionInsideEditor()) return false;
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return false;
+  if (key === "z") {
+    event.preventDefault();
+    runNativeHistoryCommand(event.shiftKey ? "redo" : "undo");
+    return true;
+  }
+  if (key === "y") {
+    event.preventDefault();
+    runNativeHistoryCommand("redo");
+    return true;
+  }
+  return false;
+}
+
+function handleDocBeforeInput(event) {
+  if (activeNote()?.mode !== "doc" || state.docHistory.applying) return;
+  if (event.inputType === "historyUndo" || event.inputType === "historyRedo") {
+    event.preventDefault();
+    runNativeHistoryCommand(event.inputType === "historyUndo" ? "undo" : "redo");
+    return;
+  }
+  if (event.isComposing || event.inputType === "insertCompositionText") return;
+  recordDocHistoryBeforeChange();
+}
+
+function docBlockElementFromNode(node) {
+  let current = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentNode;
+  while (current && current !== elements.docInput) {
+    const tag = current.tagName?.toLowerCase();
+    if (["p", "h1", "h2", "h3", "blockquote", "li"].includes(tag)) return current;
+    current = current.parentNode;
+  }
+  return null;
+}
+
+function selectedDocBlocks() {
+  if (!elements.docInput) return [];
+  const selection = window.getSelection?.();
+  if (!selection || !selection.rangeCount) return [];
+  const range = selection.getRangeAt(0);
+  if (!elements.docInput.contains(range.commonAncestorContainer)) return [];
+  const anchorBlock = docBlockElementFromNode(selection.anchorNode);
+  if (range.collapsed) return anchorBlock ? [anchorBlock] : [];
+  const blocks = Array.from(elements.docInput.querySelectorAll("p,h1,h2,h3,blockquote,li"))
+    .filter((block) => {
+      try {
+        return range.intersectsNode(block);
+      } catch {
+        return false;
+      }
+    });
+  if (blocks.length) return blocks;
+  return anchorBlock ? [anchorBlock] : [];
+}
+
+function createDocTaskBox(checked = false) {
+  const box = document.createElement("span");
+  box.className = "doc-task-box";
+  box.setAttribute("data-doc-task", checked ? "checked" : "unchecked");
+  box.setAttribute("contenteditable", "false");
+  box.textContent = checked ? "☑" : "☐";
+  return box;
+}
+
 function docStyleAncestor(command) {
   if (!elements.docInput) return null;
   const selection = window.getSelection?.();
@@ -6785,6 +6903,10 @@ function runDocHistoryCommand(command) {
 function applyDocCommand(command, value = null, options = {}) {
   const note = activeNote();
   if (!note || note.mode !== "doc") return;
+  if (command === "indent" || command === "outdent") {
+    applyDocIndent(command === "indent" ? 1 : -1);
+    return;
+  }
   if (!options.skipHistory && command !== "undo" && command !== "redo") {
     recordDocHistoryBeforeChange();
   }
@@ -6811,6 +6933,33 @@ function applyDocCommand(command, value = null, options = {}) {
   finishDocFormatting({ compactGeneratedSpacing });
 }
 
+function docIndentValue(element) {
+  const raw = element?.style?.paddingLeft || "";
+  const match = raw.match(/^(\d+(?:\.\d+)?)px$/);
+  if (!match) return 0;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function applyDocIndent(direction = 1) {
+  const note = activeNote();
+  if (!note || note.mode !== "doc") return;
+  recordDocHistoryBeforeChange();
+  restoreDocSelection();
+  const blocks = selectedDocBlocks();
+  if (!blocks.length) {
+    elements.docInput?.focus();
+    return;
+  }
+  blocks.forEach((block) => {
+    const next = Math.max(0, Math.min(144, docIndentValue(block) + (direction > 0 ? 24 : -24)));
+    if (next) block.style.paddingLeft = `${next}px`;
+    else block.style.removeProperty("padding-left");
+    if (!block.getAttribute("style")) block.removeAttribute("style");
+  });
+  finishDocFormatting();
+}
+
 function applyDocBlock(block, force = false) {
   const current = currentDocBlockTag();
   const next = force ? block : current === block ? "p" : block;
@@ -6820,10 +6969,56 @@ function applyDocBlock(block, force = false) {
 function applyDocFontFamily(fontFamily) {
   const safeFamily = normalizeDocFontFamily(fontFamily);
   if (!safeFamily) {
-    elements.docInput?.focus();
+    clearDocFontFamily();
     return;
   }
   applyDocCommand("fontName", safeFamily);
+}
+
+function stripDocFontFamily(node) {
+  if (node.nodeType !== Node.ELEMENT_NODE) return;
+  node.style?.removeProperty("font-family");
+  if (node.tagName?.toLowerCase() === "font") {
+    const span = document.createElement("span");
+    while (node.firstChild) span.appendChild(node.firstChild);
+    node.replaceWith(span);
+    stripDocFontFamily(span);
+    return;
+  }
+  Array.from(node.childNodes).forEach(stripDocFontFamily);
+  if (node.nodeType === Node.ELEMENT_NODE && node.getAttribute("style") === "") node.removeAttribute("style");
+}
+
+function clearDocFontFamily() {
+  const note = activeNote();
+  if (!note || note.mode !== "doc") return;
+  recordDocHistoryBeforeChange();
+  restoreDocSelection();
+  const selection = window.getSelection?.();
+  if (!selection || !selection.rangeCount || !elements.docInput) {
+    elements.docInput?.focus();
+    return;
+  }
+  const range = selection.getRangeAt(0);
+  if (!elements.docInput.contains(range.commonAncestorContainer)) return;
+  if (range.collapsed) {
+    let node = activeDocElement();
+    while (node && node !== elements.docInput) {
+      const hasFont = node.style?.fontFamily || node.tagName?.toLowerCase() === "font";
+      if (hasFont) {
+        stripDocFontFamily(node);
+        break;
+      }
+      node = node.parentNode;
+    }
+  } else {
+    const fragment = range.extractContents();
+    Array.from(fragment.childNodes).forEach(stripDocFontFamily);
+    range.insertNode(fragment);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  finishDocFormatting();
 }
 
 function applyDocFontSize(size) {
@@ -6854,7 +7049,25 @@ function applyCurrentDocColor(command) {
 function insertDocChecklist() {
   const note = activeNote();
   if (!note || note.mode !== "doc") return;
-  applyDocCommand("insertHTML", '<span class="doc-task-box" data-doc-task="unchecked" contenteditable="false">☐</span>待办', { compactGeneratedSpacing: true });
+  recordDocHistoryBeforeChange();
+  restoreDocSelection();
+  const [block] = selectedDocBlocks();
+  if (block) {
+    const existing = block.querySelector(".doc-task-box");
+    if (!existing) {
+      const isEmpty = !block.querySelector("img") && !(block.textContent || "").replace(/\u00a0/g, "").trim();
+      if (isEmpty) block.textContent = "";
+      block.classList.add("doc-task-line");
+      block.insertBefore(createDocTaskBox(false), block.firstChild);
+      if (isEmpty) block.appendChild(document.createTextNode("待办"));
+    }
+    finishDocFormatting({ compactGeneratedSpacing: true });
+    return;
+  }
+  applyDocCommand("insertHTML", '<p><span class="doc-task-box" data-doc-task="unchecked" contenteditable="false">☐</span>待办</p>', {
+    compactGeneratedSpacing: true,
+    skipHistory: true
+  });
 }
 
 function handleDocTaskBoxClick(event) {
@@ -7363,7 +7576,7 @@ function currentDocFontFamilyValue() {
     if (family) return family;
     node = node.parentNode;
   }
-  return normalizeDocFontFamily(queryDocCommandValue("fontName"));
+  return "";
 }
 
 function currentDocFontSizeValue() {
@@ -8330,12 +8543,14 @@ function sanitizeDocHtml(html) {
     const fontSize = safeDocFontSize(node.style?.fontSize || (rawTag === "font" ? node.getAttribute("size") : ""));
     const textAlign = safeDocTextAlign(node.style?.textAlign || node.getAttribute("align"));
     const textDecoration = safeDocTextDecoration(node.style?.textDecoration || node.style?.textDecorationLine);
+    const paddingLeft = safeDocIndent(node.style?.paddingLeft);
     if (color) styles.push(`color:${color}`);
     if (background) styles.push(`background-color:${background}`);
     if (fontFamily) styles.push(`font-family:${fontFamily}`);
     if (fontSize) styles.push(`font-size:${fontSize}`);
     if (textAlign) styles.push(`text-align:${textAlign}`);
     if (textDecoration) styles.push(`text-decoration:${textDecoration}`);
+    if (paddingLeft) styles.push(`padding-left:${paddingLeft}`);
     if (styles.length) element.setAttribute("style", styles.join(";"));
 
     const childFragment = document.createDocumentFragment();
@@ -8355,7 +8570,7 @@ function sanitizeDocHtml(html) {
 }
 
 function normalizeDocTaskLineMarkup(container) {
-  container.querySelectorAll?.("p").forEach((paragraph) => {
+  container.querySelectorAll?.("p,li").forEach((paragraph) => {
     const boxes = Array.from(paragraph.querySelectorAll(".doc-task-box"));
     if (!boxes.length) return;
     paragraph.classList.add("doc-task-line");
@@ -8449,6 +8664,14 @@ function safeDocTextAlign(value) {
 
 function safeDocTextDecoration(value) {
   return /line-through/i.test(String(value || "")) ? "line-through" : "";
+}
+
+function safeDocIndent(value) {
+  const match = String(value || "").trim().match(/^(\d+(?:\.\d+)?)px$/);
+  if (!match) return "";
+  const pixels = Number(match[1]);
+  if (!Number.isFinite(pixels) || pixels <= 0 || pixels > 144) return "";
+  return `${Math.round(pixels)}px`;
 }
 
 function safeDocTaskState(value) {
