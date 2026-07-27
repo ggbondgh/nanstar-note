@@ -8526,3 +8526,332 @@ body.is-dragging-split * {
 .youdao-layout-button.active {
   color: #536078 !important;
 }
+
+/* Mobile-only workspace polish: keep the desktop Youdao frame untouched. */
+@media (max-width: 900px) {
+  .main {
+    gap: 8px;
+    padding-top: calc(env(safe-area-inset-top) + 28px) !important;
+  }
+
+  .topbar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 42px;
+    padding: 0 0 6px;
+    align-items: center !important;
+    gap: 8px;
+  }
+
+  .topbar-title {
+    min-width: 0;
+  }
+
+  .topbar h2 {
+    font-size: 20px;
+    line-height: 1.15;
+  }
+
+  .topbar-actions {
+    display: inline-flex !important;
+    min-width: 0;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .topbar-actions .mobile-notes-button,
+  .topbar-actions .icon-button,
+  .topbar-actions .primary-button {
+    height: 36px;
+    min-height: 36px;
+    border-radius: 10px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .topbar-actions .mobile-notes-button {
+    min-width: 62px;
+    padding: 0 10px;
+  }
+
+  .topbar-actions .icon-button {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+  }
+
+  .topbar-actions #topSyncButton {
+    min-width: 56px;
+    padding: 0 13px;
+  }
+
+  .mobile-sidebar-backdrop {
+    z-index: 900 !important;
+  }
+
+  .sidebar,
+  body.sidebar-collapsed .sidebar {
+    z-index: 910 !important;
+  }
+
+  .topbar-menu[open] {
+    z-index: 700 !important;
+  }
+
+  .topbar-menu-panel {
+    z-index: 710 !important;
+  }
+
+  .editor-card {
+    height: calc(100dvh - 78px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-height: 0;
+  }
+
+  .editor-header .note-meta,
+  .note-meta {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title title"
+      "mode actions";
+    min-height: 0 !important;
+    padding: 8px 10px 10px !important;
+    align-items: center !important;
+    gap: 8px 10px;
+  }
+
+  .title-line {
+    grid-area: title;
+    width: 100%;
+    height: auto;
+    min-height: 38px;
+    gap: 8px;
+  }
+
+  .title-line .title-input,
+  .title-input {
+    height: 38px;
+    min-width: 0;
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  .title-save-status {
+    font-size: 13px;
+    line-height: 20px;
+  }
+
+  .note-mode-switch {
+    grid-area: mode;
+    justify-self: start;
+    margin-left: 0 !important;
+  }
+
+  .note-cloud-actions {
+    grid-area: actions;
+    justify-self: end;
+    gap: 6px;
+  }
+
+  .note-cloud-actions .compact-button {
+    height: 34px;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+
+  .segmented {
+    gap: 3px;
+    padding: 2px;
+  }
+
+  .mode-button {
+    height: 32px;
+    min-height: 32px;
+    min-width: 48px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .editor-summary {
+    min-height: 38px;
+    padding: 0 12px;
+  }
+
+  .editor-section-body {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .toolbar {
+    min-height: 44px;
+    padding: 5px 8px;
+    gap: 4px;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    flex-wrap: nowrap !important;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .toolbar > button,
+  .toolbar > .toolbar-menu,
+  .toolbar > .doc-color-split,
+  .toolbar > .doc-style-select {
+    min-inline-size: 32px;
+  }
+
+  .toolbar button,
+  .toolbar-menu > summary,
+  .doc-style-select {
+    height: 32px;
+    min-height: 32px;
+    min-width: 32px;
+    padding: 0 8px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .doc-insert-menu > summary {
+    width: 32px;
+    min-width: 32px !important;
+    padding: 0 !important;
+  }
+
+  .doc-more-menu > summary {
+    min-width: 36px !important;
+    padding: 0 8px !important;
+  }
+
+  .doc-style-select {
+    width: 72px;
+    padding: 0 22px 0 8px;
+    font-size: 13px;
+  }
+
+  .doc-font-select {
+    width: 92px;
+  }
+
+  .doc-size-select {
+    width: 46px;
+  }
+
+  .toolbar-separator {
+    height: 28px;
+    margin: 2px 0;
+  }
+
+  .doc-more-panel {
+    max-width: calc(100vw - 16px);
+  }
+}
+
+@media (max-width: 430px) {
+  .topbar {
+    gap: 6px;
+  }
+
+  .topbar h2 {
+    font-size: 19px;
+  }
+
+  .topbar-actions {
+    gap: 5px;
+  }
+
+  .topbar-actions .mobile-notes-button {
+    width: 40px;
+    min-width: 40px;
+    padding: 0;
+  }
+
+  .topbar-actions .mobile-notes-button span:last-child {
+    display: none;
+  }
+
+  .topbar-actions .icon-button {
+    width: 34px;
+    min-width: 34px;
+  }
+
+  .topbar-actions #topSyncButton {
+    min-width: 50px;
+    padding: 0 11px;
+  }
+
+  .title-line .title-input,
+  .title-input {
+    font-size: 19px;
+  }
+
+  .note-cloud-actions .compact-button {
+    min-width: 52px;
+    padding: 0 10px;
+  }
+
+  .mode-button {
+    min-width: 46px;
+    padding: 0 9px;
+  }
+}
+
+@media (max-width: 380px) {
+  .topbar h2 {
+    font-size: 18px;
+  }
+
+  .topbar-actions {
+    gap: 4px;
+  }
+
+  .topbar-actions .mobile-notes-button,
+  .topbar-actions .icon-button {
+    width: 32px;
+    min-width: 32px;
+  }
+
+  .topbar-actions #topSyncButton {
+    min-width: 46px;
+    padding: 0 9px;
+    font-size: 13px;
+  }
+
+  .editor-header .note-meta,
+  .note-meta {
+    padding-right: 8px !important;
+    padding-left: 8px !important;
+    gap: 7px;
+  }
+
+  .title-save-status {
+    font-size: 12px;
+  }
+
+  .mode-button {
+    min-width: 42px;
+    padding: 0 8px;
+  }
+
+  .note-cloud-actions .compact-button {
+    min-width: 48px;
+    padding: 0 9px;
+  }
+
+  .doc-style-select {
+    width: 66px;
+  }
+
+  .doc-font-select {
+    width: 82px;
+  }
+}

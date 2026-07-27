@@ -4420,12 +4420,10 @@ function renderNoteList() {
       const flags = transfer ? "" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
       const title = transfer ? t("transferAssistantTitle") : note.title;
       const body = transfer ? "" : excerpt(note.mode === "doc" ? docHtmlToText(note.body) : note.body);
-      const syncStatus = transfer ? null : noteCloudStatus(note, syncMeta);
-      const syncClass = syncStatus?.status === "synced" ? "synced" : "dirty";
-      const syncLabel = syncStatus?.label || (syncClass === "synced" ? t("syncStatusSynced") : t("syncStatusDirty"));
+      const syncState = transfer ? null : noteListSyncIndicatorState(note, syncMeta);
       const syncIndicator = transfer
         ? ""
-        : `<span class="note-sync-indicator ${syncClass}" title="${escapeAttribute(syncLabel)}" aria-label="${escapeAttribute(syncLabel)}"></span>`;
+        : `<span class="note-sync-indicator ${syncState.syncClass}" title="${escapeAttribute(syncState.syncLabel)}" aria-label="${escapeAttribute(syncState.syncLabel)}"></span>`;
       const folder = canonicalFolderName(note.folder);
       const folderLabel = displayFolderLabel(folder);
       const folderTag = !transfer && folder !== INBOX_FOLDER
@@ -4493,6 +4491,33 @@ function renderNoteList() {
       state.contextMenuNoteId = button.dataset.id;
       showNoteContextMenu(event.clientX, event.clientY);
     });
+  });
+}
+
+function noteListSyncIndicatorState(note, syncMeta = readSyncMeta()) {
+  const status = noteCloudStatus(note, syncMeta);
+  const syncClass = status.status === "synced" ? "synced" : "dirty";
+  const syncLabel = status.label || (syncClass === "synced" ? t("syncStatusSynced") : t("syncStatusDirty"));
+  return { syncClass, syncLabel };
+}
+
+function updateNoteListSyncIndicators(syncMeta = readSyncMeta()) {
+  if (!elements.noteList) return;
+  elements.noteList.querySelectorAll(".note-item[data-id]").forEach((item) => {
+    const note = state.notes.find((candidate) => candidate.id === item.dataset.id && !isDeletedNote(candidate));
+    if (!note || isTransferAssistant(note) || isFolderRegistry(note)) return;
+    let indicator = item.querySelector(".note-sync-indicator");
+    if (!indicator) {
+      const side = item.querySelector(".note-item-side");
+      if (!side) return;
+      indicator = document.createElement("span");
+      indicator.className = "note-sync-indicator";
+      side.append(indicator);
+    }
+    const { syncClass, syncLabel } = noteListSyncIndicatorState(note, syncMeta);
+    indicator.className = `note-sync-indicator ${syncClass}`;
+    indicator.title = syncLabel;
+    indicator.setAttribute("aria-label", syncLabel);
   });
 }
 
@@ -4657,6 +4682,7 @@ function renderSyncMeta() {
     }
   }
   renderActiveNoteCloudStatus(syncMeta);
+  updateNoteListSyncIndicators(syncMeta);
   updateTitleSaveStatusFromNote(syncMeta);
   renderDashboardOverview();
 }
