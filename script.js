@@ -985,6 +985,15 @@ const DOC_COMMAND_TO_FONT_SIZE = new Map([
   ["7", "32"]
 ]);
 const DOC_FONT_FAMILIES = new Set(["Microsoft YaHei", "SimSun", "SimHei", "KaiTi", "Arial", "Times New Roman", "Consolas"]);
+const DOC_FONT_FAMILY_ALIASES = new Map([
+  ...Array.from(DOC_FONT_FAMILIES, (family) => [family.toLowerCase(), family]),
+  ["microsoft yahei ui", "Microsoft YaHei"],
+  ["微软雅黑", "Microsoft YaHei"],
+  ["宋体", "SimSun"],
+  ["黑体", "SimHei"],
+  ["楷体", "KaiTi"],
+  ["times", "Times New Roman"]
+]);
 const DOC_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 const DOC_IMAGE_MAX_PER_NOTE = 20;
 const DOC_IMAGE_MAX_TOTAL_BYTES = 250 * 1024 * 1024;
@@ -1445,6 +1454,7 @@ function bindEvents() {
   elements.docInput?.addEventListener("click", handleDocTaskBoxClick);
   elements.docInput?.addEventListener("click", handleDocImageClick);
   elements.docInput?.addEventListener("keydown", handleDocImageKeydown);
+  elements.docInput?.addEventListener("keydown", handleDocKeydown);
   elements.docInput?.addEventListener("beforeinput", handleDocBeforeInput);
   elements.docInput?.addEventListener("blur", normalizeDocInputHtml);
   ["keyup", "mouseup", "click"].forEach((eventName) => {
@@ -6709,6 +6719,92 @@ function handleDocEditorShortcut(event, key = String(event?.key || "").toLowerCa
   return false;
 }
 
+function docListItemIsEmpty(item) {
+  if (!item || item.tagName !== "LI") return false;
+  if (item.querySelector("img, .doc-task-box")) return false;
+  return !item.textContent.replace(/\u00a0/g, "").replace(/\u200b/g, "").trim();
+}
+
+function docListItemFromRange(range) {
+  const block = docBlockElementFromNode(range?.startContainer);
+  if (block?.tagName === "LI") return block;
+  if (range?.startContainer?.nodeType !== Node.ELEMENT_NODE) return null;
+  const children = range.startContainer.childNodes;
+  const child = children[range.startOffset] || children[Math.max(0, range.startOffset - 1)];
+  const candidate = child?.nodeType === Node.ELEMENT_NODE
+    ? child.closest?.("li")
+    : child?.parentElement?.closest?.("li");
+  return candidate && elements.docInput?.contains(candidate) ? candidate : null;
+}
+
+function setDocCaretInside(element) {
+  if (!element) return;
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(true);
+  const selection = window.getSelection?.();
+  if (!selection) return;
+  selection.removeAllRanges();
+  selection.addRange(range);
+  state.docSelection = range.cloneRange();
+}
+
+function exitEmptyDocListItem(item) {
+  const list = item?.parentElement;
+  if (!item || !list || !["OL", "UL"].includes(list.tagName)) return false;
+  const paragraph = document.createElement("p");
+  paragraph.appendChild(document.createElement("br"));
+  const followingItems = [];
+  let previousCount = 0;
+  let previous = item.previousElementSibling;
+  while (previous) {
+    if (previous.tagName === "LI") previousCount += 1;
+    previous = previous.previousElementSibling;
+  }
+  let sibling = item.nextElementSibling;
+  while (sibling) {
+    const next = sibling.nextElementSibling;
+    followingItems.push(sibling);
+    sibling = next;
+  }
+
+  recordDocHistoryBeforeChange();
+  item.remove();
+
+  if (followingItems.length) {
+    const nextList = document.createElement(list.tagName.toLowerCase());
+    if (list.tagName === "OL") {
+      nextList.start = previousCount + 1;
+    }
+    followingItems.forEach((node) => nextList.appendChild(node));
+    list.parentNode.insertBefore(paragraph, list.nextSibling);
+    list.parentNode.insertBefore(nextList, paragraph.nextSibling);
+  } else {
+    list.parentNode.insertBefore(paragraph, list.nextSibling);
+  }
+
+  if (!list.querySelector(":scope > li")) list.remove();
+  setDocCaretInside(paragraph);
+  updateActiveFromInputs({ force: true });
+  syncDocHistoryCurrent();
+  updateDocToolbarState();
+  elements.docInput?.focus();
+  return true;
+}
+
+function handleDocKeydown(event) {
+  if (event.defaultPrevented || activeNote()?.mode !== "doc") return;
+  if (event.key !== "Backspace" || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+  const selection = window.getSelection?.();
+  if (!selection || !selection.rangeCount) return;
+  const range = selection.getRangeAt(0);
+  if (!range.collapsed || !elements.docInput?.contains(range.commonAncestorContainer)) return;
+  const block = docListItemFromRange(range);
+  if (block?.tagName !== "LI" || !docListItemIsEmpty(block)) return;
+  event.preventDefault();
+  exitEmptyDocListItem(block);
+}
+
 function handleDocBeforeInput(event) {
   if (activeNote()?.mode !== "doc" || state.docHistory.applying) return;
   if (event.inputType === "historyUndo" || event.inputType === "historyRedo") {
@@ -6776,6 +6872,80 @@ function normalizeDocTaskBlock(paragraph, emptyText = "待办") {
   paragraph.classList.add("doc-task-line");
   paragraph.replaceChildren(box, label);
   return paragraph;
+}
+
+function docEditableFragmentTextLength(fragment) {
+  fragment.querySelectorAll?.(".doc-task-box").forEach((box) => box.remove());
+  return fragment.textContent.length;
+}
+
+function docEditableOffsetInBlock(block, node, offset) {
+  if (!block || !node) return 0;
+  try {
+    const measure = document.createRange();
+    measure.selectNodeContents(block);
+    measure.setEnd(node, offset);
+    const length = docEditableFragmentTextLength(measure.cloneContents());
+    measure.detach?.();
+    return length;
+  } catch {
+    return 0;
+  }
+}
+
+function docEditablePositionInBlock(block, offset) {
+  const target = Math.max(0, Number(offset) || 0);
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (node.parentElement?.closest(".doc-task-box")) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  let consumed = 0;
+  let node = walker.nextNode();
+  while (node) {
+    const next = consumed + node.textContent.length;
+    if (target <= next) return { node, offset: Math.max(0, target - consumed) };
+    consumed = next;
+    node = walker.nextNode();
+  }
+  return { node: block, offset: block.childNodes.length };
+}
+
+function getDocBlockSelectionSnapshot() {
+  if (!elements.docInput) return null;
+  const selection = window.getSelection?.();
+  if (!selection || !selection.rangeCount) return null;
+  const range = selection.getRangeAt(0);
+  if (!elements.docInput.contains(range.commonAncestorContainer)) return null;
+  const startBlock = docBlockElementFromNode(range.startContainer);
+  const endBlock = docBlockElementFromNode(range.endContainer);
+  if (!startBlock || !endBlock) return null;
+  return {
+    collapsed: range.collapsed,
+    startBlock,
+    endBlock,
+    startOffset: docEditableOffsetInBlock(startBlock, range.startContainer, range.startOffset),
+    endOffset: docEditableOffsetInBlock(endBlock, range.endContainer, range.endOffset)
+  };
+}
+
+function restoreDocBlockSelectionSnapshot(snapshot) {
+  if (!snapshot || !elements.docInput) return false;
+  if (!elements.docInput.contains(snapshot.startBlock) || !elements.docInput.contains(snapshot.endBlock)) return false;
+  const start = docEditablePositionInBlock(snapshot.startBlock, snapshot.startOffset);
+  const end = snapshot.collapsed
+    ? start
+    : docEditablePositionInBlock(snapshot.endBlock, snapshot.endOffset);
+  const range = document.createRange();
+  range.setStart(start.node, start.offset);
+  range.setEnd(end.node, end.offset);
+  const selection = window.getSelection?.();
+  if (!selection) return false;
+  selection.removeAllRanges();
+  selection.addRange(range);
+  state.docSelection = range.cloneRange();
+  return true;
 }
 
 function removeDocTaskBlock(paragraph) {
@@ -7167,6 +7337,7 @@ function insertDocChecklist() {
   restoreDocSelection();
   const blocks = selectedDocBlocks();
   if (blocks.length) {
+    const selectionSnapshot = getDocBlockSelectionSnapshot();
     const allTaskBlocks = blocks.every((block) => block.querySelector(".doc-task-box"));
     blocks.forEach((block) => {
       if (allTaskBlocks) {
@@ -7187,6 +7358,7 @@ function insertDocChecklist() {
         normalizeDocTaskBlock(block);
       }
     });
+    restoreDocBlockSelectionSnapshot(selectionSnapshot);
     finishDocFormatting({ compactGeneratedSpacing: true });
     return;
   }
@@ -7676,8 +7848,8 @@ function queryDocCommandValue(command) {
 }
 
 function normalizeDocFontFamily(value) {
-  const raw = String(value || "").trim().replace(/^['"]|['"]$/g, "");
-  return DOC_FONT_FAMILIES.has(raw) ? raw : "";
+  const raw = (String(value || "").split(",")[0] || "").trim().replace(/^['"]|['"]$/g, "");
+  return DOC_FONT_FAMILY_ALIASES.get(raw.toLowerCase()) || "";
 }
 
 function normalizeDocFontSizeValue(value) {
@@ -7695,12 +7867,25 @@ function normalizeDocFontSizeValue(value) {
 }
 
 function currentDocFontFamilyValue() {
-  let node = activeDocElement();
-  while (node && node !== elements.docInput) {
-    const raw = node.style?.fontFamily || (node.tagName?.toLowerCase() === "font" ? node.getAttribute("face") : "");
+  const selection = window.getSelection?.();
+  if (selection?.rangeCount && elements.docInput?.contains(selection.getRangeAt(0).commonAncestorContainer)) {
+    const range = selection.getRangeAt(0);
+    if (!range.collapsed) {
+      const families = new Set(selectedDocTextNodes(range).map(docFontFamilyForNode).filter(Boolean));
+      if (families.size === 1) return Array.from(families)[0];
+      if (families.size > 1) return "";
+    }
+  }
+  return docFontFamilyForNode(activeDocElement());
+}
+
+function docFontFamilyForNode(node) {
+  let current = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+  while (current && current !== elements.docInput) {
+    const raw = current.style?.fontFamily || (current.tagName?.toLowerCase() === "font" ? current.getAttribute("face") : "");
     const family = normalizeDocFontFamily(raw);
     if (family) return family;
-    node = node.parentNode;
+    current = current.parentNode;
   }
   return "";
 }
