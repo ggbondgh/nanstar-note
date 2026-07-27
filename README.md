@@ -98,7 +98,20 @@ CREATE TABLE IF NOT EXISTS note_doc_images (
 
 ## File transfer module
 
-The file-transfer assistant is separate from TXT/MD notes. It stores file bytes in Cloudflare R2 and stores only file metadata in D1. Current limits are 8 files, 35 MB per file, and 50 MB total.
+The file-transfer assistant is separate from TXT/MD/DOC notes. It has a text-transfer area for cross-device clipboard snippets and a file-transfer area for temporary files.
+
+Text transfer uses D1 only. Current limits are 100 recent messages and 20 KB per message. The Pages Functions route is `GET/POST/DELETE /api/clipboard`, uses the same `NOTE_SYNC_TOKEN` bearer token as note sync, and creates this table automatically:
+
+```sql
+CREATE TABLE IF NOT EXISTS note_transfer_texts (
+  id TEXT PRIMARY KEY,
+  text TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+```
+
+File transfer stores file bytes in Cloudflare R2 and stores only file metadata in D1. Current limits are 8 files, 35 MB per file, and 50 MB total.
 
 The Pages Functions route is `GET/POST/DELETE /api/files`. It uses the same `NOTE_SYNC_TOKEN` bearer token as note sync and creates this D1 table automatically:
 

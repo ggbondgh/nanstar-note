@@ -14,7 +14,7 @@
     <title>NanStar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=47" />
+    <link rel="stylesheet" href="./styles.css?v=60" />
   </head>
   <body>
     <div class="app-shell">
@@ -22,43 +22,106 @@
         <button class="sidebar-toggle-button" id="sidebarToggleButton" type="button" title="收起侧栏" aria-label="收起侧栏">
           <span class="toggle-icon" aria-hidden="true">◀</span>
         </button>
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true">NN</div>
-          <div>
-            <h1>NanStar Note</h1>
-            <p id="cloudStatus">本地模式</p>
+        <div class="youdao-rail">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">NN</div>
+            <div>
+              <h1>NanStar Note</h1>
+              <p id="cloudStatus">本地模式</p>
+            </div>
+          </div>
+
+          <div class="sidebar-actions">
+            <button class="primary-button" id="newNoteButton" type="button">
+              <span aria-hidden="true">+</span>
+              <span>新建笔记</span>
+            </button>
+          </div>
+
+          <nav class="youdao-nav" aria-label="常用入口">
+            <button class="youdao-nav-item" id="youdaoTransferButton" type="button">
+              <span aria-hidden="true">⇄</span>
+              <span>文件传输助手</span>
+            </button>
+            <button class="youdao-nav-item active" id="youdaoAllNotesButton" data-youdao-filter="all" type="button">
+              <span aria-hidden="true">▦</span>
+              <span>全部笔记</span>
+            </button>
+            <button class="youdao-nav-item" id="youdaoFavoriteButton" data-youdao-filter="favorite" type="button">
+              <span aria-hidden="true">☆</span>
+              <span>星标笔记</span>
+            </button>
+          </nav>
+
+          <details class="folder-panel nav-section" id="folderSection">
+            <summary class="panel-summary folder-panel-summary" id="folderSectionSummary">
+              <span class="summary-title">
+                <span class="summary-mark" aria-hidden="true">▶</span>
+                <span id="folderSectionTitle">文件夹</span>
+              </span>
+              <span class="summary-meta">
+                <span class="folder-summary-count" id="folderSectionCount">0</span>
+                <button class="icon-button folder-add-button" id="folderAddButton" type="button"
+                        title="新建文件夹" aria-label="新建文件夹">+</button>
+              </span>
+            </summary>
+            <div class="folder-list" id="folderList"></div>
+          </details>
+
+          <div class="youdao-sync-stack" aria-label="云同步">
+            <button class="youdao-nav-item youdao-sync-button save-all-button" id="saveAllButton" type="button" title="保存全部到云端" aria-label="保存全部到云端">
+              <span aria-hidden="true">⇡</span>
+              <span>保存全部到云端</span>
+            </button>
+            <button class="youdao-nav-item youdao-sync-button sync-refresh-button" id="syncRefreshButton" type="button" title="从云端同步全部" aria-label="从云端同步全部">
+              <span aria-hidden="true">↻</span>
+              <span>从云端同步全部</span>
+            </button>
+          </div>
+
+          <div class="youdao-rail-footer">
+            <button class="text-button" id="youdaoSyncSettingsButton" type="button">
+              <span class="youdao-footer-icon" aria-hidden="true">⚙</span>
+              <span>登录</span>
+            </button>
+            <details class="youdao-client-menu" id="youdaoClientMenu">
+              <summary id="youdaoClientSummary">
+                <span class="youdao-footer-icon" aria-hidden="true">⇩</span>
+                <span>客户端下载</span>
+              </summary>
+              <div class="youdao-client-panel">
+                <button class="youdao-client-item" id="youdaoInstallDesktopButton" type="button">
+                  <span aria-hidden="true">▣</span>
+                  <span>安装到电脑端</span>
+                </button>
+                <button class="youdao-client-item" id="youdaoAndroidAppButton" type="button">
+                  <span aria-hidden="true">▤</span>
+                  <span>Android APP</span>
+                </button>
+              </div>
+            </details>
+          </div>
+          <div class="youdao-view-tabs" role="group" aria-label="布局切换">
+            <button class="youdao-layout-button active" id="youdaoLayoutThreeButton" data-youdao-layout="three" type="button" title="三栏视图" aria-label="三栏视图">
+              <span class="youdao-layout-icon youdao-layout-icon-three" aria-hidden="true"><i></i><i></i><i></i></span>
+            </button>
+            <button class="youdao-layout-button" id="youdaoLayoutTwoButton" data-youdao-layout="two" type="button" title="两栏视图" aria-label="两栏视图">
+              <span class="youdao-layout-icon youdao-layout-icon-two" aria-hidden="true"><i></i><i></i></span>
+            </button>
+            <button class="youdao-layout-button" id="youdaoLayoutOneButton" data-youdao-layout="one" type="button" title="内容视图" aria-label="内容视图">
+              <span class="youdao-layout-icon youdao-layout-icon-one" aria-hidden="true"><i></i></span>
+            </button>
           </div>
         </div>
 
-        <div class="sidebar-actions">
-          <button class="primary-button" id="newNoteButton" type="button">
-            <span aria-hidden="true">+</span>
-            <span>新建笔记</span>
-          </button>
-          <button class="icon-button save-all-button" id="saveAllButton" type="button" title="保存全部到云端" aria-label="保存全部到云端">⇡</button>
-          <button class="icon-button sync-refresh-button" id="syncRefreshButton" type="button" title="刷新并覆盖本地" aria-label="刷新并覆盖本地">↻</button>
-        </div>
+        <div class="youdao-rail-resizer" id="youdaoRailResizer" role="separator" aria-orientation="vertical" aria-label="调整导航和笔记列表宽度"></div>
 
+        <div class="youdao-list-pane">
         <div class="search-box" role="search">
           <span aria-hidden="true">⌕</span>
           <input id="searchInput" type="text" placeholder="搜索笔记..." aria-label="搜索笔记" autocomplete="off" />
           <button class="search-clear" id="searchClearButton" type="button" title="清除搜索" aria-label="清除搜索" hidden>×</button>
         </div>
-
-        <details class="folder-panel nav-section" id="folderSection">
-          <summary class="panel-summary folder-panel-summary" id="folderSectionSummary">
-            <span class="summary-title">
-              <span class="summary-mark" aria-hidden="true">▶</span>
-              <span id="folderSectionTitle">文件夹</span>
-            </span>
-            <span class="summary-meta">
-              <span class="folder-summary-count" id="folderSectionCount">0</span>
-              <button class="icon-button folder-add-button" id="folderAddButton" type="button"
-                      title="新建文件夹" aria-label="新建文件夹">+</button>
-            </span>
-          </summary>
-          <div class="folder-list" id="folderList"></div>
-        </details>
 
         <section class="note-list-panel" aria-labelledby="noteListTitle">
           <div class="note-list-header">
@@ -79,6 +142,7 @@
           </div>
           <div class="note-list" id="noteList" aria-live="polite"></div>
         </section>
+        </div>
       </aside>
 
       <button class="mobile-sidebar-backdrop" id="mobileSidebarBackdrop" type="button" aria-label="关闭笔记列表"></button>
@@ -100,7 +164,9 @@
             <button class="icon-button topbar-new-button" id="sidebarQuickNewButton" type="button" title="新建笔记" aria-label="新建笔记">＋</button>
             <button class="primary-button" id="topSyncButton" type="button">同步</button>
             <details class="topbar-menu">
-              <summary class="icon-button topbar-menu-button" title="更多操作" aria-label="更多操作">⋯</summary>
+              <summary class="icon-button topbar-menu-button" title="更多操作" aria-label="更多操作">
+                <span class="topbar-menu-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+              </summary>
               <div class="topbar-menu-panel">
                 <button class="menu-item topbar-install-button" id="topInstallButton" type="button" hidden title="安装到桌面" aria-label="安装到桌面">
                   <span aria-hidden="true">⤓</span>
@@ -161,13 +227,19 @@
         <article class="editor-card" id="editorCard" aria-labelledby="editorTitle">
           <section class="editor-header">
             <div class="note-meta">
-              <input
-                id="titleInput"
-                class="title-input"
-                type="text"
-                placeholder="写一个清晰的标题"
-                autocomplete="off"
-              />
+              <div class="title-line">
+                <input
+                  id="titleInput"
+                  class="title-input"
+                  type="text"
+                  placeholder="写一个清晰的标题"
+                  autocomplete="off"
+                />
+                <span class="title-save-status saved" id="titleSaveStatus" aria-live="polite">
+                  <span class="title-save-icon" aria-hidden="true">✓</span>
+                  <span id="titleSaveStatusText">已保存</span>
+                </span>
+              </div>
               <div class="note-mode-switch">
                 <div class="segmented segmented-tight" aria-label="编辑模式">
                   <button class="mode-button active" type="button" data-mode="txt">TXT</button>
@@ -176,8 +248,7 @@
                 </div>
               </div>
               <div class="note-cloud-actions" id="noteCloudActions">
-                <span class="note-sync-indicator" id="activeNoteSyncDot" aria-hidden="true"></span>
-                <button class="ghost-button compact-button" id="saveNoteButton" type="button">保存</button>
+                <button class="ghost-button compact-button" id="saveNoteButton" type="button" title="保存 Ctrl+S">保存</button>
                 <button class="ghost-button compact-button" id="syncNoteButton" type="button">同步</button>
               </div>
             </div>
@@ -205,7 +276,7 @@
                 <div class="toolbar" aria-label="编辑工具">
                   <button type="button" data-command="undo" title="撤回 Ctrl+Z">↶</button>
                   <button type="button" data-command="redo" title="重做 Ctrl+Y">↷</button>
-                  <span class="toolbar-separator" aria-hidden="true"></span>
+                  <span class="toolbar-separator md-tool" aria-hidden="true"></span>
                   <button class="md-tool" type="button" data-wrap="**" title="加粗">B</button>
                   <button class="md-tool" type="button" data-wrap="`" title="行内代码">{ }</button>
                   <button class="md-tool" type="button" data-prefix="- " title="无序列表">•</button>
@@ -213,75 +284,16 @@
                   <button class="md-tool" type="button" data-prefix="- [ ] " title="任务清单">☐</button>
                   <button class="md-tool" type="button" data-prefix="> " title="引用">❝</button>
                   <button class="md-tool" type="button" data-block="code" title="代码块">&lt;/&gt;</button>
-                  <select class="doc-style-select doc-tool" id="docBlockSelect" title="段落样式" aria-label="段落样式">
-                    <option value="p">正文</option>
-                    <option value="h1">标题 1</option>
-                    <option value="h2">标题 2</option>
-                    <option value="h3">标题 3</option>
-                    <option value="blockquote">引用</option>
-                  </select>
-                  <button class="doc-tool" type="button" data-doc-command="bold" title="加粗">B</button>
-                  <button class="doc-tool" type="button" data-doc-command="italic" title="斜体"><em>I</em></button>
-                  <button class="doc-tool" type="button" data-doc-command="underline" title="下划线"><u>U</u></button>
-                  <details class="toolbar-menu doc-tool doc-color-menu" data-doc-color-menu="foreColor">
-                    <summary class="doc-color-summary" title="文字颜色" aria-label="文字颜色">
-                      <span class="doc-color-letter" aria-hidden="true">A</span>
-                      <span class="doc-color-swatch" id="docTextColorSwatch" aria-hidden="true"></span>
+                  <span class="toolbar-separator doc-tool" aria-hidden="true"></span>
+                  <button class="doc-tool" type="button" data-doc-command="removeFormat" title="清除格式">Tx</button>
+                  <span class="toolbar-separator doc-tool" aria-hidden="true"></span>
+                  <details class="toolbar-menu doc-tool doc-insert-menu">
+                    <summary title="插入" aria-label="插入">
+                      <span class="doc-plus-icon" aria-hidden="true">＋</span>
+                      <span>插入</span>
                       <span class="doc-menu-caret" aria-hidden="true">▾</span>
                     </summary>
-                    <div class="toolbar-menu-panel doc-palette-panel">
-                      <button class="doc-palette-action" type="button" data-doc-color-clear="foreColor">
-                        <span aria-hidden="true">×</span>
-                        <span>默认文字</span>
-                      </button>
-                      <div class="doc-palette-grid" aria-label="文字颜色">
-                        <button type="button" data-doc-color="#111827" style="--swatch:#111827" aria-label="黑色"></button>
-                        <button type="button" data-doc-color="#dc2626" style="--swatch:#dc2626" aria-label="红色"></button>
-                        <button type="button" data-doc-color="#ea580c" style="--swatch:#ea580c" aria-label="橙色"></button>
-                        <button type="button" data-doc-color="#ca8a04" style="--swatch:#ca8a04" aria-label="黄色"></button>
-                        <button type="button" data-doc-color="#16a34a" style="--swatch:#16a34a" aria-label="绿色"></button>
-                        <button type="button" data-doc-color="#0d9488" style="--swatch:#0d9488" aria-label="青色"></button>
-                        <button type="button" data-doc-color="#2563eb" style="--swatch:#2563eb" aria-label="蓝色"></button>
-                        <button type="button" data-doc-color="#7c3aed" style="--swatch:#7c3aed" aria-label="紫色"></button>
-                      </div>
-                      <label class="doc-custom-color">
-                        <span>自定义</span>
-                        <input id="docTextColorInput" type="color" value="#111827" aria-label="自定义文字颜色" />
-                      </label>
-                    </div>
-                  </details>
-                  <details class="toolbar-menu doc-tool doc-color-menu" data-doc-color-menu="hiliteColor">
-                    <summary class="doc-color-summary" title="高亮颜色" aria-label="高亮颜色">
-                      <span class="doc-highlight-mark" aria-hidden="true">▰</span>
-                      <span class="doc-color-swatch" id="docHighlightSwatch" aria-hidden="true"></span>
-                      <span class="doc-menu-caret" aria-hidden="true">▾</span>
-                    </summary>
-                    <div class="toolbar-menu-panel doc-palette-panel">
-                      <button class="doc-palette-action" type="button" data-doc-color-clear="hiliteColor">
-                        <span aria-hidden="true">×</span>
-                        <span>取消高亮</span>
-                      </button>
-                      <div class="doc-palette-grid" aria-label="高亮颜色">
-                        <button type="button" data-doc-color="#fef3c7" style="--swatch:#fef3c7" aria-label="浅黄"></button>
-                        <button type="button" data-doc-color="#fee2e2" style="--swatch:#fee2e2" aria-label="浅红"></button>
-                        <button type="button" data-doc-color="#ffedd5" style="--swatch:#ffedd5" aria-label="浅橙"></button>
-                        <button type="button" data-doc-color="#dcfce7" style="--swatch:#dcfce7" aria-label="浅绿"></button>
-                        <button type="button" data-doc-color="#ccfbf1" style="--swatch:#ccfbf1" aria-label="浅青"></button>
-                        <button type="button" data-doc-color="#dbeafe" style="--swatch:#dbeafe" aria-label="浅蓝"></button>
-                        <button type="button" data-doc-color="#ede9fe" style="--swatch:#ede9fe" aria-label="浅紫"></button>
-                        <button type="button" data-doc-color="#f3f4f6" style="--swatch:#f3f4f6" aria-label="浅灰"></button>
-                      </div>
-                      <label class="doc-custom-color">
-                        <span>自定义</span>
-                        <input id="docHighlightInput" type="color" value="#fef3c7" aria-label="自定义高亮颜色" />
-                      </label>
-                    </div>
-                  </details>
-                  <button class="doc-tool" type="button" data-doc-command="insertUnorderedList" title="无序列表">•</button>
-                  <button class="doc-tool" type="button" data-doc-command="insertOrderedList" title="有序列表">1.</button>
-                  <details class="toolbar-menu doc-tool doc-more-menu">
-                    <summary title="更多格式" aria-label="更多格式">···</summary>
-                    <div class="toolbar-menu-panel">
+                    <div class="toolbar-menu-panel doc-insert-panel">
                       <button type="button" data-doc-action="image" title="插入图片">
                         <span aria-hidden="true">▧</span>
                         <span>插入图片</span>
@@ -290,17 +302,145 @@
                         <span aria-hidden="true">↗</span>
                         <span>链接</span>
                       </button>
+                    </div>
+                  </details>
+                  <span class="toolbar-separator doc-tool" aria-hidden="true"></span>
+                  <select class="doc-style-select doc-tool" id="docBlockSelect" title="段落样式" aria-label="段落样式">
+                    <option value="p">正文</option>
+                    <option value="h1">标题 1</option>
+                    <option value="h2">标题 2</option>
+                    <option value="h3">标题 3</option>
+                    <option value="blockquote">引用</option>
+                  </select>
+                  <select class="doc-style-select doc-tool doc-font-select" id="docFontSelect" title="字体" aria-label="字体">
+                    <option value="">默认字体</option>
+                    <option value="Microsoft YaHei">微软雅黑</option>
+                    <option value="SimSun">宋体</option>
+                    <option value="SimHei">黑体</option>
+                    <option value="KaiTi">楷体</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times</option>
+                    <option value="Consolas">Consolas</option>
+                  </select>
+                  <select class="doc-style-select doc-tool doc-size-select" id="docFontSizeSelect" title="字号" aria-label="字号">
+                    <option value="12">12</option>
+                    <option value="14" selected>14</option>
+                    <option value="16">16</option>
+                    <option value="18">18</option>
+                    <option value="24">24</option>
+                    <option value="32">32</option>
+                  </select>
+                  <button class="doc-tool" type="button" data-doc-command="bold" title="加粗">B</button>
+                  <button class="doc-tool" type="button" data-doc-command="italic" title="斜体"><em>I</em></button>
+                  <button class="doc-tool" type="button" data-doc-command="underline" title="下划线"><u>U</u></button>
+                  <button class="doc-tool" type="button" data-doc-command="strikeThrough" title="删除线"><s>S</s></button>
+                  <div class="doc-tool doc-color-split" role="group" aria-label="文字颜色">
+                    <button class="doc-color-main" type="button" data-doc-color-apply="foreColor" title="文字颜色">
+                      <span class="doc-color-letter" aria-hidden="true">A</span>
+                      <span class="doc-color-line" id="docTextColorSwatch" aria-hidden="true"></span>
+                    </button>
+                    <details class="toolbar-menu doc-color-menu" data-doc-color-menu="foreColor">
+                      <summary class="doc-color-arrow" title="选择文字颜色" aria-label="选择文字颜色">
+                        <span class="doc-menu-caret" aria-hidden="true">▾</span>
+                      </summary>
+                      <div class="toolbar-menu-panel doc-palette-panel">
+                        <button class="doc-palette-action" type="button" data-doc-color-clear="foreColor">
+                          <span aria-hidden="true">×</span>
+                          <span>默认文字</span>
+                        </button>
+                        <div class="doc-palette-grid" aria-label="文字颜色">
+                          <button type="button" data-doc-color="#111827" style="--swatch:#111827" aria-label="黑色"></button>
+                          <button type="button" data-doc-color="#dc2626" style="--swatch:#dc2626" aria-label="红色"></button>
+                          <button type="button" data-doc-color="#ea580c" style="--swatch:#ea580c" aria-label="橙色"></button>
+                          <button type="button" data-doc-color="#ca8a04" style="--swatch:#ca8a04" aria-label="黄色"></button>
+                          <button type="button" data-doc-color="#16a34a" style="--swatch:#16a34a" aria-label="绿色"></button>
+                          <button type="button" data-doc-color="#0d9488" style="--swatch:#0d9488" aria-label="青色"></button>
+                          <button type="button" data-doc-color="#2563eb" style="--swatch:#2563eb" aria-label="蓝色"></button>
+                          <button type="button" data-doc-color="#7c3aed" style="--swatch:#7c3aed" aria-label="紫色"></button>
+                        </div>
+                        <label class="doc-custom-color">
+                          <span>自定义</span>
+                          <input id="docTextColorInput" type="color" value="#111827" aria-label="自定义文字颜色" />
+                        </label>
+                      </div>
+                    </details>
+                  </div>
+                  <div class="doc-tool doc-color-split" role="group" aria-label="高亮颜色">
+                    <button class="doc-color-main" type="button" data-doc-color-apply="hiliteColor" title="高亮颜色">
+                      <span class="doc-highlight-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                          <path class="marker-body" d="M14.8 3.8 20.2 9.2 10.5 18.9 5.1 13.5z"></path>
+                          <path class="marker-tip" d="M4.2 14.4 9.6 19.8 4.2 20.6 3.4 19.8z"></path>
+                          <path class="marker-line" d="M4 21h16"></path>
+                        </svg>
+                      </span>
+                      <span class="doc-color-line" id="docHighlightSwatch" aria-hidden="true"></span>
+                    </button>
+                    <details class="toolbar-menu doc-color-menu" data-doc-color-menu="hiliteColor">
+                      <summary class="doc-color-arrow" title="选择高亮颜色" aria-label="选择高亮颜色">
+                        <span class="doc-menu-caret" aria-hidden="true">▾</span>
+                      </summary>
+                      <div class="toolbar-menu-panel doc-palette-panel">
+                        <button class="doc-palette-action" type="button" data-doc-color-clear="hiliteColor">
+                          <span aria-hidden="true">×</span>
+                          <span>取消高亮</span>
+                        </button>
+                        <div class="doc-palette-grid" aria-label="高亮颜色">
+                          <button type="button" data-doc-color="#fef3c7" style="--swatch:#fef3c7" aria-label="浅黄"></button>
+                          <button type="button" data-doc-color="#fee2e2" style="--swatch:#fee2e2" aria-label="浅红"></button>
+                          <button type="button" data-doc-color="#ffedd5" style="--swatch:#ffedd5" aria-label="浅橙"></button>
+                          <button type="button" data-doc-color="#dcfce7" style="--swatch:#dcfce7" aria-label="浅绿"></button>
+                          <button type="button" data-doc-color="#ccfbf1" style="--swatch:#ccfbf1" aria-label="浅青"></button>
+                          <button type="button" data-doc-color="#dbeafe" style="--swatch:#dbeafe" aria-label="浅蓝"></button>
+                          <button type="button" data-doc-color="#ede9fe" style="--swatch:#ede9fe" aria-label="浅紫"></button>
+                          <button type="button" data-doc-color="#f3f4f6" style="--swatch:#f3f4f6" aria-label="浅灰"></button>
+                        </div>
+                        <label class="doc-custom-color">
+                          <span>自定义</span>
+                          <input id="docHighlightInput" type="color" value="#fef3c7" aria-label="自定义高亮颜色" />
+                        </label>
+                      </div>
+                    </details>
+                  </div>
+                  <span class="toolbar-separator doc-tool" aria-hidden="true"></span>
+                  <button class="doc-tool doc-task-button" type="button" data-doc-action="checklist" title="任务清单">☑</button>
+                  <button class="doc-tool" type="button" data-doc-command="insertUnorderedList" title="无序列表">•</button>
+                  <button class="doc-tool" type="button" data-doc-command="insertOrderedList" title="有序列表">1.</button>
+                  <details class="toolbar-menu doc-tool doc-more-menu">
+                    <summary title="更多格式" aria-label="更多格式">
+                      <span>更多</span>
+                      <span class="doc-menu-caret" aria-hidden="true">▾</span>
+                    </summary>
+                    <div class="toolbar-menu-panel doc-more-panel">
+                      <button type="button" data-doc-command="justifyLeft" title="左对齐">
+                        <span aria-hidden="true">☰</span>
+                      </button>
+                      <button type="button" data-doc-command="justifyCenter" title="居中">
+                        <span aria-hidden="true">≡</span>
+                      </button>
+                      <button type="button" data-doc-command="justifyRight" title="右对齐">
+                        <span aria-hidden="true">☷</span>
+                      </button>
+                      <span class="toolbar-separator" aria-hidden="true"></span>
+                      <button type="button" data-doc-command="outdent" title="减少缩进">
+                        <span aria-hidden="true">⇤</span>
+                      </button>
+                      <button type="button" data-doc-command="indent" title="增加缩进">
+                        <span aria-hidden="true">⇥</span>
+                      </button>
+                      <button type="button" data-doc-block="blockquote" title="引用">
+                        <span aria-hidden="true">❝</span>
+                      </button>
+                      <span class="toolbar-separator" aria-hidden="true"></span>
                       <button type="button" data-doc-command="unlink" title="取消链接">
                         <span aria-hidden="true">⌫</span>
-                        <span>取消链接</span>
                       </button>
                       <button type="button" data-doc-command="removeFormat" title="清除格式">
                         <span aria-hidden="true">Tx</span>
-                        <span>清除格式</span>
                       </button>
                     </div>
                   </details>
-                  <span class="toolbar-separator" aria-hidden="true"></span>
+                  <span class="toolbar-separator md-tool" aria-hidden="true"></span>
                   <details class="toolbar-menu md-tool">
                     <summary title="插入片段" aria-label="插入片段">＋</summary>
                     <div class="toolbar-menu-panel">
@@ -333,22 +473,55 @@
           <section class="transfer-panel" id="transferPanel" hidden>
             <div class="transfer-panel-head">
               <div>
-                <h3 id="transferPanelTitle">文件传输</h3>
-                <p id="transferPanelMeta">最多 8 个文件，单文件 35 MB，总量 50 MB。</p>
-              </div>
-              <div class="transfer-actions">
-                <button class="ghost-button" id="transferRefreshButton" type="button">刷新</button>
-                <button class="primary-button" id="transferUploadButton" type="button">上传文件</button>
+                <h3 id="transferPanelTitle">文件传输助手</h3>
+                <p id="transferPanelMeta">文本和文件不会进入笔记列表，适合跨设备临时中转。</p>
               </div>
             </div>
-            <div class="transfer-dropzone" id="transferDropzone">
-              <input id="transferFileInput" type="file" multiple hidden />
-              <div class="transfer-drop-copy">
-                <strong id="transferDropTitle">拖放文件到这里，或点击上传。</strong>
-                <span id="transferDropHint">文件会保存到 Cloudflare R2，不占用笔记正文空间。</span>
+
+            <section class="transfer-section transfer-text-section" aria-labelledby="transferTextTitle">
+              <div class="transfer-section-head">
+                <div>
+                  <h4 id="transferTextTitle">文本传输</h4>
+                  <p id="transferTextHint">把临时文本发到这里，其他设备同步后可直接复制。</p>
+                </div>
+                <div class="transfer-section-actions">
+                  <button class="ghost-button" id="transferTextRefreshButton" type="button">刷新</button>
+                  <button class="ghost-button" id="transferTextClearButton" type="button">清空</button>
+                </div>
               </div>
-            </div>
-            <div class="transfer-list" id="transferFileList" aria-live="polite"></div>
+              <div class="transfer-message-list" id="transferMessageList" aria-live="polite"></div>
+              <div class="transfer-composer">
+                <textarea
+                  id="transferTextInput"
+                  rows="3"
+                  spellcheck="false"
+                  placeholder="粘贴要同步到其他设备的文本..."
+                ></textarea>
+                <button class="primary-button" id="transferTextSendButton" type="button">发送</button>
+              </div>
+              <div class="transfer-composer-hint" id="transferTextSendHint">Ctrl+Enter 发送，Enter 换行</div>
+            </section>
+
+            <section class="transfer-section transfer-file-section" aria-labelledby="transferFileTitle">
+              <div class="transfer-section-head">
+                <div>
+                  <h4 id="transferFileTitle">文件传输</h4>
+                  <p id="transferFileMeta">最多 8 个文件，单文件最大支持 35 MB，总量最大 50 MB。</p>
+                </div>
+                <div class="transfer-actions">
+                  <button class="ghost-button" id="transferRefreshButton" type="button">刷新</button>
+                  <button class="primary-button" id="transferUploadButton" type="button">上传文件</button>
+                </div>
+              </div>
+              <div class="transfer-dropzone" id="transferDropzone">
+                <input id="transferFileInput" type="file" multiple hidden />
+                <div class="transfer-drop-copy">
+                  <strong id="transferDropTitle">拖放文件到这里，或点击上传。</strong>
+                  <span id="transferDropHint">文件会保存到 Cloudflare R2，不占用笔记正文空间。</span>
+                </div>
+              </div>
+              <div class="transfer-list" id="transferFileList" aria-live="polite"></div>
+            </section>
           </section>
 
           <div class="split-editor" id="splitEditor">
@@ -371,9 +544,9 @@
                   id="docInput"
                   class="doc-input"
                   contenteditable="true"
+                  spellcheck="false"
                   role="textbox"
                   aria-multiline="true"
-                  spellcheck="true"
                   data-placeholder="像微信收藏/飞书文档一样编辑：标题、加粗、斜体、颜色、高亮、列表。"
                 ></div>
                 <input
@@ -592,7 +765,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-    <script src="./script.js?v=40"></script>
+  <script src="./script.js?v=49"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
@@ -601,21 +774,25 @@
       }
       let deferredPrompt;
       const installButton = document.getElementById("topInstallButton");
+      const setInstallButtonsReady = (ready) => {
+        if (installButton) installButton.hidden = !ready;
+      };
+      window.nanstarInstallApp = async () => {
+        if (!deferredPrompt) return false;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === "accepted") setInstallButtonsReady(false);
+        deferredPrompt = null;
+        return true;
+      };
       window.addEventListener("beforeinstallprompt", (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        if (installButton) installButton.hidden = false;
+        setInstallButtonsReady(true);
       });
-      installButton?.addEventListener("click", async () => {
-        if (deferredPrompt) {
-          deferredPrompt.prompt();
-          const { outcome } = await deferredPrompt.userChoice;
-          if (outcome === "accepted") installButton.hidden = true;
-          deferredPrompt = null;
-        }
-      });
+      installButton?.addEventListener("click", () => window.nanstarInstallApp());
       window.addEventListener("appinstalled", () => {
-        if (installButton) installButton.hidden = true;
+        setInstallButtonsReady(false);
       });
     </script>
   </body>

@@ -9,6 +9,10 @@ const storageKeys = {
   autoSync: "nanstar-note-auto-sync",
   splitRatio: "nanstar-note-split-ratio",
   sidebarWidth: "nanstar-note-sidebar-width",
+  youdaoRailWidth: "nanstar-note-youdao-rail-width",
+  youdaoListWidth: "nanstar-note-youdao-list-width",
+  youdaoLayout: "nanstar-note-youdao-layout",
+  youdaoPreviousLayout: "nanstar-note-youdao-previous-layout",
   sidebarCollapsed: "nanstar-note-sidebar-collapsed",
   folderSectionCollapsed: "nanstar-note-folder-section-collapsed",
   language: "nanstar-note-language"
@@ -36,7 +40,7 @@ const i18n = {
     docPlaceholder: "像微信收藏/飞书文档一样编辑：标题、加粗、斜体、颜色、高亮、列表。",
     sync: "同步",
     installDesktop: "安装到桌面",
-    androidApp: "Android App",
+    androidApp: "Android APP",
     androidAppTitle: "安装与更新",
     androidAppCopy: "手机端可以下载 APK 安装。后续 GitHub Release 生成新版本后，这里可以检查并打开最新安装包。",
     androidDownload: "下载 Android APK",
@@ -140,8 +144,12 @@ const i18n = {
     quote: "引用",
     codeBlock: "代码块",
     underline: "下划线",
+    strikethrough: "删除线",
     heading: "标题",
     paragraphStyle: "段落样式",
+    fontFamily: "字体",
+    fontSize: "字号",
+    defaultFont: "默认字体",
     paragraphBody: "正文",
     heading1: "标题 1",
     heading2: "标题 2",
@@ -151,7 +159,14 @@ const i18n = {
     defaultTextColor: "默认文字",
     clearHighlight: "取消高亮",
     customColor: "自定义",
+    insertMenu: "插入",
+    moreButton: "更多",
     moreFormat: "更多格式",
+    alignLeft: "左对齐",
+    alignCenter: "居中",
+    alignRight: "右对齐",
+    decreaseIndent: "减少缩进",
+    increaseIndent: "增加缩进",
     insertLink: "链接",
     removeLink: "取消链接",
     clearFormat: "清除格式",
@@ -199,6 +214,8 @@ const i18n = {
     syncPendingShort: "待同步",
     saving: "保存中...",
     savedLocal: "已保存本地",
+    titleSaved: "已保存",
+    titleUnsaved: "未保存",
     syncRefreshing: "正在从云端刷新并覆盖本地...",
     syncRefreshedAt: "已从云端刷新 {time}",
     syncPushedAt: "已同步到云端 {time}",
@@ -213,6 +230,7 @@ const i18n = {
     syncNoChange: "云端暂无更新",
     syncBusy: "正在同步，请稍后再试",
     saveNote: "保存",
+    saveNoteShortcut: "保存 Ctrl+S",
     syncNote: "同步",
     saveAll: "保存全部到云端",
     syncAll: "从云端同步全部",
@@ -225,8 +243,32 @@ const i18n = {
     transferAssistantTitle: "文件传输助手",
     transferAssistantBody: "",
     transferAssistantExcerpt: "跨设备临时传文件",
-    transferPanelTitle: "文件传输",
-    transferPanelMeta: "最多 {count} 个文件，单文件 {fileSize}，总量 {totalSize}。",
+    transferPanelTitle: "文件传输助手",
+    transferPanelMeta: "文本和文件不会进入笔记列表，适合跨设备临时中转。",
+    transferTextTitle: "文本传输",
+    transferTextHint: "把临时文本发到这里，其他设备同步后可直接复制。",
+    transferTextLimits: "单条最大 {size}，最近保留 {count} 条。",
+    transferTextPlaceholder: "粘贴要同步到其他设备的文本...",
+    transferTextSendHint: "Ctrl+Enter 发送，Enter 换行",
+    transferTextSend: "发送",
+    transferTextRefresh: "刷新",
+    transferTextClear: "清空",
+    transferTextCopy: "复制",
+    transferTextDelete: "删除",
+    transferTextNoToken: "配置同步 Token 后可使用文本传输。",
+    transferTextEmpty: "暂无文本消息。",
+    transferTextLoading: "正在读取文本消息...",
+    transferTextSending: "正在发送...",
+    transferTextCopied: "文本已复制",
+    transferTextCopyDenied: "当前浏览器不允许复制文本。",
+    transferTextDeleted: "文本已删除",
+    transferTextCleared: "文本已清空",
+    transferTextTooLarge: "文本太长，单条上限 {size}。",
+    transferTextClearConfirm: "清空所有文本消息？",
+    transferTextFailed: "文本传输失败",
+    transferTextApiUnavailable: "文本接口不可用，部署到 Cloudflare 后才能使用。",
+    transferFileTitle: "文件传输",
+    transferFileMeta: "最多 {count} 个文件，单文件最大支持 {fileSize}，总量最大 {totalSize}。",
     transferDropTitle: "拖放文件到这里，或点击上传。",
     transferDropHint: "文件会保存到 Cloudflare R2，不占用笔记正文空间。",
     transferNoToken: "配置同步 Token 后可使用文件传输。",
@@ -257,7 +299,13 @@ const i18n = {
     inputComposing: "正在确认中文输入，确认后再同步。",
     codeCopy: "复制",
     markdownEmpty: "开始写 Markdown 后，这里会实时预览。",
-    syncSettings: "同步设置",
+    syncSettings: "登录",
+    clientDownload: "客户端下载",
+    installDesktopClient: "安装到电脑端",
+    layoutThree: "三栏视图",
+    layoutTwo: "两栏视图",
+    layoutOne: "内容视图",
+    installPromptUnavailable: "当前浏览器暂未提供桌面安装入口。",
     syncCopy: "使用 Cloudflare Pages Functions + D1 保存云端笔记。客户电脑建议使用无痕窗口，离开时清除 Token。",
     syncToken: "同步 Token",
     autoSync: "手动同步：点击保存才上传，点击同步才从云端覆盖",
@@ -420,8 +468,12 @@ const i18n = {
     quote: "Quote",
     codeBlock: "Code block",
     underline: "Underline",
+    strikethrough: "Strikethrough",
     heading: "Heading",
     paragraphStyle: "Paragraph style",
+    fontFamily: "Font",
+    fontSize: "Font size",
+    defaultFont: "Default font",
     paragraphBody: "Body",
     heading1: "Heading 1",
     heading2: "Heading 2",
@@ -431,7 +483,14 @@ const i18n = {
     defaultTextColor: "Default text",
     clearHighlight: "Clear highlight",
     customColor: "Custom",
+    insertMenu: "Insert",
+    moreButton: "More",
     moreFormat: "More formats",
+    alignLeft: "Align left",
+    alignCenter: "Align center",
+    alignRight: "Align right",
+    decreaseIndent: "Decrease indent",
+    increaseIndent: "Increase indent",
     insertLink: "Link",
     removeLink: "Remove link",
     clearFormat: "Clear format",
@@ -479,6 +538,8 @@ const i18n = {
     syncPendingShort: "Pending sync",
     saving: "Saving...",
     savedLocal: "Saved locally",
+    titleSaved: "Saved",
+    titleUnsaved: "Unsaved",
     syncRefreshing: "Refreshing from cloud and overwriting local...",
     syncRefreshedAt: "Refreshed from cloud {time}",
     syncPushedAt: "Synced to cloud {time}",
@@ -493,6 +554,7 @@ const i18n = {
     syncNoChange: "No cloud changes",
     syncBusy: "Sync is already running",
     saveNote: "Save",
+    saveNoteShortcut: "Save Ctrl+S",
     syncNote: "Sync",
     saveAll: "Save all to cloud",
     syncAll: "Sync all from cloud",
@@ -505,8 +567,32 @@ const i18n = {
     transferAssistantTitle: "File Transfer",
     transferAssistantBody: "",
     transferAssistantExcerpt: "Temporary cross-device files",
-    transferPanelTitle: "File Transfer",
-    transferPanelMeta: "Up to {count} files, {fileSize} each, {totalSize} total.",
+    transferPanelTitle: "File Transfer Assistant",
+    transferPanelMeta: "Temporary cross-device text and files stay outside the note list.",
+    transferTextTitle: "Text Transfer",
+    transferTextHint: "Send temporary text here and copy it from another device after sync.",
+    transferTextLimits: "Max {size} per message, keeping the latest {count}.",
+    transferTextPlaceholder: "Paste text to sync to other devices...",
+    transferTextSendHint: "Ctrl+Enter to send, Enter for a new line",
+    transferTextSend: "Send",
+    transferTextRefresh: "Refresh",
+    transferTextClear: "Clear",
+    transferTextCopy: "Copy",
+    transferTextDelete: "Delete",
+    transferTextNoToken: "Configure the sync token to use text transfer.",
+    transferTextEmpty: "No text messages yet.",
+    transferTextLoading: "Loading text messages...",
+    transferTextSending: "Sending...",
+    transferTextCopied: "Text copied",
+    transferTextCopyDenied: "This browser does not allow copying text.",
+    transferTextDeleted: "Text deleted",
+    transferTextCleared: "Text cleared",
+    transferTextTooLarge: "Text is too long. Limit: {size}.",
+    transferTextClearConfirm: "Clear all text messages?",
+    transferTextFailed: "Text transfer failed",
+    transferTextApiUnavailable: "Text API is unavailable. It works after Cloudflare deployment.",
+    transferFileTitle: "File Transfer",
+    transferFileMeta: "Up to {count} files, max {fileSize} per file, max {totalSize} total.",
     transferDropTitle: "Drop files here, or click upload.",
     transferDropHint: "Files are stored in Cloudflare R2, not inside note content.",
     transferNoToken: "Configure the sync token to use file transfer.",
@@ -537,7 +623,13 @@ const i18n = {
     inputComposing: "Finish IME input before syncing.",
     codeCopy: "Copy",
     markdownEmpty: "Start writing Markdown to preview it here.",
-    syncSettings: "Sync Settings",
+    syncSettings: "Login",
+    clientDownload: "Client Download",
+    installDesktopClient: "Install Desktop App",
+    layoutThree: "Three Columns",
+    layoutTwo: "Two Columns",
+    layoutOne: "Content Only",
+    installPromptUnavailable: "The desktop install prompt is not available in this browser yet.",
     syncCopy: "Use Cloudflare Pages Functions + D1 to store notes in the cloud. On client computers, use an incognito window and clear the token when leaving.",
     syncToken: "Sync Token",
     autoSync: "Manual sync: Save uploads, Sync overwrites from cloud",
@@ -835,11 +927,24 @@ const state = {
   transferError: "",
   transferLastFetchAt: 0,
   transferLimits: null,
+  transferMessages: [],
+  transferTextLoading: false,
+  transferTextSending: false,
+  transferTextError: "",
+  transferTextLastFetchAt: 0,
+  transferTextLimits: null,
   lastCloudPullAt: 0,
   dirtyNoteIds: new Set(),
   contextMenuFolder: null,
   contextMenuNoteId: null,
   docSelection: null,
+  docHistory: {
+    noteId: null,
+    undo: [],
+    redo: [],
+    last: "",
+    applying: false
+  },
   docSelectedImage: null,
   docImageUploading: false,
   docImageResize: null
@@ -849,11 +954,37 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 const DEFAULT_SPLIT_RATIO = 52;
 const DEFAULT_SIDEBAR_WIDTH = 280;
+const DEFAULT_YOUDAO_RAIL_WIDTH = 210;
+const DEFAULT_YOUDAO_LIST_WIDTH = 312;
+const YOUDAO_RAIL_COLLAPSED_WIDTH = 84;
+const YOUDAO_RAIL_WIDTH_MIN = 168;
+const YOUDAO_RAIL_WIDTH_MAX = 286;
+const YOUDAO_LIST_WIDTH_MIN = 260;
+const YOUDAO_LIST_WIDTH_MAX = 480;
 const SYNC_POLL_INTERVAL = 3000;
 const SYNC_PUSH_DELAY = 500;
 const NOTE_SYNC_ENGINE = "snapshot";
 const DOC_DEFAULT_TEXT_COLOR = "#111827";
 const DOC_DEFAULT_HIGHLIGHT_COLOR = "#fef3c7";
+const DOC_HISTORY_LIMIT = 40;
+const DOC_FONT_SIZE_TO_COMMAND = new Map([
+  ["12", "2"],
+  ["14", "3"],
+  ["16", "4"],
+  ["18", "5"],
+  ["24", "6"],
+  ["32", "7"]
+]);
+const DOC_COMMAND_TO_FONT_SIZE = new Map([
+  ["1", "10"],
+  ["2", "12"],
+  ["3", "14"],
+  ["4", "16"],
+  ["5", "18"],
+  ["6", "24"],
+  ["7", "32"]
+]);
+const DOC_FONT_FAMILIES = new Set(["Microsoft YaHei", "SimSun", "SimHei", "KaiTi", "Arial", "Times New Roman", "Consolas"]);
 const DOC_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 const DOC_IMAGE_MAX_PER_NOTE = 20;
 const DOC_IMAGE_MAX_TOTAL_BYTES = 250 * 1024 * 1024;
@@ -882,6 +1013,8 @@ const MAX_TRANSFER_IMAGES = 8;
 const TRANSFER_MAX_FILES = 8;
 const TRANSFER_MAX_FILE_BYTES = 35 * 1024 * 1024;
 const TRANSFER_MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+const TRANSFER_TEXT_MAX_MESSAGES = 100;
+const TRANSFER_TEXT_MAX_BYTES = 20 * 1024;
 const MOBILE_LAYOUT_QUERY = "(max-width: 760px)";
 const ANDROID_RELEASE_BASE_URL = "https://github.com/ggbondgh/nanstar-note/releases/latest/download";
 const ANDROID_APK_URL = `${ANDROID_RELEASE_BASE_URL}/nanstar-note.apk`;
@@ -951,6 +1084,15 @@ const elements = {
   appShell: $(".app-shell"),
   sidebar: $(".sidebar"),
   sidebarResizer: $("#sidebarResizer"),
+  youdaoRailResizer: $("#youdaoRailResizer"),
+  youdaoFilterButtons: $$("[data-youdao-filter]"),
+  youdaoLayoutButtons: $$("[data-youdao-layout]"),
+  youdaoTransferButton: $("#youdaoTransferButton"),
+  youdaoClientMenu: $("#youdaoClientMenu"),
+  youdaoClientSummary: $("#youdaoClientSummary"),
+  youdaoInstallDesktopButton: $("#youdaoInstallDesktopButton"),
+  youdaoAndroidAppButton: $("#youdaoAndroidAppButton"),
+  youdaoSyncSettingsButton: $("#youdaoSyncSettingsButton"),
   mobileNotesButton: $("#mobileNotesButton"),
   mobileSidebarBackdrop: $("#mobileSidebarBackdrop"),
   cloudStatus: $("#cloudStatus"),
@@ -1009,6 +1151,8 @@ const elements = {
   editorTitle: $("#editorTitle"),
   previewTitle: $("#previewTitle"),
   titleInput: $("#titleInput"),
+  titleSaveStatus: $("#titleSaveStatus"),
+  titleSaveStatusText: $("#titleSaveStatusText"),
   modeButtons: $$(".mode-button"),
   noteCloudActions: $("#noteCloudActions"),
   activeNoteSyncDot: $("#activeNoteSyncDot"),
@@ -1023,6 +1167,8 @@ const elements = {
   editorSearchCloseButton: $("#editorSearchCloseButton"),
   toolbar: $(".toolbar"),
   docBlockSelect: $("#docBlockSelect"),
+  docFontSelect: $("#docFontSelect"),
+  docFontSizeSelect: $("#docFontSizeSelect"),
   docTextColorSwatch: $("#docTextColorSwatch"),
   docHighlightSwatch: $("#docHighlightSwatch"),
   togglePreviewButton: $("#togglePreviewButton"),
@@ -1052,6 +1198,16 @@ const elements = {
   transferPanel: $("#transferPanel"),
   transferPanelTitle: $("#transferPanelTitle"),
   transferPanelMeta: $("#transferPanelMeta"),
+  transferTextTitle: $("#transferTextTitle"),
+  transferTextHint: $("#transferTextHint"),
+  transferTextRefreshButton: $("#transferTextRefreshButton"),
+  transferTextClearButton: $("#transferTextClearButton"),
+  transferMessageList: $("#transferMessageList"),
+  transferTextInput: $("#transferTextInput"),
+  transferTextSendButton: $("#transferTextSendButton"),
+  transferTextSendHint: $("#transferTextSendHint"),
+  transferFileTitle: $("#transferFileTitle"),
+  transferFileMeta: $("#transferFileMeta"),
   transferDropzone: $("#transferDropzone"),
   transferDropTitle: $("#transferDropTitle"),
   transferDropHint: $("#transferDropHint"),
@@ -1109,6 +1265,9 @@ function init() {
   clearLegacyCrdtSyncState({ clearOrphanPending: true });
   applyLanguage(state.language, true);
   applySidebarWidth(readSidebarWidth());
+  applyYoudaoRailWidth(readYoudaoRailWidth());
+  applyYoudaoListWidth(readYoudaoListWidth());
+  applyYoudaoLayout(readYoudaoLayout(), { persist: false, toggle: false });
   applySplitRatio(readSplitRatio());
   applySidebarCollapsed(state.sidebarCollapsed);
   applyFolderSectionCollapsed(state.folderSectionCollapsed);
@@ -1180,14 +1339,27 @@ function bindEvents() {
 
   elements.filterTabs.forEach((button) => {
     button.addEventListener("click", () => {
-      state.viewFilter = button.dataset.filter || "all";
-      state.selectedFolder = "";
-      state.selectionMode = false;
-      state.selectedNoteIds.clear();
-      localStorage.setItem("nanstar-note-view", state.viewFilter);
-      renderFilterState();
-      renderLists();
+      applyNoteListScope({ viewFilter: button.dataset.filter || "all", selectedFolder: "" });
     });
+  });
+
+  elements.youdaoFilterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      applyNoteListScope({ viewFilter: button.dataset.youdaoFilter || "all", selectedFolder: "" });
+    });
+  });
+
+  elements.youdaoTransferButton?.addEventListener("click", openTransferAssistant);
+  elements.youdaoLayoutButtons.forEach((button) => {
+    button.addEventListener("click", () => applyYoudaoLayout(button.dataset.youdaoLayout || "three"));
+  });
+  elements.youdaoInstallDesktopButton?.addEventListener("click", installDesktopClient);
+  elements.youdaoAndroidAppButton?.addEventListener("click", openAndroidAppDialog);
+  elements.youdaoSyncSettingsButton?.addEventListener("click", () => {
+    elements.youdaoClientMenu?.removeAttribute("open");
+    elements.syncDialog.showModal();
+    elements.syncTokenInput.focus();
+    elements.syncTokenInput.select();
   });
 
   $$(".quick-chip").forEach((button) => {
@@ -1221,6 +1393,7 @@ function bindEvents() {
     if (!event.target.closest("#folderContextMenu")) hideFolderContextMenu();
     if (!event.target.closest("#noteContextMenu")) hideNoteContextMenu();
     if (!event.target.closest(".topbar-menu")) elements.topbarMenu?.removeAttribute("open");
+    if (!event.target.closest("#youdaoClientMenu")) elements.youdaoClientMenu?.removeAttribute("open");
     if (!event.target.closest(".toolbar-menu")) closeToolbarMenus();
     if (!event.target.closest("#docInput, #docImageControls, #docImageResizeHandle")) clearDocImageSelection();
   });
@@ -1269,6 +1442,7 @@ function bindEvents() {
   elements.docInput?.addEventListener("dragleave", handleDocImageDragLeave);
   elements.docInput?.addEventListener("drop", handleDocImageDrop);
   elements.docInput?.addEventListener("scroll", positionDocImageSelection);
+  elements.docInput?.addEventListener("click", handleDocTaskBoxClick);
   elements.docInput?.addEventListener("click", handleDocImageClick);
   elements.docInput?.addEventListener("keydown", handleDocImageKeydown);
   elements.docInput?.addEventListener("blur", normalizeDocInputHtml);
@@ -1323,6 +1497,8 @@ function bindEvents() {
     input.addEventListener("click", (event) => event.stopPropagation());
   });
   elements.docBlockSelect?.addEventListener("change", () => applyDocBlock(elements.docBlockSelect.value, true));
+  elements.docFontSelect?.addEventListener("change", () => applyDocFontFamily(elements.docFontSelect.value));
+  elements.docFontSizeSelect?.addEventListener("change", () => applyDocFontSize(elements.docFontSizeSelect.value));
   elements.docTextColorInput?.addEventListener("input", () => applyDocColor("foreColor", elements.docTextColorInput.value));
   elements.docHighlightInput?.addEventListener("input", () => applyDocColor("hiliteColor", elements.docHighlightInput.value));
   elements.docImageInput?.addEventListener("change", () => {
@@ -1369,11 +1545,7 @@ function bindEvents() {
   });
   elements.importButton.addEventListener("click", () => elements.importFileInput.click());
   elements.importFileInput.addEventListener("change", importFile);
-  elements.androidAppButton?.addEventListener("click", () => {
-    elements.topbarMenu?.removeAttribute("open");
-    hydrateAppUpdatePanel();
-    elements.androidAppDialog?.showModal();
-  });
+  elements.androidAppButton?.addEventListener("click", openAndroidAppDialog);
   elements.downloadAndroidAppButton?.addEventListener("click", openAndroidDownload);
   elements.checkAppUpdateButton?.addEventListener("click", checkAndroidUpdate);
   elements.shareButton.addEventListener("click", createShareLink);
@@ -1526,19 +1698,8 @@ function positionToolbarMenu(menu) {
   const summary = menu?.querySelector("summary");
   const panel = menu?.querySelector(".toolbar-menu-panel");
   if (!summary || !panel) return;
-  if (!isMobileLayout()) {
-    panel.classList.remove("toolbar-menu-panel-fixed");
-    panel.style.position = "";
-    panel.style.left = "";
-    panel.style.right = "";
-    panel.style.top = "";
-    panel.style.bottom = "";
-    panel.style.maxWidth = "";
-    panel.style.maxHeight = "";
-    return;
-  }
 
-  const gutter = 8;
+  const gutter = isMobileLayout() ? 8 : 12;
   const rect = summary.getBoundingClientRect();
   const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
@@ -1624,6 +1785,23 @@ function updateDraftInputUi() {
 }
 
 function bindTransferPanelEvents() {
+  elements.transferTextSendButton?.addEventListener("click", sendTransferText);
+  elements.transferTextRefreshButton?.addEventListener("click", () => fetchTransferMessages({ manual: true }));
+  elements.transferTextClearButton?.addEventListener("click", clearTransferMessages);
+  elements.transferTextInput?.addEventListener("keydown", (event) => {
+    if (event.isComposing || event.key !== "Enter" || !event.ctrlKey) return;
+    event.preventDefault();
+    sendTransferText();
+  });
+  elements.transferTextInput?.addEventListener("input", scheduleTransferPanelRender);
+  elements.transferMessageList?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-transfer-text-action]");
+    if (!button) return;
+    const id = button.dataset.id || "";
+    const action = button.dataset.transferTextAction;
+    if (action === "copy") copyTransferText(id);
+    if (action === "delete") deleteTransferText(id);
+  });
   elements.transferUploadButton?.addEventListener("click", () => {
     if (!transferEnabled()) {
       showToast(t("transferNoToken"));
@@ -1678,6 +1856,12 @@ function resetTransferState() {
   state.transferError = "";
   state.transferLastFetchAt = 0;
   state.transferLimits = null;
+  state.transferMessages = [];
+  state.transferTextLoading = false;
+  state.transferTextSending = false;
+  state.transferTextError = "";
+  state.transferTextLastFetchAt = 0;
+  state.transferTextLimits = null;
 }
 
 function transferLimits() {
@@ -1686,6 +1870,14 @@ function transferLimits() {
     maxFiles: Number(limits.maxFiles) || TRANSFER_MAX_FILES,
     maxFileBytes: Number(limits.maxFileBytes) || TRANSFER_MAX_FILE_BYTES,
     maxTotalBytes: Number(limits.maxTotalBytes) || TRANSFER_MAX_TOTAL_BYTES
+  };
+}
+
+function transferTextLimits() {
+  const limits = state.transferTextLimits || {};
+  return {
+    maxMessages: Number(limits.maxMessages) || TRANSFER_TEXT_MAX_MESSAGES,
+    maxTextBytes: Number(limits.maxTextBytes) || TRANSFER_TEXT_MAX_BYTES
   };
 }
 
@@ -1727,9 +1919,25 @@ function renderTransferPanel() {
   if (!activeTransfer) return;
 
   const limits = transferLimits();
+  const textLimits = transferTextLimits();
   if (elements.transferPanelTitle) elements.transferPanelTitle.textContent = t("transferPanelTitle");
-  if (elements.transferPanelMeta) {
-    elements.transferPanelMeta.textContent = t("transferPanelMeta")
+  if (elements.transferPanelMeta) elements.transferPanelMeta.textContent = t("transferPanelMeta");
+  if (elements.transferTextTitle) elements.transferTextTitle.textContent = t("transferTextTitle");
+  if (elements.transferTextHint) {
+    elements.transferTextHint.textContent = `${t("transferTextHint")} ${t("transferTextLimits")
+      .replace("{size}", formatBytes(textLimits.maxTextBytes))
+      .replace("{count}", String(textLimits.maxMessages))}`;
+  }
+  if (elements.transferTextInput) elements.transferTextInput.placeholder = t("transferTextPlaceholder");
+  if (elements.transferTextSendHint) elements.transferTextSendHint.textContent = t("transferTextSendHint");
+  if (elements.transferTextSendButton) {
+    elements.transferTextSendButton.textContent = state.transferTextSending ? t("transferTextSending") : t("transferTextSend");
+  }
+  if (elements.transferTextRefreshButton) elements.transferTextRefreshButton.textContent = t("transferTextRefresh");
+  if (elements.transferTextClearButton) elements.transferTextClearButton.textContent = t("transferTextClear");
+  if (elements.transferFileTitle) elements.transferFileTitle.textContent = t("transferFileTitle");
+  if (elements.transferFileMeta) {
+    elements.transferFileMeta.textContent = t("transferFileMeta")
       .replace("{count}", String(limits.maxFiles))
       .replace("{fileSize}", formatBytes(limits.maxFileBytes))
       .replace("{totalSize}", formatBytes(limits.maxTotalBytes));
@@ -1741,18 +1949,35 @@ function renderTransferPanel() {
 
   const enabled = transferEnabled();
   const uploading = state.transferUploads.some((item) => item.status === "uploading");
+  const textInputValue = elements.transferTextInput?.value || "";
+  if (elements.transferTextInput) elements.transferTextInput.disabled = !enabled || state.transferTextSending;
+  if (elements.transferTextSendButton) {
+    elements.transferTextSendButton.disabled = !enabled || state.transferTextSending || !textInputValue.trim();
+  }
+  if (elements.transferTextRefreshButton) elements.transferTextRefreshButton.disabled = !enabled || state.transferTextLoading;
+  if (elements.transferTextClearButton) elements.transferTextClearButton.disabled = !enabled || state.transferTextLoading || !state.transferMessages.length;
   if (elements.transferUploadButton) elements.transferUploadButton.disabled = !enabled || uploading;
   if (elements.transferRefreshButton) elements.transferRefreshButton.disabled = !enabled || state.transferLoading;
   elements.transferDropzone?.classList.toggle("disabled", !enabled);
 
   if (!enabled) {
-    elements.transferFileList.innerHTML = `<div class="transfer-empty">${t("transferNoToken")}</div>`;
+    if (elements.transferMessageList) {
+      elements.transferMessageList.innerHTML = `<div class="transfer-empty">${t("transferTextNoToken")}</div>`;
+    }
+    if (elements.transferFileList) {
+      elements.transferFileList.innerHTML = `<div class="transfer-empty">${t("transferNoToken")}</div>`;
+    }
     return;
   }
 
+  if (!state.transferTextLastFetchAt && !state.transferTextLoading) {
+    fetchTransferMessages({ silent: true });
+  }
   if (!state.transferLastFetchAt && !state.transferLoading) {
     fetchTransferFiles({ silent: true });
   }
+
+  renderTransferMessages();
 
   const uploadRows = state.transferUploads.map(renderTransferUploadRow);
   const downloadRows = state.transferDownloads.map(renderTransferDownloadRow);
@@ -1760,16 +1985,162 @@ function renderTransferPanel() {
   const rows = [...uploadRows, ...downloadRows, ...fileRows];
 
   if (state.transferLoading && !rows.length) {
-    elements.transferFileList.innerHTML = `<div class="transfer-empty">${t("transferLoading")}</div>`;
+    if (elements.transferFileList) elements.transferFileList.innerHTML = `<div class="transfer-empty">${t("transferLoading")}</div>`;
     return;
   }
   if (state.transferError && !rows.length) {
-    elements.transferFileList.innerHTML = `<div class="transfer-error">${escapeHtml(state.transferError)}</div>`;
+    if (elements.transferFileList) elements.transferFileList.innerHTML = `<div class="transfer-error">${escapeHtml(state.transferError)}</div>`;
     return;
   }
-  elements.transferFileList.innerHTML = rows.length
-    ? rows.join("")
-    : `<div class="transfer-empty">${t("transferEmpty")}</div>`;
+  if (elements.transferFileList) {
+    elements.transferFileList.innerHTML = rows.length
+      ? rows.join("")
+      : `<div class="transfer-empty">${t("transferEmpty")}</div>`;
+  }
+}
+
+function renderTransferMessages() {
+  if (!elements.transferMessageList) return;
+
+  const rows = state.transferMessages.map(renderTransferMessageRow);
+  if (state.transferTextLoading && !rows.length) {
+    elements.transferMessageList.innerHTML = `<div class="transfer-empty">${t("transferTextLoading")}</div>`;
+    return;
+  }
+  if (state.transferTextError && !rows.length) {
+    elements.transferMessageList.innerHTML = `<div class="transfer-error">${escapeHtml(state.transferTextError)}</div>`;
+    return;
+  }
+
+  const errorRow = state.transferTextError
+    ? `<div class="transfer-error compact">${escapeHtml(state.transferTextError)}</div>`
+    : "";
+  elements.transferMessageList.innerHTML = rows.length
+    ? `${errorRow}${rows.join("")}`
+    : `<div class="transfer-empty">${t("transferTextEmpty")}</div>`;
+  elements.transferMessageList.scrollTop = elements.transferMessageList.scrollHeight;
+}
+
+function renderTransferMessageRow(message) {
+  const createdAt = Number(message.createdAt) || Date.now();
+  return `
+    <div class="transfer-message" data-transfer-text-id="${escapeAttribute(message.id)}">
+      <div class="transfer-message-meta">
+        <time datetime="${escapeAttribute(new Date(createdAt).toISOString())}">${formatShortDate(createdAt)}</time>
+        <span>${formatBytes(message.sizeBytes || textByteLength(message.text))}</span>
+      </div>
+      <div class="transfer-message-body">${escapeHtml(message.text)}</div>
+      <div class="transfer-message-actions">
+        <button class="ghost-button" type="button" data-transfer-text-action="copy" data-id="${escapeAttribute(message.id)}">${t("transferTextCopy")}</button>
+        <button class="danger-button" type="button" data-transfer-text-action="delete" data-id="${escapeAttribute(message.id)}">${t("transferTextDelete")}</button>
+      </div>
+    </div>
+  `;
+}
+
+async function fetchTransferMessages(options = {}) {
+  if (!transferEnabled()) {
+    state.transferMessages = [];
+    state.transferTextError = "";
+    renderTransferPanel();
+    return;
+  }
+  state.transferTextLoading = true;
+  state.transferTextError = "";
+  state.transferTextLastFetchAt = Date.now();
+  renderTransferPanel();
+  try {
+    const payload = await fetchTransferJson("./api/clipboard");
+    state.transferMessages = Array.isArray(payload.messages)
+      ? payload.messages.map(normalizeTransferMessage).sort(compareTransferMessages)
+      : [];
+    state.transferTextLimits = payload.limits || state.transferTextLimits;
+    state.transferTextLastFetchAt = Date.now();
+  } catch (error) {
+    state.transferTextError = transferTextErrorText(error);
+    if (options.manual) showToast(state.transferTextError);
+  } finally {
+    state.transferTextLoading = false;
+    renderTransferPanel();
+  }
+}
+
+async function sendTransferText() {
+  if (!transferEnabled()) {
+    showToast(t("transferTextNoToken"));
+    return;
+  }
+  const input = elements.transferTextInput;
+  const text = (input?.value || "").replace(/\r\n/g, "\n");
+  if (!text.trim()) return;
+  const limits = transferTextLimits();
+  if (textByteLength(text) > limits.maxTextBytes) {
+    showToast(t("transferTextTooLarge").replace("{size}", formatBytes(limits.maxTextBytes)));
+    return;
+  }
+
+  state.transferTextSending = true;
+  state.transferTextError = "";
+  renderTransferPanel();
+  try {
+    const payload = await fetchTransferJson("./api/clipboard", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text })
+    });
+    if (payload.message) {
+      const message = normalizeTransferMessage(payload.message);
+      state.transferMessages = [...state.transferMessages.filter((item) => item.id !== message.id), message]
+        .sort(compareTransferMessages)
+        .slice(-limits.maxMessages);
+    } else {
+      await fetchTransferMessages({ silent: true });
+    }
+    if (input) input.value = "";
+  } catch (error) {
+    state.transferTextError = transferTextErrorText(error);
+    showToast(state.transferTextError);
+  } finally {
+    state.transferTextSending = false;
+    renderTransferPanel();
+  }
+}
+
+async function copyTransferText(id) {
+  const message = state.transferMessages.find((item) => item.id === id);
+  if (!message) return;
+  try {
+    await writeClipboardText(message.text);
+    showToast(t("transferTextCopied"));
+  } catch (error) {
+    showToast(t("transferTextCopyDenied"));
+  }
+}
+
+async function deleteTransferText(id) {
+  const message = state.transferMessages.find((item) => item.id === id);
+  if (!message) return;
+  try {
+    await fetchTransferJson(`./api/clipboard?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    state.transferMessages = state.transferMessages.filter((item) => item.id !== id);
+    showToast(t("transferTextDeleted"));
+    renderTransferPanel();
+  } catch (error) {
+    showToast(transferTextErrorText(error));
+  }
+}
+
+async function clearTransferMessages() {
+  if (!state.transferMessages.length) return;
+  if (!window.confirm(t("transferTextClearConfirm"))) return;
+  try {
+    await fetchTransferJson("./api/clipboard?all=1", { method: "DELETE" });
+    state.transferMessages = [];
+    showToast(t("transferTextCleared"));
+    renderTransferPanel();
+  } catch (error) {
+    showToast(transferTextErrorText(error));
+  }
 }
 
 function renderTransferUploadRow(upload) {
@@ -2073,8 +2444,45 @@ function normalizeTransferFile(file) {
   };
 }
 
+function normalizeTransferMessage(message) {
+  const text = String(message?.text || "");
+  return {
+    id: String(message?.id || ""),
+    text,
+    sizeBytes: Number(message?.sizeBytes) || textByteLength(text),
+    createdAt: Number(message?.createdAt) || Date.now()
+  };
+}
+
+function compareTransferMessages(a, b) {
+  return Number(a.createdAt || 0) - Number(b.createdAt || 0);
+}
+
 function isTransferImage(file) {
   return /^image\//i.test(file?.mimeType || "");
+}
+
+function textByteLength(value) {
+  const text = String(value || "");
+  if (typeof TextEncoder !== "undefined") return new TextEncoder().encode(text).length;
+  return new Blob([text]).size;
+}
+
+async function writeClipboardText(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.append(textarea);
+  textarea.select();
+  const ok = document.execCommand("copy");
+  textarea.remove();
+  if (!ok) throw new Error("clipboard");
 }
 
 function transferErrorText(error) {
@@ -2092,6 +2500,21 @@ function transferErrorText(error) {
   if (text.includes("Failed to fetch") || text.includes("Not found")) return t("transferApiUnavailable");
   if (text.includes("clipboard")) return t("transferClipboardDenied");
   return `${t("transferFailed")}：${text.slice(0, 120)}`;
+}
+
+function transferTextErrorText(error) {
+  const raw = String(error?.message || error || "");
+  let text = raw;
+  try {
+    const parsed = JSON.parse(raw);
+    text = parsed.error || raw;
+  } catch {}
+  if (text.includes("Missing D1") || text.includes("NANSTAR_NOTES_DB")) return cloudErrorText(new Error("Missing D1"));
+  if (text.includes("Missing NOTE_SYNC_TOKEN")) return cloudErrorText(new Error("Missing NOTE_SYNC_TOKEN"));
+  if (text.includes("Unauthorized")) return t("transferBadToken");
+  if (text.includes("Text is too large")) return t("transferTextTooLarge").replace("{size}", formatBytes(transferTextLimits().maxTextBytes));
+  if (text.includes("Failed to fetch") || text.includes("Not found")) return t("transferTextApiUnavailable");
+  return `${t("transferTextFailed")}：${text.slice(0, 120)}`;
 }
 
 async function hydrateAppUpdatePanel() {
@@ -2239,6 +2662,26 @@ async function openAndroidDownload() {
   await installAndroidApk(ANDROID_APK_URL);
 }
 
+function openAndroidAppDialog() {
+  elements.topbarMenu?.removeAttribute("open");
+  elements.youdaoClientMenu?.removeAttribute("open");
+  hydrateAppUpdatePanel();
+  elements.androidAppDialog?.showModal();
+}
+
+async function installDesktopClient() {
+  elements.youdaoClientMenu?.removeAttribute("open");
+  const installed = await window.nanstarInstallApp?.();
+  if (!installed) {
+    const topInstallButton = document.getElementById("topInstallButton");
+    if (topInstallButton && !topInstallButton.hidden) {
+      topInstallButton.click();
+      return;
+    }
+    showToast(t("installPromptUnavailable"));
+  }
+}
+
 async function installAndroidApk(url) {
   const updaterPlugin = window.Capacitor?.Plugins?.NanStarUpdater;
   if (nativeRuntime() && updaterPlugin?.installApk) {
@@ -2320,7 +2763,7 @@ function normalizeNote(note) {
     favorite: Boolean(note.favorite),
     system: note.system || "",
     editorSectionOpen: typeof note.editorSectionOpen === "boolean" ? note.editorSectionOpen : mode === "md" || mode === "doc",
-    previewVisible: note.previewVisible !== false,
+    previewVisible: note.previewVisible === true,
     createdAt: Number(note.createdAt) || Date.now(),
     updatedAt: Number(note.updatedAt) || Date.now(),
     deletedAt: Number(note.deletedAt) || 0
@@ -3067,6 +3510,7 @@ function renderEditor() {
   }
   elements.bodyInput.value = note.mode === "doc" ? docHtmlToText(note.body) : note.body;
   if (elements.docInput) elements.docInput.innerHTML = note.mode === "doc" ? sanitizeDocHtml(note.body || "<p></p>") : "";
+  resetDocHistory(note);
 
   if (elements.pinButton) {
     elements.pinButton.classList.toggle("active", note.pinned);
@@ -3775,18 +4219,65 @@ function renderLists() {
   renderNoteList();
 }
 
+function applyNoteListScope({ viewFilter = state.viewFilter, selectedFolder = state.selectedFolder } = {}) {
+  const nextFilter = viewFilter === "favorite" ? "favorite" : "all";
+  state.viewFilter = nextFilter;
+  state.selectedFolder = canonicalSelectedFolder(selectedFolder || "");
+  state.selectionMode = false;
+  state.selectedNoteIds.clear();
+  localStorage.setItem("nanstar-note-view", state.viewFilter);
+
+  const scopedNotes = sortedNotes();
+  const active = activeNote();
+  const activeInScope = active && !isTransferAssistant(active) && scopedNotes.some((note) => note.id === active.id);
+  if (!activeInScope && scopedNotes[0]) {
+    switchToNote(scopedNotes[0].id);
+    return;
+  }
+
+  renderFilterState();
+  renderLists();
+  closeMobileSidebar();
+}
+
+function openTransferAssistant() {
+  const transfer = state.notes.find((note) => isTransferAssistant(note) && !isDeletedNote(note));
+  if (!transfer) return;
+  state.selectionMode = false;
+  state.selectedNoteIds.clear();
+  state.selectedFolder = "";
+  state.viewFilter = "all";
+  localStorage.setItem("nanstar-note-view", state.viewFilter);
+  if (transfer.id === state.activeId) {
+    renderAll();
+    closeMobileSidebar();
+    return;
+  }
+  switchToNote(transfer.id);
+}
+
 function renderFilterState() {
   elements.filterTabs.forEach(btn => {
     btn.classList.toggle("active", btn.dataset.filter === state.viewFilter);
   });
+  const transferActive = isTransferAssistant(activeNote());
+  elements.youdaoFilterButtons.forEach((button) => {
+    const active = !transferActive && !state.selectedFolder && button.dataset.youdaoFilter === state.viewFilter;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-current", active ? "page" : "false");
+  });
+  if (elements.youdaoTransferButton) {
+    elements.youdaoTransferButton.classList.toggle("active", transferActive);
+    elements.youdaoTransferButton.setAttribute("aria-current", transferActive ? "page" : "false");
+  }
 }
 
 function renderCounts() {
-  if (elements.listStatus) elements.listStatus.textContent = `${visibleNotes().length} ${t("items")}`;
+  if (elements.listStatus) elements.listStatus.textContent = `${regularNotes().length} ${t("items")}`;
 }
 
 function sortedNotes() {
-  return visibleNotes()
+  return regularNotes()
     .filter((note) => {
       if (state.viewFilter === "favorite" && !note.favorite) return false;
       if (state.selectedFolder && canonicalFolderName(note.folder) !== state.selectedFolder) return false;
@@ -3796,8 +4287,6 @@ function sortedNotes() {
       return haystack.includes(state.query);
     })
     .sort((a, b) => {
-      if (isTransferAssistant(a) && !isTransferAssistant(b)) return -1;
-      if (!isTransferAssistant(a) && isTransferAssistant(b)) return 1;
       // Pinned always first
       if (a.pinned && !b.pinned) return -1;
       if (!a.pinned && b.pinned) return 1;
@@ -3819,10 +4308,7 @@ function renderFolders() {
     `;
     elements.folderList.querySelectorAll(".folder-item").forEach((button) => {
       button.addEventListener("click", () => {
-        state.selectedFolder = "";
-        state.selectionMode = false;
-        state.selectedNoteIds.clear();
-        renderLists();
+        applyNoteListScope({ selectedFolder: "" });
       });
     });
     return;
@@ -3865,10 +4351,7 @@ function renderFolders() {
   elements.folderList.querySelectorAll(".folder-item").forEach((button) => {
     button.addEventListener("click", () => {
       const f = canonicalSelectedFolder(button.dataset.folder || "");
-      state.selectedFolder = f;
-      state.selectionMode = false;
-      state.selectedNoteIds.clear();
-      renderLists();
+      applyNoteListScope({ selectedFolder: f });
     });
   });
   elements.folderList.querySelectorAll(".folder-row").forEach((row) => {
@@ -4138,12 +4621,13 @@ function renderSyncMeta() {
 }
 
 function renderActiveNoteCloudStatus(syncMeta = readSyncMeta()) {
-  if (!elements.activeNoteSyncDot) return;
   const note = activeNote();
-  const status = noteCloudStatus(note, syncMeta);
-  elements.activeNoteSyncDot.className = `note-sync-indicator ${status.status}`;
-  elements.activeNoteSyncDot.title = status.label;
-  elements.activeNoteSyncDot.setAttribute("aria-label", status.label);
+  if (elements.activeNoteSyncDot) {
+    const status = noteCloudStatus(note, syncMeta);
+    elements.activeNoteSyncDot.className = `note-sync-indicator ${status.status}`;
+    elements.activeNoteSyncDot.title = status.label;
+    elements.activeNoteSyncDot.setAttribute("aria-label", status.label);
+  }
   const disabled = !note || isTransferAssistant(note) || isFolderRegistry(note) || state.syncInFlight;
   if (elements.saveNoteButton) elements.saveNoteButton.disabled = disabled;
   if (elements.syncNoteButton) elements.syncNoteButton.disabled = disabled;
@@ -4247,7 +4731,7 @@ function changeMode(mode) {
   } else if (previousMode === "doc") {
     note.body = plainBody;
   }
-  note.previewVisible = mode === "md";
+  note.previewVisible = false;
   note.editorSectionOpen = mode === "md" || mode === "doc";
   state.previewFocus = false;
   note.updatedAt = Date.now();
@@ -4261,7 +4745,7 @@ function changeMode(mode) {
 function togglePreview() {
   const note = activeNote();
   if (!note || note.mode !== "md") return;
-  note.previewVisible = note.previewVisible === false;
+  note.previewVisible = note.previewVisible !== true;
   state.previewFocus = false;
   note.updatedAt = Date.now();
   saveNotes();
@@ -4346,24 +4830,156 @@ function applySidebarWidth(value) {
   refreshEditorLineLayoutSoon();
 }
 
+function normalizeYoudaoLayout(layout) {
+  return ["three", "two", "one"].includes(layout) ? layout : "three";
+}
+
+function normalizeYoudaoRestoreLayout(layout) {
+  return ["three", "two"].includes(layout) ? layout : "three";
+}
+
+function readYoudaoLayout() {
+  return normalizeYoudaoLayout(localStorage.getItem(storageKeys.youdaoLayout));
+}
+
+function readYoudaoPreviousLayout() {
+  return normalizeYoudaoRestoreLayout(localStorage.getItem(storageKeys.youdaoPreviousLayout));
+}
+
+function currentYoudaoLayout() {
+  return normalizeYoudaoLayout(document.body.dataset.youdaoLayout || readYoudaoLayout());
+}
+
+function applyYoudaoLayout(layout, options = {}) {
+  const requested = normalizeYoudaoLayout(layout);
+  const current = currentYoudaoLayout();
+  let next = requested;
+  if (options.toggle !== false && current === "one" && requested === "one") {
+    next = readYoudaoPreviousLayout();
+  }
+  if (!(options.toggle === false && next === "one")) {
+    if (next === "one") {
+      localStorage.setItem(storageKeys.youdaoPreviousLayout, normalizeYoudaoRestoreLayout(current));
+    } else {
+      localStorage.setItem(storageKeys.youdaoPreviousLayout, next);
+    }
+  }
+  document.body.dataset.youdaoLayout = next;
+  if (options.persist !== false) localStorage.setItem(storageKeys.youdaoLayout, next);
+
+  const labels = {
+    three: t("layoutThree"),
+    two: t("layoutTwo"),
+    one: t("layoutOne")
+  };
+  const restoreLayout = readYoudaoPreviousLayout();
+  elements.youdaoLayoutButtons.forEach((button) => {
+    const active = button.dataset.youdaoLayout === next;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+    const label = next === "one" && button.dataset.youdaoLayout === "one"
+      ? `${t("expandSection")} ${labels[restoreLayout]}`
+      : labels[button.dataset.youdaoLayout] || "";
+    if (label) {
+      button.title = label;
+      button.setAttribute("aria-label", label);
+    }
+  });
+
+  closeMobileSidebar();
+  refreshEditorLineLayoutSoon();
+  positionDocImageSelection();
+}
+
+function clampColumnWidth(value, fallback, min, max) {
+  const number = Number(value);
+  if (!number || Number.isNaN(number)) return fallback;
+  return Math.max(min, Math.min(max, number));
+}
+
+function readYoudaoRailWidth() {
+  return clampColumnWidth(
+    localStorage.getItem(storageKeys.youdaoRailWidth),
+    DEFAULT_YOUDAO_RAIL_WIDTH,
+    YOUDAO_RAIL_WIDTH_MIN,
+    YOUDAO_RAIL_WIDTH_MAX
+  );
+}
+
+function readYoudaoListWidth() {
+  return clampColumnWidth(
+    localStorage.getItem(storageKeys.youdaoListWidth),
+    DEFAULT_YOUDAO_LIST_WIDTH,
+    YOUDAO_LIST_WIDTH_MIN,
+    YOUDAO_LIST_WIDTH_MAX
+  );
+}
+
+function currentYoudaoRailWidth() {
+  const value = parseFloat(elements.appShell?.style.getPropertyValue("--youdao-rail-width") || "");
+  return clampColumnWidth(value, readYoudaoRailWidth(), YOUDAO_RAIL_WIDTH_MIN, YOUDAO_RAIL_WIDTH_MAX);
+}
+
+function currentYoudaoListWidth() {
+  const value = parseFloat(elements.appShell?.style.getPropertyValue("--youdao-list-width") || "");
+  return clampColumnWidth(value, readYoudaoListWidth(), YOUDAO_LIST_WIDTH_MIN, YOUDAO_LIST_WIDTH_MAX);
+}
+
+function syncYoudaoSidebarWidth(railWidth = currentYoudaoRailWidth(), listWidth = currentYoudaoListWidth()) {
+  const total = railWidth + listWidth;
+  elements.appShell?.style.setProperty("--youdao-sidebar-width", `${total}px`);
+  elements.appShell?.style.setProperty("--sidebar-width", `${total}px`);
+  localStorage.setItem(storageKeys.sidebarWidth, String(total));
+}
+
+function applyYoudaoRailWidth(value) {
+  const width = clampColumnWidth(value, DEFAULT_YOUDAO_RAIL_WIDTH, YOUDAO_RAIL_WIDTH_MIN, YOUDAO_RAIL_WIDTH_MAX);
+  elements.appShell?.style.setProperty("--youdao-rail-width", `${width}px`);
+  localStorage.setItem(storageKeys.youdaoRailWidth, String(width));
+  syncYoudaoSidebarWidth(width, currentYoudaoListWidth());
+  refreshEditorLineLayoutSoon();
+}
+
+function applyYoudaoListWidth(value) {
+  const width = clampColumnWidth(value, DEFAULT_YOUDAO_LIST_WIDTH, YOUDAO_LIST_WIDTH_MIN, YOUDAO_LIST_WIDTH_MAX);
+  elements.appShell?.style.setProperty("--youdao-list-width", `${width}px`);
+  localStorage.setItem(storageKeys.youdaoListWidth, String(width));
+  syncYoudaoSidebarWidth(currentYoudaoRailWidth(), width);
+  refreshEditorLineLayoutSoon();
+}
+
 function bindSidebarResizer() {
-  let dragging = false;
+  let dragging = "";
 
   const move = (event) => {
     if (!dragging) return;
     const rect = elements.appShell.getBoundingClientRect();
-    const width = event.clientX - rect.left;
-    applySidebarWidth(width);
+    if (dragging === "rail") {
+      applyYoudaoRailWidth(event.clientX - rect.left);
+    } else if (dragging === "list") {
+      if (currentYoudaoLayout() === "two") {
+        applyYoudaoListWidth(event.clientX - rect.left - YOUDAO_RAIL_COLLAPSED_WIDTH);
+      } else {
+        applyYoudaoListWidth(event.clientX - rect.left - currentYoudaoRailWidth());
+      }
+    }
   };
 
   const stop = () => {
-    dragging = false;
+    dragging = "";
     document.body.classList.remove("is-dragging-split");
   };
 
+  elements.youdaoRailResizer?.addEventListener("mousedown", (event) => {
+    if (window.innerWidth <= 900 || state.previewFocus || state.sidebarCollapsed || currentYoudaoLayout() !== "three") return;
+    dragging = "rail";
+    document.body.classList.add("is-dragging-split");
+    event.preventDefault();
+  });
+
   elements.sidebarResizer?.addEventListener("mousedown", (event) => {
-    if (window.innerWidth <= 1020 || state.previewFocus || state.sidebarCollapsed) return;
-    dragging = true;
+    if (window.innerWidth <= 900 || state.previewFocus || state.sidebarCollapsed || currentYoudaoLayout() === "one") return;
+    dragging = "list";
     document.body.classList.add("is-dragging-split");
     event.preventDefault();
   });
@@ -5393,6 +6009,20 @@ function persistAndRender(message, options = {}) {
 
 function setSaveStatus(message) {
   elements.saveStatus.textContent = message;
+  updateTitleSaveStatus(message);
+}
+
+function updateTitleSaveStatus(message = "") {
+  if (!elements.titleSaveStatus || !elements.titleSaveStatusText) return;
+  const raw = String(message || "");
+  const unsaved = !raw
+    || raw === t("saving")
+    || /保存中|saving|失败|failed|重试|retry/i.test(raw);
+  elements.titleSaveStatus.classList.toggle("unsaved", unsaved);
+  elements.titleSaveStatus.classList.toggle("saved", !unsaved);
+  const icon = elements.titleSaveStatus.querySelector(".title-save-icon");
+  if (icon) icon.textContent = unsaved ? "○" : "✓";
+  elements.titleSaveStatusText.textContent = unsaved ? t("titleUnsaved") : t("titleSaved");
 }
 
 function t(key) {
@@ -5460,9 +6090,48 @@ function applyLanguage(language, initial = false) {
   if (elements.saveAllButton) {
     elements.saveAllButton.title = t("saveAll");
     elements.saveAllButton.setAttribute("aria-label", t("saveAll"));
+    const label = elements.saveAllButton.querySelector("span:last-child");
+    if (label) label.textContent = t("saveAll");
   }
+  if (elements.syncRefreshButton) {
+    const label = elements.syncRefreshButton.querySelector("span:last-child");
+    if (label) label.textContent = t("syncAll");
+  }
+  elements.youdaoFilterButtons.forEach((button) => {
+    const label = button.querySelector("span:last-child");
+    if (!label) return;
+    label.textContent = button.dataset.youdaoFilter === "favorite" ? t("favorite") : t("allNotes");
+  });
+  if (elements.youdaoTransferButton) {
+    const label = elements.youdaoTransferButton.querySelector("span:last-child");
+    if (label) label.textContent = t("transferAssistantTitle");
+  }
+  if (elements.youdaoClientSummary) {
+    const label = elements.youdaoClientSummary.querySelector("span:last-child");
+    if (label) label.textContent = t("clientDownload");
+  }
+  if (elements.youdaoInstallDesktopButton) {
+    const label = elements.youdaoInstallDesktopButton.querySelector("span:last-child");
+    if (label) label.textContent = t("installDesktopClient");
+  }
+  if (elements.youdaoAndroidAppButton) {
+    const label = elements.youdaoAndroidAppButton.querySelector("span:last-child");
+    if (label) label.textContent = t("androidApp");
+  }
+  if (elements.youdaoSyncSettingsButton) {
+    const label = elements.youdaoSyncSettingsButton.querySelector("span:last-child");
+    if (label) label.textContent = t("syncSettings");
+    elements.youdaoSyncSettingsButton.title = t("syncSettings");
+    elements.youdaoSyncSettingsButton.setAttribute("aria-label", t("syncSettings"));
+  }
+  applyYoudaoLayout(currentYoudaoLayout(), { persist: false, toggle: false });
   if (elements.topSyncButton) elements.topSyncButton.textContent = t("sync");
-  if (elements.saveNoteButton) elements.saveNoteButton.textContent = t("saveNote");
+  if (elements.saveNoteButton) {
+    elements.saveNoteButton.textContent = t("saveNote");
+    elements.saveNoteButton.title = t("saveNoteShortcut");
+    elements.saveNoteButton.setAttribute("aria-label", t("saveNoteShortcut"));
+  }
+  updateTitleSaveStatus(elements.saveStatus?.textContent || t("savedLocal"));
   if (elements.syncNoteButton) elements.syncNoteButton.textContent = t("syncNote");
   const topbarMenuButton = document.querySelector(".topbar-menu-button");
   if (topbarMenuButton) {
@@ -5488,8 +6157,17 @@ function applyLanguage(language, initial = false) {
   setToolbarTitle('[data-doc-command="bold"]', t("bold"));
   setToolbarTitle('[data-doc-command="italic"]', t("italic"));
   setToolbarTitle('[data-doc-command="underline"]', t("underline"));
+  setToolbarTitle('[data-doc-command="strikeThrough"]', t("strikethrough"));
+  setToolbarTitle('[data-doc-command="removeFormat"]', t("clearFormat"));
   setToolbarTitle('[data-doc-command="insertUnorderedList"]', t("unorderedList"));
   setToolbarTitle('[data-doc-command="insertOrderedList"]', t("orderedList"));
+  setToolbarTitle('[data-doc-command="justifyLeft"]', t("alignLeft"));
+  setToolbarTitle('[data-doc-command="justifyCenter"]', t("alignCenter"));
+  setToolbarTitle('[data-doc-command="justifyRight"]', t("alignRight"));
+  setToolbarTitle('[data-doc-command="outdent"]', t("decreaseIndent"));
+  setToolbarTitle('[data-doc-command="indent"]', t("increaseIndent"));
+  setToolbarTitle('[data-doc-action="checklist"]', t("taskList"));
+  setToolbarTitle('[data-doc-block="blockquote"]', t("quote"));
   if (elements.docBlockSelect) {
     elements.docBlockSelect.title = t("paragraphStyle");
     elements.docBlockSelect.setAttribute("aria-label", t("paragraphStyle"));
@@ -5504,8 +6182,20 @@ function applyLanguage(language, initial = false) {
       option.textContent = blockLabels[option.value] || option.textContent;
     });
   }
+  if (elements.docFontSelect) {
+    elements.docFontSelect.title = t("fontFamily");
+    elements.docFontSelect.setAttribute("aria-label", t("fontFamily"));
+    const defaultOption = elements.docFontSelect.querySelector('option[value=""]');
+    if (defaultOption) defaultOption.textContent = t("defaultFont");
+  }
+  if (elements.docFontSizeSelect) {
+    elements.docFontSizeSelect.title = t("fontSize");
+    elements.docFontSizeSelect.setAttribute("aria-label", t("fontSize"));
+  }
   setToolbarTitle('#docTextColorInput', t("textColor"));
   setToolbarTitle('#docHighlightInput', t("highlightColor"));
+  setToolbarTitle('[data-doc-color-apply="foreColor"]', t("textColor"));
+  setToolbarTitle('[data-doc-color-apply="hiliteColor"]', t("highlightColor"));
   const docTextSummary = document.querySelector('[data-doc-color-menu="foreColor"] > summary');
   if (docTextSummary) {
     docTextSummary.title = t("textColor");
@@ -5519,16 +6209,24 @@ function applyLanguage(language, initial = false) {
   setMenuItemLabel(document.querySelector('[data-doc-color-clear="foreColor"]'), t("defaultTextColor"));
   setMenuItemLabel(document.querySelector('[data-doc-color-clear="hiliteColor"]'), t("clearHighlight"));
   document.querySelectorAll(".doc-custom-color span").forEach((span) => { span.textContent = t("customColor"); });
+  const docInsertMenu = document.querySelector(".doc-insert-menu > summary");
+  if (docInsertMenu) {
+    docInsertMenu.title = t("insertMenu");
+    docInsertMenu.setAttribute("aria-label", t("insertMenu"));
+    const label = docInsertMenu.querySelector("span:nth-child(2)");
+    if (label) label.textContent = t("insertMenu");
+  }
   const docMoreMenu = document.querySelector(".doc-more-menu > summary");
   if (docMoreMenu) {
     docMoreMenu.title = t("moreFormat");
     docMoreMenu.setAttribute("aria-label", t("moreFormat"));
+    const label = docMoreMenu.querySelector("span:first-child");
+    if (label) label.textContent = t("moreButton");
   }
   setMenuItemLabel(document.querySelector('[data-doc-action="image"]'), t("insertImage"));
   setToolbarTitle('[data-doc-action="image"]', t("insertImage"));
   setMenuItemLabel(document.querySelector('[data-doc-action="link"]'), t("insertLink"));
-  setMenuItemLabel(document.querySelector('[data-doc-command="unlink"]'), t("removeLink"));
-  setMenuItemLabel(document.querySelector('[data-doc-command="removeFormat"]'), t("clearFormat"));
+  setToolbarTitle('[data-doc-command="unlink"]', t("removeLink"));
   if (elements.docImageControlLabel) elements.docImageControlLabel.textContent = t("docImageSize");
   if (elements.docImageControls) elements.docImageControls.setAttribute("aria-label", t("docImageSize"));
   if (elements.docImageOriginalButton) elements.docImageOriginalButton.textContent = t("docImageOriginal");
@@ -5648,10 +6346,10 @@ function setMenuItemLabel(button, label) {
 }
 
 function setToolbarTitle(selector, label) {
-  const button = document.querySelector(selector);
-  if (!button) return;
-  button.title = label;
-  button.setAttribute("aria-label", label);
+  document.querySelectorAll(selector).forEach((button) => {
+    button.title = label;
+    button.setAttribute("aria-label", label);
+  });
 }
 
 function readSplitRatio() {
@@ -5907,11 +6605,12 @@ function restoreDocSelectionOffsets(offsets) {
   state.docSelection = range.cloneRange();
 }
 
-function normalizeDocInputHtml() {
+function normalizeDocInputHtml(options = {}) {
   const note = activeNote();
   if (!note || note.mode !== "doc" || !elements.docInput) return;
   const selectionOffsets = getDocSelectionOffsets();
-  const clean = sanitizeDocHtml(elements.docInput.innerHTML || "<p></p>");
+  let clean = sanitizeDocHtml(elements.docInput.innerHTML || "<p></p>");
+  if (options.compactGeneratedSpacing) clean = compactDocGeneratedSpacing(clean);
   if (elements.docInput.innerHTML !== clean) {
     elements.docInput.innerHTML = clean;
     restoreDocSelectionOffsets(selectionOffsets);
@@ -6004,18 +6703,91 @@ function moveCollapsedDocSelectionOutOfStyle(command) {
   return true;
 }
 
-function finishDocFormatting() {
+function finishDocFormatting(options = {}) {
   saveDocSelection();
   window.setTimeout(() => {
-    normalizeDocInputHtml();
+    normalizeDocInputHtml(options);
+    syncDocHistoryCurrent();
     updateDocToolbarState();
     elements.docInput?.focus();
   }, 0);
 }
 
-function applyDocCommand(command, value = null) {
+function currentDocEditorHtml() {
+  return sanitizeDocHtml(elements.docInput?.innerHTML || "<p></p>");
+}
+
+function resetDocHistory(note = activeNote()) {
+  const html = note?.mode === "doc" ? sanitizeDocHtml(note.body || "<p></p>") : "";
+  state.docHistory = {
+    noteId: note?.mode === "doc" ? note.id : null,
+    undo: [],
+    redo: [],
+    last: html,
+    applying: false
+  };
+}
+
+function ensureDocHistory(note = activeNote()) {
+  if (!note || note.mode !== "doc") return false;
+  if (state.docHistory.noteId !== note.id) resetDocHistory(note);
+  return true;
+}
+
+function trimDocHistoryStack(stack) {
+  while (stack.length > DOC_HISTORY_LIMIT) stack.shift();
+}
+
+function recordDocHistoryBeforeChange() {
+  const note = activeNote();
+  if (!ensureDocHistory(note) || state.docHistory.applying) return;
+  const current = currentDocEditorHtml();
+  if (state.docHistory.undo[state.docHistory.undo.length - 1] !== current) {
+    state.docHistory.undo.push(current);
+    trimDocHistoryStack(state.docHistory.undo);
+  }
+  state.docHistory.redo = [];
+  state.docHistory.last = current;
+}
+
+function syncDocHistoryCurrent() {
+  if (!ensureDocHistory(activeNote()) || state.docHistory.applying) return;
+  state.docHistory.last = currentDocEditorHtml();
+}
+
+function restoreDocHistorySnapshot(html) {
+  if (!elements.docInput) return;
+  state.docHistory.applying = true;
+  elements.docInput.innerHTML = sanitizeDocHtml(html || "<p></p>");
+  focusDocEditorEnd();
+  updateActiveFromInputs({ force: true });
+  updateDocToolbarState();
+  state.docHistory.last = currentDocEditorHtml();
+  state.docHistory.applying = false;
+}
+
+function runDocHistoryCommand(command) {
+  if (!ensureDocHistory(activeNote())) return false;
+  const undoing = command === "undo";
+  const source = undoing ? state.docHistory.undo : state.docHistory.redo;
+  const target = undoing ? state.docHistory.redo : state.docHistory.undo;
+  if (!source.length) return false;
+  const current = currentDocEditorHtml();
+  const next = source.pop();
+  if (current !== next) {
+    target.push(current);
+    trimDocHistoryStack(target);
+  }
+  restoreDocHistorySnapshot(next);
+  return true;
+}
+
+function applyDocCommand(command, value = null, options = {}) {
   const note = activeNote();
   if (!note || note.mode !== "doc") return;
+  if (!options.skipHistory && command !== "undo" && command !== "redo") {
+    recordDocHistoryBeforeChange();
+  }
   restoreDocSelection();
   try {
     if (command === "foreColor" || command === "hiliteColor" || command === "backColor") {
@@ -6032,13 +6804,35 @@ function applyDocCommand(command, value = null) {
   } catch (error) {
     console.warn("DOC command failed", error);
   }
-  finishDocFormatting();
+  const compactGeneratedSpacing = options.compactGeneratedSpacing
+    || command === "insertUnorderedList"
+    || command === "insertOrderedList"
+    || command === "insertHTML";
+  finishDocFormatting({ compactGeneratedSpacing });
 }
 
 function applyDocBlock(block, force = false) {
   const current = currentDocBlockTag();
   const next = force ? block : current === block ? "p" : block;
   applyDocCommand("formatBlock", `<${next}>`);
+}
+
+function applyDocFontFamily(fontFamily) {
+  const safeFamily = normalizeDocFontFamily(fontFamily);
+  if (!safeFamily) {
+    elements.docInput?.focus();
+    return;
+  }
+  applyDocCommand("fontName", safeFamily);
+}
+
+function applyDocFontSize(size) {
+  const commandSize = DOC_FONT_SIZE_TO_COMMAND.get(String(size));
+  if (!commandSize) {
+    elements.docInput?.focus();
+    return;
+  }
+  applyDocCommand("fontSize", commandSize);
 }
 
 function applyDocColor(command, color) {
@@ -6050,9 +6844,37 @@ function applyDocColor(command, color) {
   applyDocCommand(command, color);
 }
 
+function applyCurrentDocColor(command) {
+  const input = command === "foreColor" ? elements.docTextColorInput : elements.docHighlightInput;
+  const fallback = command === "foreColor" ? DOC_DEFAULT_TEXT_COLOR : DOC_DEFAULT_HIGHLIGHT_COLOR;
+  closeToolbarMenus();
+  applyDocColor(command, input?.value || fallback);
+}
+
+function insertDocChecklist() {
+  const note = activeNote();
+  if (!note || note.mode !== "doc") return;
+  applyDocCommand("insertHTML", '<span class="doc-task-box" data-doc-task="unchecked" contenteditable="false">☐</span>待办', { compactGeneratedSpacing: true });
+}
+
+function handleDocTaskBoxClick(event) {
+  const box = event.target.closest("[data-doc-task]");
+  if (!box || !elements.docInput?.contains(box)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  recordDocHistoryBeforeChange();
+  const checked = box.getAttribute("data-doc-task") === "checked";
+  box.setAttribute("data-doc-task", checked ? "unchecked" : "checked");
+  box.textContent = checked ? "☐" : "☑";
+  updateActiveFromInputs({ force: true });
+  syncDocHistoryCurrent();
+  updateDocToolbarState();
+}
+
 function clearDocColor(command) {
   const note = activeNote();
   if (!note || note.mode !== "doc") return;
+  recordDocHistoryBeforeChange();
   restoreDocSelection();
   const selection = window.getSelection?.();
   const collapsed = Boolean(selection?.rangeCount && selection.getRangeAt(0).collapsed);
@@ -6506,6 +7328,55 @@ function queryDocCommandState(command) {
   }
 }
 
+function queryDocCommandValue(command) {
+  try {
+    return String(document.queryCommandValue?.(command) || "");
+  } catch {
+    return "";
+  }
+}
+
+function normalizeDocFontFamily(value) {
+  const raw = String(value || "").trim().replace(/^['"]|['"]$/g, "");
+  return DOC_FONT_FAMILIES.has(raw) ? raw : "";
+}
+
+function normalizeDocFontSizeValue(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (DOC_COMMAND_TO_FONT_SIZE.has(raw)) return DOC_COMMAND_TO_FONT_SIZE.get(raw);
+  const pxMatch = raw.match(/^(\d+(?:\.\d+)?)px$/);
+  if (!pxMatch) return "";
+  const size = Number(pxMatch[1]);
+  if (!Number.isFinite(size)) return "";
+  const available = Array.from(DOC_FONT_SIZE_TO_COMMAND.keys()).map(Number);
+  const nearest = available.reduce((best, candidate) => (
+    Math.abs(candidate - size) < Math.abs(best - size) ? candidate : best
+  ), 14);
+  return String(nearest);
+}
+
+function currentDocFontFamilyValue() {
+  let node = activeDocElement();
+  while (node && node !== elements.docInput) {
+    const raw = node.style?.fontFamily || (node.tagName?.toLowerCase() === "font" ? node.getAttribute("face") : "");
+    const family = normalizeDocFontFamily(raw);
+    if (family) return family;
+    node = node.parentNode;
+  }
+  return normalizeDocFontFamily(queryDocCommandValue("fontName"));
+}
+
+function currentDocFontSizeValue() {
+  let node = activeDocElement();
+  while (node && node !== elements.docInput) {
+    const raw = node.style?.fontSize || (node.tagName?.toLowerCase() === "font" ? node.getAttribute("size") : "");
+    const size = normalizeDocFontSizeValue(raw);
+    if (size && DOC_FONT_SIZE_TO_COMMAND.has(size)) return size;
+    node = node.parentNode;
+  }
+  return normalizeDocFontSizeValue(queryDocCommandValue("fontSize"));
+}
+
 function normalizeDocBlockForSelect(tag) {
   if (tag === "li") {
     const active = activeDocElement();
@@ -6519,9 +7390,27 @@ function updateDocToolbarState() {
   if (!elements.toolbar || activeNote()?.mode !== "doc") return;
   const block = normalizeDocBlockForSelect(currentDocBlockTag());
   if (elements.docBlockSelect && elements.docBlockSelect.value !== block) elements.docBlockSelect.value = block;
+  if (elements.docFontSelect) {
+    const family = currentDocFontFamilyValue();
+    if (elements.docFontSelect.value !== family) elements.docFontSelect.value = family;
+  }
+  if (elements.docFontSizeSelect) {
+    const size = currentDocFontSizeValue() || "14";
+    if (elements.docFontSizeSelect.value !== size) elements.docFontSizeSelect.value = size;
+  }
   elements.toolbar.querySelectorAll("[data-doc-command]").forEach((button) => {
     const command = button.dataset.docCommand;
-    const stateCommands = new Set(["bold", "italic", "underline", "insertUnorderedList", "insertOrderedList"]);
+    const stateCommands = new Set([
+      "bold",
+      "italic",
+      "underline",
+      "strikeThrough",
+      "insertUnorderedList",
+      "insertOrderedList",
+      "justifyLeft",
+      "justifyCenter",
+      "justifyRight"
+    ]);
     button.classList.toggle("active", stateCommands.has(command) && queryDocCommandState(command));
   });
   if (elements.docTextColorSwatch) {
@@ -6553,7 +7442,7 @@ function renderExportFormatButtons() {
 function runNativeHistoryCommand(command) {
   const note = activeNote();
   if (note?.mode === "doc") {
-    applyDocCommand(command);
+    if (!runDocHistoryCommand(command)) applyDocCommand(command, null, { skipHistory: true });
     return;
   }
   elements.bodyInput.focus();
@@ -6599,6 +7488,11 @@ function applyToolbarAction(button) {
     return;
   }
 
+  if (button.dataset.docColorApply) {
+    applyCurrentDocColor(button.dataset.docColorApply);
+    return;
+  }
+
   if (button.dataset.docColor) {
     const command = button.closest("[data-doc-color-menu]")?.dataset.docColorMenu || "foreColor";
     applyDocColor(command, button.dataset.docColor);
@@ -6612,6 +7506,11 @@ function applyToolbarAction(button) {
 
   if (button.dataset.docAction === "link") {
     applyDocLink();
+    return;
+  }
+
+  if (button.dataset.docAction === "checklist") {
+    insertDocChecklist();
     return;
   }
 
@@ -7360,13 +8259,16 @@ function sanitizeDocHtml(html) {
   if (!source) return "<p></p>";
   if (typeof document === "undefined") return source.replace(/<script[\s\S]*?<\/script>/gi, "");
 
-  const allowedTags = new Set(["p", "br", "strong", "em", "u", "span", "mark", "h1", "h2", "h3", "ul", "ol", "li", "blockquote", "a", "img"]);
+  const allowedTags = new Set(["p", "br", "strong", "em", "u", "s", "span", "mark", "h1", "h2", "h3", "ul", "ol", "li", "blockquote", "a", "img"]);
   const blockAliases = new Map([
     ["div", "p"],
     ["section", "p"],
     ["article", "p"],
     ["b", "strong"],
-    ["i", "em"]
+    ["i", "em"],
+    ["font", "span"],
+    ["strike", "s"],
+    ["del", "s"]
   ]);
   const template = document.createElement("template");
   template.innerHTML = source;
@@ -7410,12 +8312,30 @@ function sanitizeDocHtml(html) {
         element.setAttribute("rel", "noreferrer");
       }
     }
+    if (tag === "span") {
+      const taskState = safeDocTaskState(node.getAttribute("data-doc-task"));
+      if (taskState) {
+        element.className = "doc-task-box";
+        element.setAttribute("data-doc-task", taskState);
+        element.setAttribute("contenteditable", "false");
+        element.textContent = taskState === "checked" ? "☑" : "☐";
+        return element;
+      }
+    }
 
     const styles = [];
-    const color = safeDocColor(node.style?.color, "text");
+    const color = safeDocColor(node.style?.color || (rawTag === "font" ? node.getAttribute("color") : ""), "text");
     const background = safeDocColor(node.style?.backgroundColor, "background");
+    const fontFamily = safeDocFontFamily(node.style?.fontFamily || (rawTag === "font" ? node.getAttribute("face") : ""));
+    const fontSize = safeDocFontSize(node.style?.fontSize || (rawTag === "font" ? node.getAttribute("size") : ""));
+    const textAlign = safeDocTextAlign(node.style?.textAlign || node.getAttribute("align"));
+    const textDecoration = safeDocTextDecoration(node.style?.textDecoration || node.style?.textDecorationLine);
     if (color) styles.push(`color:${color}`);
     if (background) styles.push(`background-color:${background}`);
+    if (fontFamily) styles.push(`font-family:${fontFamily}`);
+    if (fontSize) styles.push(`font-size:${fontSize}`);
+    if (textAlign) styles.push(`text-align:${textAlign}`);
+    if (textDecoration) styles.push(`text-decoration:${textDecoration}`);
     if (styles.length) element.setAttribute("style", styles.join(";"));
 
     const childFragment = document.createDocumentFragment();
@@ -7429,8 +8349,48 @@ function sanitizeDocHtml(html) {
   template.content.childNodes.forEach((node) => fragment.appendChild(cleanNode(node)));
   const output = document.createElement("div");
   output.appendChild(fragment);
+  normalizeDocTaskLineMarkup(output);
   const result = output.innerHTML.trim();
   return result || "<p></p>";
+}
+
+function normalizeDocTaskLineMarkup(container) {
+  container.querySelectorAll?.("p").forEach((paragraph) => {
+    const boxes = Array.from(paragraph.querySelectorAll(".doc-task-box"));
+    if (!boxes.length) return;
+    paragraph.classList.add("doc-task-line");
+    boxes.forEach((box) => {
+      const next = box.nextSibling;
+      if (next?.nodeType !== Node.TEXT_NODE) return;
+      next.textContent = (next.textContent || "").replace(/^[\s\u00a0]+/, "");
+      if (!next.textContent) next.remove();
+    });
+  });
+}
+
+function compactDocGeneratedSpacing(html) {
+  if (typeof document === "undefined") return html;
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = String(html || "");
+  normalizeDocTaskLineMarkup(wrapper);
+  const isEmptyParagraph = (element) => {
+    if (!element || element.tagName !== "P") return false;
+    if (element.querySelector("img, .doc-task-box")) return false;
+    const text = (element.textContent || "").replace(/\u00a0/g, "").replace(/\u200b/g, "").trim();
+    return !text;
+  };
+  const isListOrTaskBlock = (element) => {
+    if (!element) return false;
+    if (element.tagName === "UL" || element.tagName === "OL") return true;
+    return element.tagName === "P" && Boolean(element.querySelector(".doc-task-box"));
+  };
+  Array.from(wrapper.children).forEach((element) => {
+    if (!isEmptyParagraph(element)) return;
+    if (isListOrTaskBlock(element.previousElementSibling) || isListOrTaskBlock(element.nextElementSibling)) {
+      element.remove();
+    }
+  });
+  return wrapper.innerHTML.trim() || "<p></p>";
 }
 
 function safeDocImageSrc(value) {
@@ -7467,6 +8427,33 @@ function safeDocColor(value, kind = "any") {
   if (kind === "background" && /^(transparent|rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\))$/i.test(color)) return "";
   if (kind === "text" && /^(#111827|rgb\(\s*17\s*,\s*24\s*,\s*39\s*\))$/i.test(color)) return "";
   return color;
+}
+
+function safeDocFontFamily(value) {
+  const firstFamily = String(value || "").split(",")[0] || "";
+  const family = normalizeDocFontFamily(firstFamily);
+  if (!family) return "";
+  return /[\s\u0080-\uFFFF]/.test(family) ? `"${family}"` : family;
+}
+
+function safeDocFontSize(value) {
+  const size = normalizeDocFontSizeValue(value);
+  return DOC_FONT_SIZE_TO_COMMAND.has(size) ? `${size}px` : "";
+}
+
+function safeDocTextAlign(value) {
+  const align = String(value || "").trim().toLowerCase();
+  if (!["center", "right", "justify"].includes(align)) return "";
+  return align;
+}
+
+function safeDocTextDecoration(value) {
+  return /line-through/i.test(String(value || "")) ? "line-through" : "";
+}
+
+function safeDocTaskState(value) {
+  const stateValue = String(value || "").trim().toLowerCase();
+  return stateValue === "checked" || stateValue === "unchecked" ? stateValue : "";
 }
 
 function docHtmlToText(html) {
