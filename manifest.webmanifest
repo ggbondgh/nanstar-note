@@ -10,7 +10,7 @@
   "lang": "zh-CN",
   "categories": ["productivity", "utilities"],
   "background_color": "#eef2f6",
-  "theme_color": "#2f5bea",
+  "theme_color": "#2663EB",
   "icons": [
     {
       "src": "./assets/icon.svg",

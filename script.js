@@ -9105,8 +9105,8 @@ function formatDocHtmlExport(note) {
     main{max-width:860px;margin:0 auto}
     h1,h2,h3{line-height:1.35}
     h1{font-size:28px} h2{font-size:22px} h3{font-size:18px}
-    blockquote{margin:16px 0;padding:10px 14px;border-left:4px solid #2f5bea;background:#f4f7ff;color:#41516a}
-    a{color:#2f5bea}
+    blockquote{margin:16px 0;padding:10px 14px;border-left:4px solid #2663EB;background:#f4f7ff;color:#41516a}
+    a{color:#2663EB}
     p{margin:0 0 .3em}
     img{display:block;max-width:100%;height:auto;margin:.55em 0;border-radius:6px}
   </style>
@@ -9136,7 +9136,7 @@ function printableHtmlForNote(note) {
     h1,h2,h3,h4{line-height:1.35}
     pre{white-space:pre-wrap;word-break:break-word;background:#111827;color:#d8e3f0;padding:14px;border-radius:8px}
     code{font-family:"Cascadia Mono","Consolas",monospace}
-    blockquote{margin:16px 0;padding:10px 14px;border-left:4px solid #2f5bea;background:#f4f7ff;color:#41516a}
+    blockquote{margin:16px 0;padding:10px 14px;border-left:4px solid #2663EB;background:#f4f7ff;color:#41516a}
     table{width:100%;border-collapse:collapse} th,td{border:1px solid #dde4ef;padding:8px 10px}
     img{max-width:100%}
     .code-copy,.preview-copy-image{display:none}
