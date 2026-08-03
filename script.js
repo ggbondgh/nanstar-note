@@ -6084,16 +6084,13 @@ function updateTitleSaveStatusFromNote(syncMeta = readSyncMeta()) {
   const note = activeNote();
   const status = noteCloudStatus(note, syncMeta);
   let label = t("titleSaved");
-  let iconText = "✓";
   let unsaved = false;
 
   if (status.status === "dirty") {
     label = t("syncPendingShort");
-    iconText = "○";
     unsaved = true;
   } else if (status.status === "saving") {
     label = t("syncPushing");
-    iconText = "○";
     unsaved = true;
   } else if (status.status === "synced") {
     label = t("synced");
@@ -6106,7 +6103,7 @@ function updateTitleSaveStatusFromNote(syncMeta = readSyncMeta()) {
   elements.titleSaveStatus.classList.toggle("unsaved", unsaved);
   elements.titleSaveStatus.classList.toggle("saved", !unsaved);
   const icon = elements.titleSaveStatus.querySelector(".title-save-icon");
-  if (icon) icon.textContent = iconText;
+  if (icon) icon.textContent = "";
   elements.titleSaveStatusText.textContent = label;
   elements.titleSaveStatus.title = status.label || label;
   elements.titleSaveStatus.setAttribute("aria-label", status.label || label);
