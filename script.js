@@ -5,7 +5,6 @@ const storageKeys = {
   syncMeta: "nanstar-note-sync-meta",
   crdtUpdateId: "nanstar-note-crdt-update-id",
   crdtPendingUpdates: "nanstar-note-crdt-pending-updates",
-  crdtDocState: "nanstar-note-crdt-doc-state",
   lastSyncAt: "nanstar-note-last-sync-at",
   autoSync: "nanstar-note-auto-sync",
   splitRatio: "nanstar-note-split-ratio",
@@ -200,8 +199,8 @@ const i18n = {
     noNotes: "没有匹配的笔记，试试其他关键词或",
     txtOutlineEmpty: "TXT 模式不显示目录",
     noHeadings: "暂无标题",
-    cloudAuto: "实时同步",
-    cloudReady: "实时同步已连接",
+    cloudAuto: "云同步 / 自动",
+    cloudReady: "云同步已配置",
     localMode: "本地模式",
     local: "本地",
     cloudUnsynced: "云端未同步",
@@ -217,15 +216,13 @@ const i18n = {
     savedLocal: "已保存本地",
     titleSaved: "已保存",
     titleUnsaved: "未保存",
-    syncRefreshing: "正在刷新云端最新...",
+    syncRefreshing: "正在从云端刷新并覆盖本地...",
     syncRefreshedAt: "已从云端刷新 {time}",
     syncPushedAt: "已同步到云端 {time}",
     syncPulledAt: "已从云端更新 {time}",
     syncCheckedAt: "已检查云端 {time}",
     syncVerifying: "已上传，正在校验云端...",
     syncVerifiedAt: "已同步并校验 {time}",
-    syncOfflineEditing: "离线编辑，联网后自动同步",
-    syncConnecting: "正在连接云端...",
     syncVerifyFailed: "云端校验未通过，已保留待同步",
     syncDiagnostics: "待同步 {dirty} · 最近校验 {time}",
     syncDiagnosticsNever: "无",
@@ -309,11 +306,11 @@ const i18n = {
     layoutTwo: "两栏视图",
     layoutOne: "内容视图",
     installPromptUnavailable: "当前浏览器暂未提供桌面安装入口。",
-    syncCopy: "已启用实时同步。笔记会自动在本地保存，并在联网后自动上传和拉取云端更新。",
+    syncCopy: "使用 Cloudflare Pages Functions + D1 保存云端笔记。客户电脑建议使用无痕窗口，离开时清除 Token。",
     syncToken: "同步 Token",
-    autoSync: "实时同步：自动上传和拉取",
-    pushCloud: "立即上传",
-    pullCloud: "刷新云端最新",
+    autoSync: "手动同步：点击保存才上传，点击同步才从云端覆盖",
+    pushCloud: "保存全部",
+    pullCloud: "同步全部",
     clearToken: "清除 Token",
     syncLocalReady: "未连接云同步，本地编辑可正常使用。",
     tokenCleared: "已清除本地 Token。",
@@ -526,8 +523,8 @@ const i18n = {
     noNotes: "No matching notes",
     txtOutlineEmpty: "No outline in TXT mode",
     noHeadings: "No headings",
-    cloudAuto: "Realtime sync",
-    cloudReady: "Realtime sync connected",
+    cloudAuto: "Cloud sync / auto",
+    cloudReady: "Cloud sync ready",
     localMode: "Local mode",
     local: "Local",
     cloudUnsynced: "Cloud not synced",
@@ -543,15 +540,13 @@ const i18n = {
     savedLocal: "Saved locally",
     titleSaved: "Saved",
     titleUnsaved: "Unsaved",
-    syncRefreshing: "Refreshing the latest cloud state...",
+    syncRefreshing: "Refreshing from cloud and overwriting local...",
     syncRefreshedAt: "Refreshed from cloud {time}",
     syncPushedAt: "Synced to cloud {time}",
     syncPulledAt: "Updated from cloud {time}",
     syncCheckedAt: "Checked cloud {time}",
     syncVerifying: "Uploaded, verifying cloud...",
     syncVerifiedAt: "Synced and verified {time}",
-    syncOfflineEditing: "Offline editing, will sync when connected",
-    syncConnecting: "Connecting to cloud...",
     syncVerifyFailed: "Cloud verification failed; kept pending sync",
     syncDiagnostics: "Dirty notes {dirty} · last verify {time}",
     syncDiagnosticsNever: "never",
@@ -635,11 +630,11 @@ const i18n = {
     layoutTwo: "Two Columns",
     layoutOne: "Content Only",
     installPromptUnavailable: "The desktop install prompt is not available in this browser yet.",
-    syncCopy: "Realtime sync is enabled. Notes are saved locally and automatically pushed or pulled when connected.",
+    syncCopy: "Use Cloudflare Pages Functions + D1 to store notes in the cloud. On client computers, use an incognito window and clear the token when leaving.",
     syncToken: "Sync Token",
-    autoSync: "Realtime sync: push and pull automatically",
-    pushCloud: "Push now",
-    pullCloud: "Refresh cloud",
+    autoSync: "Manual sync: Save uploads, Sync overwrites from cloud",
+    pushCloud: "Save All",
+    pullCloud: "Sync All",
     clearToken: "Clear Token",
     syncLocalReady: "Cloud sync is not connected. Local editing still works.",
     tokenCleared: "Local token cleared.",
@@ -968,8 +963,7 @@ const YOUDAO_LIST_WIDTH_MIN = 260;
 const YOUDAO_LIST_WIDTH_MAX = 480;
 const SYNC_POLL_INTERVAL = 3000;
 const SYNC_PUSH_DELAY = 500;
-// Keep the snapshot implementation available for rollback, but run CRDT sync by default.
-const NOTE_SYNC_ENGINE = "crdt";
+const NOTE_SYNC_ENGINE = "snapshot";
 const DOC_DEFAULT_TEXT_COLOR = "#111827";
 const DOC_DEFAULT_HIGHLIGHT_COLOR = "#fef3c7";
 const DOC_HISTORY_LIMIT = 40;
@@ -1272,13 +1266,12 @@ function init() {
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   restoreDirtyNotes();
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
-  const hasSyncToken = Boolean(elements.syncTokenInput.value.trim());
-  localStorage.setItem(storageKeys.autoSync, hasSyncToken ? "1" : "0");
-  elements.autoSyncToggle.checked = hasSyncToken;
+  localStorage.setItem(storageKeys.autoSync, "0");
+  elements.autoSyncToggle.checked = false;
   elements.autoSyncToggle.disabled = true;
   migrateFolderState();
-  initCrdtFromState();
   saveNotes();
+  clearLegacyCrdtSyncState({ clearOrphanPending: true });
   applyLanguage(state.language, true);
   applySidebarWidth(readSidebarWidth());
   applyYoudaoRailWidth(readYoudaoRailWidth());
@@ -1622,26 +1615,7 @@ function bindEvents() {
   elements.autoSyncToggle.addEventListener("change", () => {
     localStorage.setItem(storageKeys.autoSync, elements.autoSyncToggle.checked ? "1" : "0");
     renderSyncMeta();
-    if (elements.autoSyncToggle.checked) startCloudSync({ immediate: true });
-    else stopCloudSync();
-  });
-  window.addEventListener("online", () => {
-    writeSyncMeta({ connectionState: "checking", lastError: "" });
-    renderSyncMeta();
-    startCloudSync({ immediate: true });
-  });
-  window.addEventListener("offline", () => {
-    writeSyncMeta({ connectionState: "offline" });
-    renderSyncMeta();
     stopCloudSync();
-  });
-  window.addEventListener("focus", () => {
-    if (document.visibilityState !== "hidden") syncCloudInBackground({ silent: true, pullOnly: true, reason: "focus" });
-  });
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      syncCloudInBackground({ silent: true, pullOnly: true, reason: "visible" });
-    }
   });
 
   window.addEventListener("keydown", (event) => {
@@ -3061,12 +3035,6 @@ function writeKnownCloudNote(note, patch = {}) {
 function noteCloudStatus(note, syncMeta = readSyncMeta()) {
   if (!note || isTransferAssistant(note) || isFolderRegistry(note)) return { status: "hidden", label: "" };
   if (!getSyncToken()) return { status: "offline", label: t("syncStatusOffline") };
-  if (navigator.onLine === false || syncMeta.connectionState === "offline") {
-    return {
-      status: isDirtyNoteId(note.id) || Boolean(syncMeta.pending) ? "dirty" : "offline",
-      label: t("syncOfflineEditing")
-    };
-  }
   if (state.syncInFlight && state.syncAction === "pushing" && note.id === state.activeId) {
     return { status: "saving", label: t("syncPushing") };
   }
@@ -3266,17 +3234,6 @@ function clearLegacyCrdtSyncState(options = {}) {
   }
 }
 
-function readCrdtDocState() {
-  return localStorage.getItem(storageKeys.crdtDocState) || "";
-}
-
-function writeCrdtDocState() {
-  if (!state.crdtDoc || !window.Y) return;
-  try {
-    localStorage.setItem(storageKeys.crdtDocState, fullCrdtUpdateBase64());
-  } catch {}
-}
-
 function initCrdtFromState(options = {}) {
   if (!window.Y) return;
   createCrdtDoc();
@@ -3285,26 +3242,9 @@ function initCrdtFromState(options = {}) {
     state.crdtPendingUpdates = [];
     writeCrdtPendingUpdates();
   }
-  const storedDocState = readCrdtDocState();
-  let restored = false;
-  if (storedDocState) {
-    try {
-      state.crdtApplying = true;
-      window.Y.applyUpdate(state.crdtDoc, base64ToBytes(storedDocState), "restore");
-      state.crdtApplying = false;
-      restored = true;
-      applyCrdtToState({ render: false });
-    } catch {
-      state.crdtApplying = false;
-      localStorage.removeItem(storageKeys.crdtDocState);
-    }
-  }
-  if (!restored) {
-    state.crdtApplying = true;
-    writeStateToCrdt({ force: true, origin: "seed" });
-    state.crdtApplying = false;
-    writeCrdtDocState();
-  }
+  state.crdtApplying = true;
+  writeStateToCrdt({ force: true, origin: "seed" });
+  state.crdtApplying = false;
   state.crdtSeedIsDefault = isDefaultSeedState(state.notes)
     && state.crdtPendingUpdates.length === 0
     && dirtyNoteIds().length === 0
@@ -3322,7 +3262,6 @@ function createCrdtDoc() {
     state.crdtSeedIsDefault = false;
     state.crdtPendingUpdates.push(bytesToBase64(update));
     writeCrdtPendingUpdates();
-    writeCrdtDocState();
     writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: "" });
     renderSyncMeta();
     scheduleAutoSync();
@@ -3443,7 +3382,6 @@ function applyCrdtToState({ render = true } = {}) {
   setStoredFolders(snapshot.folders);
   ensureActiveNote();
   saveNotes();
-  writeCrdtDocState();
   state.crdtApplying = false;
   if (render) renderAll();
 }
@@ -3507,11 +3445,6 @@ function clearSyncedDirtyNotes(snapshots) {
 
 function scheduleAutoSync() {
   clearTimeout(state.autoSyncTimer);
-  if (NOTE_SYNC_ENGINE !== "crdt" || !getSyncToken() || !elements.autoSyncToggle.checked) return;
-  state.autoSyncTimer = window.setTimeout(() => {
-    state.autoSyncTimer = null;
-    syncCloudInBackground({ silent: true, reason: "local-change" });
-  }, SYNC_PUSH_DELAY);
 }
 
 function syncCloudInBackground(options = {}) {
@@ -4701,7 +4634,6 @@ function renderSyncMeta() {
   const lastSync = localStorage.getItem(storageKeys.lastSyncAt);
   const auto = elements.autoSyncToggle.checked;
   const syncMeta = readSyncMeta();
-  const connectionState = syncMeta.connectionState || (navigator.onLine === false ? "offline" : "online");
 
   if (!token) {
     elements.cloudStatus.textContent = t("localMode");
@@ -4710,12 +4642,6 @@ function renderSyncMeta() {
     const label = state.syncAction === "pulling" ? t("syncPulling") : t("syncPushing");
     elements.cloudStatus.textContent = label;
     if (elements.syncState) elements.syncState.textContent = label;
-  } else if (connectionState === "offline") {
-    elements.cloudStatus.textContent = t("syncOfflineEditing");
-    if (elements.syncState) elements.syncState.textContent = t("syncOfflineEditing");
-  } else if (connectionState === "checking") {
-    elements.cloudStatus.textContent = t("syncConnecting");
-    if (elements.syncState) elements.syncState.textContent = t("syncConnecting");
   } else if (syncMeta.lastError) {
     elements.cloudStatus.textContent = t("syncFailed");
     if (elements.syncState) elements.syncState.textContent = t("syncRetry");
@@ -5360,9 +5286,6 @@ async function saveCurrentNoteToCloud() {
     showToast(t("inputComposing"));
     return false;
   }
-  if (NOTE_SYNC_ENGINE === "crdt") {
-    return syncCloud({ manual: true, forcePush: true, noteId, reason: "save-note" });
-  }
   return saveNoteToCloud(noteId);
 }
 
@@ -5456,9 +5379,6 @@ async function saveNoteToCloud(noteId) {
 }
 
 async function syncCurrentNoteFromCloud() {
-  if (NOTE_SYNC_ENGINE === "crdt") {
-    return syncCloud({ manual: true, pullOnly: true, reason: "sync-note" });
-  }
   const token = getSyncToken();
   const noteId = state.activeId;
   if (!token) {
@@ -5558,6 +5478,7 @@ function markSyncPending(noteId = state.activeId) {
 function clearSyncPending(remoteUpdatedAt = Date.now(), patch = {}, syncedSnapshots = null) {
   const now = Date.now();
   localStorage.setItem(storageKeys.lastSyncAt, String(now));
+  clearLegacyCrdtSyncState();
   clearSyncedDirtyNotes(syncedSnapshots);
   writeSyncMeta({
     pending: state.dirtyNoteIds.size > 0,
@@ -5571,18 +5492,6 @@ function clearSyncPending(remoteUpdatedAt = Date.now(), patch = {}, syncedSnapsh
 
 function startCloudSync(options = {}) {
   stopCloudSync();
-  if (NOTE_SYNC_ENGINE !== "crdt" || !getSyncToken() || !elements.autoSyncToggle.checked) {
-    renderSyncMeta();
-    return;
-  }
-  state.syncStartupTimer = window.setTimeout(() => {
-    state.syncStartupTimer = null;
-    syncCloudInBackground({ silent: true, reason: "startup" });
-  }, options.immediate ? 0 : 120);
-  state.syncPollTimer = window.setInterval(() => {
-    if (document.visibilityState === "hidden" || navigator.onLine === false) return;
-    syncCloudInBackground({ silent: true, pullOnly: true, reason: "poll" });
-  }, SYNC_POLL_INTERVAL);
   renderSyncMeta();
 }
 
@@ -5696,7 +5605,6 @@ function replaceStateFromLegacyPayload(payload) {
   state.crdtApplying = true;
   writeStateToCrdt({ force: true, origin: "seed" });
   state.crdtApplying = false;
-  writeCrdtDocState();
   renderAll();
 }
 
@@ -5760,11 +5668,6 @@ async function syncCrdtCloud(options = {}) {
     renderSyncMeta();
     return;
   }
-  if (navigator.onLine === false) {
-    writeSyncMeta({ connectionState: "offline" });
-    renderSyncMeta();
-    return false;
-  }
   if (!manual && !elements.autoSyncToggle.checked) return;
   if (state.syncInFlight) {
     state.syncQueue.push(options);
@@ -5781,28 +5684,31 @@ async function syncCrdtCloud(options = {}) {
     renderSyncMeta();
     return false;
   }
-  if (pullOnly && state.noteInputComposing) {
-    return false;
-  }
 
   clearTimeout(state.autoSyncTimer);
   localStorage.setItem(storageKeys.syncToken, token);
   state.syncInFlight = true;
   state.syncAction = pullOnly ? "pulling" : "pushing";
-  writeSyncMeta({ connectionState: "checking", lastAttemptAt: Date.now() });
   renderSyncMeta();
   if (!silent) showSyncMessage(forcePull ? t("syncRefreshing") : pullOnly ? t("syncPulling") : t("syncPushing"));
 
   let pushed = false;
   let pulled = false;
   try {
+    if (forcePull) {
+      state.crdtPendingUpdates = [];
+      writeCrdtPendingUpdates();
+      state.dirtyNoteIds.clear();
+      writeSyncMeta({ pending: false, dirtyNoteIds: [], lastError: "" });
+    }
+
     const since = forcePull ? 0 : Number(localStorage.getItem(storageKeys.crdtUpdateId) || 0);
     const remotePayload = await fetchAllCrdtState(token, since);
     const updates = Array.isArray(remotePayload.updates) ? remotePayload.updates : [];
     const latestId = Number(remotePayload.latestId) || 0;
     const localHasChanges = state.crdtPendingUpdates.length > 0 || dirtyNoteIds().length > 0 || Boolean(readSyncMeta().pending);
 
-    if (forcePull && !localHasChanges) {
+    if (forcePull) {
       if (updates.length) {
         resetCrdtFromUpdates(updates);
         localStorage.setItem(storageKeys.crdtUpdateId, String(latestId));
@@ -5829,12 +5735,11 @@ async function syncCrdtCloud(options = {}) {
         state.crdtSeedIsDefault = false;
         localStorage.setItem(storageKeys.crdtUpdateId, String(Number(updates[updates.length - 1]?.id) || latestId));
         pulled = true;
-      } else if (since === 0 && latestId === 0 && legacyPayloadHasNotes(remotePayload.legacy) && !localHasChanges) {
+      } else if (since === 0 && latestId === 0 && legacyPayloadHasNotes(remotePayload.legacy)) {
         replaceStateFromLegacyPayload(remotePayload.legacy);
         state.crdtSeedIsDefault = false;
         state.crdtPendingUpdates = [fullCrdtUpdateBase64()];
         writeCrdtPendingUpdates();
-        writeCrdtDocState();
         pulled = true;
       } else if (since === 0 && latestId === 0 && state.crdtPendingUpdates.length > 0) {
         state.crdtPendingUpdates = [fullCrdtUpdateBase64()];
@@ -5844,13 +5749,6 @@ async function syncCrdtCloud(options = {}) {
         writeCrdtPendingUpdates();
       }
     }
-
-    if (!pullOnly && latestId === 0 && !updates.length && state.crdtPendingUpdates.length) {
-      state.crdtPendingUpdates = [fullCrdtUpdateBase64()];
-      writeCrdtPendingUpdates();
-    }
-
-    if (!pullOnly) ensureCrdtPendingUpdatesForDirty();
 
     if (!pullOnly && state.crdtPendingUpdates.length) {
       const pending = [...state.crdtPendingUpdates];
@@ -5869,7 +5767,6 @@ async function syncCrdtCloud(options = {}) {
           pending: true,
           dirtyNoteIds: dirtyNoteIds(),
           lastError: message,
-          connectionState: "error",
           lastCheckedAt: Date.now(),
           lastVerifyAt: Date.now()
         });
@@ -5886,34 +5783,13 @@ async function syncCrdtCloud(options = {}) {
       clearSyncPending(Number(result.updatedAt) || Date.now(), {
         lastPushAt: Date.now(),
         lastPullAt: pulled ? Date.now() : readSyncMeta().lastPullAt || 0,
-        lastVerifiedAt: Date.now(),
-        lastSuccessAt: Date.now(),
-        connectionState: "online"
+        lastVerifiedAt: Date.now()
       }, dirtySnapshot);
       pushed = true;
     } else if (forcePull || pulled) {
-      clearSyncPending(Date.now(), {
-        lastPullAt: Date.now(),
-        lastCheckedAt: Date.now(),
-        lastSuccessAt: Date.now(),
-        connectionState: "online"
-      });
+      clearSyncPending(Date.now(), { lastPullAt: Date.now(), lastCheckedAt: Date.now() });
     } else {
-      writeSyncMeta({
-        pending: state.crdtPendingUpdates.length > 0,
-        dirtyNoteIds: dirtyNoteIds(),
-        lastError: "",
-        lastCheckedAt: Date.now(),
-        lastSuccessAt: Date.now(),
-        connectionState: "online"
-      });
-    }
-
-    if ((pushed || pulled || forcePull) && !state.crdtPendingUpdates.length && !hasDirtyNotes()) {
-      await putCloudState(token, {
-        notes: syncableNotes(),
-        folders: storedFolders()
-      }).catch(() => {});
+      writeSyncMeta({ pending: state.crdtPendingUpdates.length > 0, dirtyNoteIds: dirtyNoteIds(), lastError: "", lastCheckedAt: Date.now() });
     }
 
     renderSyncMeta();
@@ -5936,12 +5812,7 @@ async function syncCrdtCloud(options = {}) {
     }
   } catch (error) {
     const message = `${t("syncFailed")}：${cloudErrorText(error)}`;
-    writeSyncMeta({
-      pending: state.crdtPendingUpdates.length > 0 || state.dirtyNoteIds.size > 0,
-      dirtyNoteIds: dirtyNoteIds(),
-      lastError: message,
-      connectionState: navigator.onLine === false ? "offline" : "error"
-    });
+    writeSyncMeta({ pending: state.crdtPendingUpdates.length > 0 || state.dirtyNoteIds.size > 0, dirtyNoteIds: dirtyNoteIds(), lastError: message });
     renderSyncMeta();
     if (!silent) {
       showSyncMessage(message);
@@ -5960,8 +5831,6 @@ async function syncCrdtCloud(options = {}) {
 }
 
 async function syncCloud(options = {}) {
-  if (NOTE_SYNC_ENGINE === "crdt") return syncCrdtCloud(options);
-
   const token = getSyncToken();
   const manual = Boolean(options.manual);
   const silent = Boolean(options.silent);
@@ -6160,8 +6029,6 @@ function handleSyncTokenInput() {
 
   if (!token) {
     localStorage.removeItem(storageKeys.syncToken);
-    localStorage.setItem(storageKeys.autoSync, "0");
-    elements.autoSyncToggle.checked = false;
     stopCloudSync();
     refreshSyncAccessUi();
     showSyncMessage(t("syncLocalReady"));
@@ -6170,10 +6037,7 @@ function handleSyncTokenInput() {
 
   stopCloudSync();
   localStorage.setItem(storageKeys.syncToken, token);
-  localStorage.setItem(storageKeys.autoSync, "1");
-  elements.autoSyncToggle.checked = true;
   refreshSyncAccessUi();
-  startCloudSync({ immediate: true });
 
   state.syncTokenTimer = window.setTimeout(async () => {
     state.syncTokenTimer = null;
