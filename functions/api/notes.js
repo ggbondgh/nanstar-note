@@ -68,6 +68,12 @@ export async function onRequestPost({ env, request }) {
 
   await ensureTable(db);
   const now = Date.now();
+  if (payload?.seed) {
+    const currentLatest = await latestCrdtId(db);
+    if (currentLatest > 0) {
+      return json({ ok: true, latestId: currentLatest, skipped: true, updatedAt: now });
+    }
+  }
   const statements = updates.map((update) => db
     .prepare("INSERT INTO note_crdt_updates (update_data, created_at) VALUES (?, ?)")
     .bind(update, now));
