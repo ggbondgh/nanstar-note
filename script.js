@@ -1315,6 +1315,11 @@ function bindEvents() {
     refreshEditorLineLayoutSoon();
     positionDocImageSelection();
   });
+  window.visualViewport?.addEventListener?.("resize", refreshEditorLineLayoutSoon);
+  window.visualViewport?.addEventListener?.("scroll", refreshEditorLineLayoutSoon);
+  window.addEventListener("orientationchange", () => {
+    window.setTimeout(refreshEditorLineLayoutSoon, 120);
+  });
   elements.languageToggleButton?.addEventListener("click", toggleLanguage);
   elements.folderSectionSummary?.addEventListener("click", (event) => {
     if (event.target.closest("button")) return;
@@ -4522,8 +4527,8 @@ function renderNoteList() {
       const flags = transfer ? "" : `${note.pinned ? "📌" : ""}${note.favorite ? "★" : ""}`;
       const title = transfer ? t("transferAssistantTitle") : note.title;
       const body = transfer ? "" : excerpt(note.mode === "doc" ? docHtmlToText(note.body) : note.body);
-      const syncState = transfer ? null : noteListSyncIndicatorState(note, syncMeta);
-      const syncIndicator = transfer
+      const syncState = transfer || !showPerNoteSyncIndicators() ? null : noteListSyncIndicatorState(note, syncMeta);
+      const syncIndicator = transfer || !syncState
         ? ""
         : `<span class="note-sync-indicator ${syncState.syncClass}" title="${escapeAttribute(syncState.syncLabel)}" aria-label="${escapeAttribute(syncState.syncLabel)}"></span>`;
       const folder = canonicalFolderName(note.folder);
@@ -4603,8 +4608,16 @@ function noteListSyncIndicatorState(note, syncMeta = readSyncMeta()) {
   return { syncClass, syncLabel };
 }
 
+function showPerNoteSyncIndicators() {
+  return NOTE_SYNC_ENGINE !== "crdt" || !elements.autoSyncToggle?.checked;
+}
+
 function updateNoteListSyncIndicators(syncMeta = readSyncMeta()) {
   if (!elements.noteList) return;
+  if (!showPerNoteSyncIndicators()) {
+    elements.noteList.querySelectorAll(".note-sync-indicator").forEach((indicator) => indicator.remove());
+    return;
+  }
   elements.noteList.querySelectorAll(".note-item[data-id]").forEach((item) => {
     const note = state.notes.find((candidate) => candidate.id === item.dataset.id && !isDeletedNote(candidate));
     if (!note || isTransferAssistant(note) || isFolderRegistry(note)) return;
@@ -4799,10 +4812,16 @@ function renderSyncMeta() {
 function renderActiveNoteCloudStatus(syncMeta = readSyncMeta()) {
   const note = activeNote();
   if (elements.activeNoteSyncDot) {
-    const status = noteCloudStatus(note, syncMeta);
-    elements.activeNoteSyncDot.className = `note-sync-indicator ${status.status}`;
-    elements.activeNoteSyncDot.title = status.label;
-    elements.activeNoteSyncDot.setAttribute("aria-label", status.label);
+    elements.activeNoteSyncDot.hidden = !showPerNoteSyncIndicators();
+    if (elements.activeNoteSyncDot.hidden) {
+      elements.activeNoteSyncDot.removeAttribute("title");
+      elements.activeNoteSyncDot.removeAttribute("aria-label");
+    } else {
+      const status = noteCloudStatus(note, syncMeta);
+      elements.activeNoteSyncDot.className = `note-sync-indicator ${status.status}`;
+      elements.activeNoteSyncDot.title = status.label;
+      elements.activeNoteSyncDot.setAttribute("aria-label", status.label);
+    }
   }
   const disabled = !note || isTransferAssistant(note) || isFolderRegistry(note) || state.syncInFlight;
   if (elements.saveNoteButton) elements.saveNoteButton.disabled = disabled;
@@ -6275,6 +6294,14 @@ function setSaveStatus(message) {
 
 function updateTitleSaveStatusFromNote(syncMeta = readSyncMeta()) {
   if (!elements.titleSaveStatus || !elements.titleSaveStatusText) return;
+  if (!showPerNoteSyncIndicators()) {
+    elements.titleSaveStatus.hidden = true;
+    elements.titleSaveStatusText.textContent = "";
+    elements.titleSaveStatus.removeAttribute("title");
+    elements.titleSaveStatus.removeAttribute("aria-label");
+    return;
+  }
+  elements.titleSaveStatus.hidden = false;
   const note = activeNote();
   const status = noteCloudStatus(note, syncMeta);
   let label = t("titleSaved");
