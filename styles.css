@@ -10808,6 +10808,9 @@ body.realtime-sync-mode .youdao-sync-stack {
   max-height: none;
   min-height: 180px;
   height: 100%;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   align-content: start;
   transition: border-color 150ms ease, background 150ms ease;
 }
@@ -10818,9 +10821,23 @@ body.realtime-sync-mode .youdao-sync-stack {
 }
 
 .transfer-composer-actions {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: minmax(104px, auto) minmax(84px, auto);
   align-items: stretch;
   gap: 8px;
+  min-width: 0;
+}
+
+.transfer-composer {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  box-sizing: border-box;
+}
+
+.transfer-composer textarea {
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .transfer-attach-button {
@@ -10828,12 +10845,29 @@ body.realtime-sync-mode .youdao-sync-stack {
   align-items: center;
   justify-content: center;
   gap: 4px;
+  min-width: 104px;
+  white-space: nowrap;
+}
+
+.transfer-composer-actions .primary-button {
+  min-width: 84px;
+  white-space: nowrap;
 }
 
 .transfer-drop-hint {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+/* Keep the client menu inside the viewport instead of the clipped rail. */
+.youdao-client-panel {
+  position: fixed !important;
+  z-index: 1000;
+  width: 190px;
+  max-width: calc(100vw - 20px);
+  max-height: calc(100dvh - 20px);
+  overflow-y: auto;
 }
 
 .transfer-stream-item {
@@ -10887,6 +10921,7 @@ body.realtime-sync-mode .youdao-sync-stack {
   }
 
   .transfer-composer-actions {
+    display: inline-flex;
     justify-content: flex-end;
   }
 
@@ -10898,6 +10933,11 @@ body.realtime-sync-mode .youdao-sync-stack {
     width: 42px;
     min-width: 42px;
     padding: 0;
+  }
+
+  .youdao-client-panel {
+    width: min(190px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
   }
 
   .transfer-file-message.is-image {

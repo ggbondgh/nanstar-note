@@ -951,6 +951,7 @@ const state = {
   transferTextLimits: null,
   transferImageUrls: {},
   transferImageLoading: new Set(),
+  transferScrollToBottom: false,
   lastCloudPullAt: 0,
   dirtyNoteIds: new Set(),
   contextMenuFolder: null,
@@ -1246,7 +1247,6 @@ const elements = {
   updatedAt: $("#updatedAt"),
   importButton: $("#importButton"),
   exportButton: $("#exportButton"),
-  androidAppButton: $("#androidAppButton"),
   androidAppDialog: $("#androidAppDialog"),
   appVersionLabel: $("#appVersionLabel"),
   appUpdateStatus: $("#appUpdateStatus"),
@@ -1389,6 +1389,9 @@ function bindEvents() {
   });
   elements.youdaoInstallDesktopButton?.addEventListener("click", installDesktopClient);
   elements.youdaoAndroidAppButton?.addEventListener("click", openAndroidAppDialog);
+  elements.youdaoClientMenu?.addEventListener("toggle", () => {
+    if (elements.youdaoClientMenu.open) window.requestAnimationFrame(positionClientMenu);
+  });
   elements.youdaoSyncSettingsButton?.addEventListener("click", () => {
     elements.youdaoClientMenu?.removeAttribute("open");
     elements.syncDialog.showModal();
@@ -1433,6 +1436,7 @@ function bindEvents() {
   });
   window.addEventListener("scroll", () => { hideFolderContextMenu(); hideNoteContextMenu(); closeToolbarMenus(); }, { capture: true });
   window.addEventListener("resize", () => positionOpenToolbarMenus());
+  window.addEventListener("resize", positionClientMenu);
 
   // Note context menu
   if (elements.noteContextMenu) {
@@ -1581,11 +1585,10 @@ function bindEvents() {
   });
   elements.importButton.addEventListener("click", () => elements.importFileInput.click());
   elements.importFileInput.addEventListener("change", importFile);
-  elements.androidAppButton?.addEventListener("click", openAndroidAppDialog);
   elements.downloadAndroidAppButton?.addEventListener("click", openAndroidDownload);
   elements.checkAppUpdateButton?.addEventListener("click", checkAndroidUpdate);
   elements.shareButton.addEventListener("click", createShareLink);
-  [elements.importButton, elements.exportButton, elements.androidAppButton, elements.shareButton, elements.deleteButton].forEach((button) => {
+  [elements.importButton, elements.exportButton, elements.shareButton, elements.deleteButton].forEach((button) => {
     button?.addEventListener("click", () => elements.topbarMenu?.removeAttribute("open"));
   });
   bindTransferPanelEvents();
@@ -1784,6 +1787,46 @@ function positionToolbarMenu(menu) {
   }
 }
 
+function positionClientMenu() {
+  const menu = elements.youdaoClientMenu;
+  const summary = menu?.querySelector("summary");
+  const panel = menu?.querySelector(".youdao-client-panel");
+  if (!menu?.open || !summary || !panel) return;
+
+  const gutter = isMobileLayout() ? 12 : 10;
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  const maxWidth = Math.max(160, viewportWidth - gutter * 2);
+  const summaryRect = summary.getBoundingClientRect();
+
+  panel.style.setProperty("position", "fixed", "important");
+  panel.style.setProperty("left", "0px", "important");
+  panel.style.setProperty("right", "auto", "important");
+  panel.style.setProperty("top", "0px", "important");
+  panel.style.setProperty("bottom", "auto", "important");
+  panel.style.setProperty("width", `${Math.min(190, maxWidth)}px`, "important");
+  panel.style.setProperty("max-width", `${maxWidth}px`, "important");
+  panel.style.setProperty("max-height", `${Math.max(140, viewportHeight - gutter * 2)}px`, "important");
+
+  const panelRect = panel.getBoundingClientRect();
+  const width = Math.min(panelRect.width || 190, maxWidth);
+  const height = panelRect.height;
+  const left = Math.min(
+    Math.max(gutter, summaryRect.right - width),
+    Math.max(gutter, viewportWidth - width - gutter)
+  );
+  const belowTop = summaryRect.bottom + 8;
+  const belowSpace = viewportHeight - belowTop - gutter;
+  const aboveSpace = summaryRect.top - gutter;
+  const placeAbove = aboveSpace >= height || aboveSpace > belowSpace;
+  const top = placeAbove
+    ? Math.max(gutter, summaryRect.top - height - 8)
+    : Math.min(belowTop, Math.max(gutter, viewportHeight - height - gutter));
+
+  panel.style.setProperty("left", `${left}px`, "important");
+  panel.style.setProperty("top", `${top}px`, "important");
+}
+
 function setMobileSidebarOpen(open) {
   const shouldOpen = Boolean(open) && isMobileLayout();
   document.body.classList.toggle("mobile-sidebar-open", shouldOpen);
@@ -1930,6 +1973,7 @@ function resetTransferState() {
   state.transferTextLimits = null;
   state.transferImageUrls = {};
   state.transferImageLoading.clear();
+  state.transferScrollToBottom = false;
 }
 
 function transferLimits() {
@@ -2051,7 +2095,19 @@ function renderTransferPanel() {
     : loading
       ? `<div class="transfer-empty">${t("transferLoading")}</div>`
       : `<div class="transfer-empty">${t("transferTextEmpty")}</div>`;
+  if (state.transferScrollToBottom) {
+    state.transferScrollToBottom = false;
+    scrollTransferStreamToBottom();
+  }
   hydrateTransferImagePreviews();
+}
+
+function scrollTransferStreamToBottom() {
+  const list = elements.transferMessageList;
+  if (!list) return;
+  window.requestAnimationFrame(() => {
+    list.scrollTop = list.scrollHeight;
+  });
 }
 
 function transferStreamItems() {
@@ -2143,6 +2199,7 @@ async function fetchTransferMessages(options = {}) {
       : [];
     state.transferTextLimits = payload.limits || state.transferTextLimits;
     state.transferTextLastFetchAt = Date.now();
+    state.transferScrollToBottom = true;
   } catch (error) {
     state.transferTextError = transferTextErrorText(error);
     if (options.manual) showToast(state.transferTextError);
@@ -2180,6 +2237,7 @@ async function sendTransferText() {
       state.transferMessages = [...state.transferMessages.filter((item) => item.id !== message.id), message]
         .sort(compareTransferMessages)
         .slice(-limits.maxMessages);
+      state.transferScrollToBottom = true;
     } else {
       await fetchTransferMessages({ silent: true });
     }
@@ -2310,6 +2368,7 @@ async function fetchTransferFiles(options = {}) {
     state.transferFiles = Array.isArray(payload.files) ? payload.files.map(normalizeTransferFile) : [];
     state.transferLimits = payload.limits || state.transferLimits;
     state.transferLastFetchAt = Date.now();
+    state.transferScrollToBottom = true;
   } catch (error) {
     state.transferError = transferErrorText(error);
     if (options.manual) showToast(state.transferError);
@@ -2373,6 +2432,7 @@ async function uploadSingleTransferFile(file) {
       state.transferFiles = [normalizeTransferFile(result.file), ...state.transferFiles.filter((item) => item.id !== result.file.id)];
     }
     state.transferLastFetchAt = Date.now();
+    state.transferScrollToBottom = true;
     showToast(t("transferUploaded"));
     window.setTimeout(() => {
       state.transferUploads = state.transferUploads.filter((item) => item.id !== upload.id);
@@ -6558,7 +6618,6 @@ function applyLanguage(language, initial = false) {
   applySidebarCollapsed(state.sidebarCollapsed);
   setMenuItemLabel(elements.importButton, t("import"));
   setMenuItemLabel(elements.exportButton, t("exportMenu"));
-  setMenuItemLabel(elements.androidAppButton, t("androidApp"));
   setMenuItemLabel(elements.shareButton, t("share"));
   setMenuItemLabel(elements.deleteButton, t("delete"));
   setToolbarTitle('[data-command="undo"]', t("undo"));
