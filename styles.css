@@ -11231,13 +11231,20 @@ body.realtime-sync-mode .youdao-sync-stack {
 
 /* ===== Desktop transfer image layout ===== */
 @media (min-width: 761px) {
+  .transfer-unified-section .transfer-message-list {
+    grid-auto-rows: max-content;
+    align-items: start;
+  }
+
   .transfer-file-message.is-image {
     grid-template-columns: minmax(0, 1fr) 126px;
     grid-template-areas: "preview actions";
     align-items: stretch;
     gap: 12px;
-    min-height: 0;
+    height: auto;
+    min-height: 204px;
     padding: 12px;
+    overflow: hidden;
   }
 
   .transfer-file-message.is-image .transfer-image-preview {
@@ -11245,6 +11252,7 @@ body.realtime-sync-mode .youdao-sync-stack {
     width: 100%;
     min-width: 0;
     min-height: 180px;
+    height: auto;
     max-height: min(54vh, 460px);
     padding: 10px;
     box-sizing: border-box;
