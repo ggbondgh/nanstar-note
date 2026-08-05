@@ -3633,7 +3633,7 @@ function renderEditor() {
   const transferMode = isTransferAssistant(note);
   elements.editorCard.classList.toggle("transfer-mode", transferMode);
   if (elements.transferPanel) elements.transferPanel.hidden = !transferMode;
-  if (elements.noteCloudActions) elements.noteCloudActions.hidden = transferMode;
+  if (elements.noteCloudActions) elements.noteCloudActions.hidden = !showManualNoteCloudActions(note);
   if (transferMode) {
     state.previewFocus = false;
     document.body.classList.remove("preview-focus-mode");
@@ -4612,6 +4612,10 @@ function showPerNoteSyncIndicators() {
   return NOTE_SYNC_ENGINE !== "crdt" || !elements.autoSyncToggle?.checked;
 }
 
+function showManualNoteCloudActions(note = activeNote()) {
+  return Boolean(note && !isTransferAssistant(note) && !isFolderRegistry(note) && showPerNoteSyncIndicators());
+}
+
 function updateNoteListSyncIndicators(syncMeta = readSyncMeta()) {
   if (!elements.noteList) return;
   if (!showPerNoteSyncIndicators()) {
@@ -4823,7 +4827,9 @@ function renderActiveNoteCloudStatus(syncMeta = readSyncMeta()) {
       elements.activeNoteSyncDot.setAttribute("aria-label", status.label);
     }
   }
-  const disabled = !note || isTransferAssistant(note) || isFolderRegistry(note) || state.syncInFlight;
+  const manualNoteActionsVisible = showManualNoteCloudActions(note);
+  if (elements.noteCloudActions) elements.noteCloudActions.hidden = !manualNoteActionsVisible;
+  const disabled = !manualNoteActionsVisible || state.syncInFlight;
   if (elements.saveNoteButton) elements.saveNoteButton.disabled = disabled;
   if (elements.syncNoteButton) elements.syncNoteButton.disabled = disabled;
   if (elements.saveAllButton) elements.saveAllButton.disabled = state.syncInFlight;
