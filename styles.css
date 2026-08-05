@@ -11228,3 +11228,51 @@ body.realtime-sync-mode .youdao-sync-stack {
     flex: 1 1 78px;
   }
 }
+
+/* ===== Desktop transfer image layout ===== */
+@media (min-width: 761px) {
+  .transfer-file-message.is-image {
+    grid-template-columns: minmax(0, 1fr) 126px;
+    grid-template-areas: "preview actions";
+    align-items: stretch;
+    gap: 12px;
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .transfer-file-message.is-image .transfer-image-preview {
+    grid-area: preview;
+    width: 100%;
+    min-width: 0;
+    min-height: 180px;
+    max-height: min(54vh, 460px);
+    padding: 10px;
+    box-sizing: border-box;
+    border-radius: 8px;
+  }
+
+  .transfer-file-message.is-image .transfer-image-preview img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: min(52vh, 440px);
+    object-fit: contain;
+  }
+
+  .transfer-file-message.is-image .transfer-file-actions {
+    grid-area: actions;
+    display: flex;
+    align-self: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .transfer-file-message.is-image .transfer-file-actions button {
+    width: 100%;
+    min-height: 38px;
+    padding: 0 10px;
+    white-space: nowrap;
+  }
+}
