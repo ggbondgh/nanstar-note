@@ -11032,3 +11032,57 @@ body.realtime-sync-mode .youdao-sync-stack {
     display: none !important;
   }
 }
+
+/* ===== Transfer image cards ===== */
+.transfer-file-message.is-image {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.transfer-image-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: auto;
+  min-height: 96px;
+  padding: 8px;
+  border: 1px solid #e1e7f0;
+  border-radius: 8px;
+  background: #f6f8fb;
+  color: var(--muted);
+  cursor: zoom-in;
+  appearance: none;
+}
+
+.transfer-image-preview.is-expanded {
+  cursor: zoom-out;
+}
+
+.transfer-image-preview img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+}
+
+.transfer-image-preview.is-expanded img {
+  max-height: min(68vh, 620px);
+}
+
+.transfer-file-message.is-image .transfer-file-actions {
+  grid-column: 1;
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  .transfer-image-preview img {
+    max-height: 220px;
+  }
+
+  .transfer-image-preview.is-expanded img {
+    max-height: calc(100dvh - 190px);
+  }
+}

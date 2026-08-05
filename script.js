@@ -262,6 +262,7 @@ const i18n = {
     transferTextSend: "发送",
     transferTextRefresh: "刷新",
     transferTextClear: "清空",
+    transferClearAll: "清空",
     transferTextCopy: "复制",
     transferTextDelete: "删除",
     transferTextNoToken: "配置同步 Token 后可使用文本传输。",
@@ -274,10 +275,13 @@ const i18n = {
     transferTextCleared: "文本已清空",
     transferTextTooLarge: "文本太长，单条上限 {size}。",
     transferTextClearConfirm: "清空所有文本消息？",
+    transferClearAllConfirm: "清空全部文本、图片和文件？",
+    transferCleared: "全部消息和文件已清空",
+    transferClearFailed: "清空失败，请稍后重试",
     transferTextFailed: "文本传输失败",
     transferTextApiUnavailable: "文本接口不可用，部署到 Cloudflare 后才能使用。",
     transferFileTitle: "文件传输",
-    transferFileMeta: "最多 {count} 个文件，单文件最大支持 {fileSize}，总量最大 {totalSize}。",
+    transferFileMeta: "最多保留 {count} 个文件，新上传时自动移除最早的文件；单文件最大 {fileSize}，总量最大 {totalSize}。",
     transferDropTitle: "拖放文件到这里，或点击上传。",
     transferDropHint: "也可以直接粘贴图片，或把图片和文件拖到消息区。",
     transferNoToken: "配置同步 Token 后可使用文件传输。",
@@ -287,6 +291,8 @@ const i18n = {
     transferRefresh: "刷新",
     transferDownload: "下载",
     transferCopyImage: "复制图片",
+    transferImageExpand: "放大图片",
+    transferImageCollapse: "收起图片",
     transferDelete: "删除",
     transferUploading: "正在上传...",
     transferDownloading: "正在下载...",
@@ -593,6 +599,7 @@ const i18n = {
     transferTextSend: "Send",
     transferTextRefresh: "Refresh",
     transferTextClear: "Clear",
+    transferClearAll: "Clear all",
     transferTextCopy: "Copy",
     transferTextDelete: "Delete",
     transferTextNoToken: "Configure the sync token to use text transfer.",
@@ -605,10 +612,13 @@ const i18n = {
     transferTextCleared: "Text cleared",
     transferTextTooLarge: "Text is too long. Limit: {size}.",
     transferTextClearConfirm: "Clear all text messages?",
+    transferClearAllConfirm: "Clear all text messages, images, and files?",
+    transferCleared: "All messages and files cleared",
+    transferClearFailed: "Could not clear everything. Try again.",
     transferTextFailed: "Text transfer failed",
     transferTextApiUnavailable: "Text API is unavailable. It works after Cloudflare deployment.",
     transferFileTitle: "File Transfer",
-    transferFileMeta: "Up to {count} files, max {fileSize} per file, max {totalSize} total.",
+    transferFileMeta: "Keep up to {count} files; new uploads replace the oldest file. Max {fileSize} per file, max {totalSize} total.",
     transferDropTitle: "Drop files here, or click upload.",
     transferDropHint: "You can also paste an image or drop images and files into the message area.",
     transferNoToken: "Configure the sync token to use file transfer.",
@@ -618,6 +628,8 @@ const i18n = {
     transferRefresh: "Refresh",
     transferDownload: "Download",
     transferCopyImage: "Copy Image",
+    transferImageExpand: "Enlarge image",
+    transferImageCollapse: "Collapse image",
     transferDelete: "Delete",
     transferUploading: "Uploading...",
     transferDownloading: "Downloading...",
@@ -951,6 +963,7 @@ const state = {
   transferTextLimits: null,
   transferImageUrls: {},
   transferImageLoading: new Set(),
+  transferExpandedImages: new Set(),
   transferScrollToBottom: false,
   lastCloudPullAt: 0,
   dirtyNoteIds: new Set(),
@@ -1058,6 +1071,7 @@ let editorLineMeasureNode = null;
 let editorLineLayoutCache = null;
 let editorLineLayoutFrame = 0;
 let transferPanelRenderFrame = 0;
+let transferUploadQueue = Promise.resolve();
 
 function nativeRuntime() {
   const capacitor = window.Capacitor;
@@ -1911,6 +1925,7 @@ function bindTransferPanelEvents() {
     const action = fileButton.dataset.transferAction;
     if (action === "download") downloadTransferFile(id);
     if (action === "copy-image") copyTransferImage(id);
+    if (action === "toggle-image") toggleTransferImage(id);
     if (action === "delete") deleteTransferFile(id);
   });
   elements.transferUploadButton?.addEventListener("click", () => {
@@ -1974,6 +1989,7 @@ function resetTransferState() {
   state.transferTextLimits = null;
   state.transferImageUrls = {};
   state.transferImageLoading.clear();
+  state.transferExpandedImages.clear();
   state.transferScrollToBottom = false;
 }
 
@@ -2046,7 +2062,11 @@ function renderTransferPanel() {
   if (elements.transferTextSendButton) {
     elements.transferTextSendButton.textContent = state.transferTextSending ? t("transferTextSending") : t("transferTextSend");
   }
-  if (elements.transferTextClearButton) elements.transferTextClearButton.textContent = t("transferTextClear");
+  if (elements.transferTextClearButton) {
+    elements.transferTextClearButton.textContent = t("transferClearAll");
+    elements.transferTextClearButton.title = t("transferClearAll");
+    elements.transferTextClearButton.setAttribute("aria-label", t("transferClearAll"));
+  }
   if (elements.transferDropHint) {
     elements.transferDropHint.textContent = `${t("transferDropHint")} ${t("transferFileMeta")
       .replace("{count}", String(limits.maxFiles))
@@ -2061,12 +2081,24 @@ function renderTransferPanel() {
 
   const enabled = transferEnabled();
   const uploading = state.transferUploads.some((item) => item.status === "uploading");
+  const hasTransferRecords = Boolean(
+    state.transferMessages.length
+    || state.transferFiles.length
+    || state.transferUploads.length
+    || state.transferDownloads.length
+  );
   const textInputValue = elements.transferTextInput?.value || "";
   if (elements.transferTextInput) elements.transferTextInput.disabled = !enabled || state.transferTextSending;
   if (elements.transferTextSendButton) {
     elements.transferTextSendButton.disabled = !enabled || state.transferTextSending || !textInputValue.trim();
   }
-  if (elements.transferTextClearButton) elements.transferTextClearButton.disabled = !enabled || state.transferTextLoading || !state.transferMessages.length;
+  if (elements.transferTextClearButton) {
+    elements.transferTextClearButton.disabled = !enabled
+      || state.transferTextLoading
+      || state.transferLoading
+      || uploading
+      || !hasTransferRecords;
+  }
   if (elements.transferUploadButton) elements.transferUploadButton.disabled = !enabled || uploading;
   if (elements.transferRefreshButton) elements.transferRefreshButton.disabled = !enabled || state.transferLoading || state.transferTextLoading;
 
@@ -2277,15 +2309,31 @@ async function deleteTransferText(id) {
 }
 
 async function clearTransferMessages() {
-  if (!state.transferMessages.length) return;
-  if (!window.confirm(t("transferTextClearConfirm"))) return;
+  const hasTransferRecords = Boolean(
+    state.transferMessages.length
+    || state.transferFiles.length
+    || state.transferUploads.length
+    || state.transferDownloads.length
+  );
+  if (!hasTransferRecords) return;
+  if (!window.confirm(t("transferClearAllConfirm"))) return;
   try {
-    await fetchTransferJson("./api/clipboard?all=1", { method: "DELETE" });
+    await Promise.all([
+      fetchTransferJson("./api/clipboard?all=1", { method: "DELETE" }),
+      fetchTransferJson("./api/files?all=1", { method: "DELETE" })
+    ]);
     state.transferMessages = [];
-    showToast(t("transferTextCleared"));
+    state.transferFiles = [];
+    state.transferUploads = [];
+    state.transferDownloads = [];
+    Object.values(state.transferImageUrls).forEach((url) => URL.revokeObjectURL(url));
+    state.transferImageUrls = {};
+    state.transferImageLoading.clear();
+    state.transferExpandedImages.clear();
+    showToast(t("transferCleared"));
     renderTransferPanel();
   } catch (error) {
-    showToast(transferTextErrorText(error));
+    showToast(t("transferClearFailed"));
   }
 }
 
@@ -2332,19 +2380,29 @@ function renderTransferFileRow(file) {
   const downloadingTask = state.transferDownloads.find((item) => item.fileId === file.id && item.status !== "error" && item.status !== "done");
   const downloading = Boolean(downloadingTask);
   const previewUrl = image ? state.transferImageUrls[file.id] : "";
+  const expanded = image && state.transferExpandedImages.has(file.id);
   return `
     <div class="transfer-stream-item transfer-file transfer-file-message ${image ? "is-image" : ""}" data-file-id="${escapeAttribute(file.id)}">
       ${image ? `
-        <div class="transfer-image-preview">
+        <button
+          class="transfer-image-preview${expanded ? " is-expanded" : ""}"
+          type="button"
+          data-transfer-action="toggle-image"
+          data-id="${escapeAttribute(file.id)}"
+          title="${escapeAttribute(t(expanded ? "transferImageCollapse" : "transferImageExpand"))}"
+          aria-label="${escapeAttribute(t(expanded ? "transferImageCollapse" : "transferImageExpand"))}"
+          aria-expanded="${expanded ? "true" : "false"}"
+        >
           ${previewUrl
-            ? `<img src="${escapeAttribute(previewUrl)}" alt="${escapeAttribute(file.name)}" loading="lazy" />`
+            ? `<img src="${escapeAttribute(previewUrl)}" alt="图片" loading="lazy" />`
             : `<span>${escapeHtml(t("transferLoading"))}</span>`}
-        </div>
-      ` : ""}
-      <div class="transfer-file-main">
+        </button>
+      ` : `
+        <div class="transfer-file-main">
         <div class="transfer-file-name">${escapeHtml(file.name)}</div>
         <div class="transfer-file-meta">${escapeHtml(file.mimeType || "file")} · ${formatBytes(file.size)} · ${formatShortDate(file.createdAt)}</div>
-      </div>
+        </div>
+      `}
       <div class="transfer-file-actions">
         <button class="ghost-button" type="button" data-transfer-action="download" data-id="${escapeAttribute(file.id)}" ${downloading ? "disabled" : ""}>${downloading ? `${t("transferDownloading")} ${downloadingTask.progress ?? 0}%` : t("transferDownload")}</button>
         ${image ? `<button class="ghost-button" type="button" data-transfer-action="copy-image" data-id="${escapeAttribute(file.id)}">${t("transferCopyImage")}</button>` : ""}
@@ -2379,33 +2437,28 @@ async function fetchTransferFiles(options = {}) {
   }
 }
 
-async function uploadTransferFiles(files) {
-  if (!files.length) return;
+function uploadTransferFiles(files) {
+  const nextFiles = Array.from(files || []);
+  if (!nextFiles.length) return Promise.resolve();
+  transferUploadQueue = transferUploadQueue
+    .catch(() => {})
+    .then(() => uploadTransferFilesInOrder(nextFiles));
+  return transferUploadQueue;
+}
+
+async function uploadTransferFilesInOrder(files) {
   if (!transferEnabled()) {
     showToast(t("transferNoToken"));
     return;
   }
   const limits = transferLimits();
-  let count = state.transferFiles.length + state.transferUploads.filter((item) => item.status !== "error").length;
-  let total = state.transferFiles.reduce((sum, file) => sum + Number(file.size || 0), 0)
-    + state.transferUploads.filter((item) => item.status !== "error").reduce((sum, file) => sum + Number(file.size || 0), 0);
 
   for (const file of files) {
-    if (count >= limits.maxFiles) {
-      showToast(t("transferCountLimit").replace("{count}", String(limits.maxFiles)));
-      break;
-    }
     if (file.size > limits.maxFileBytes) {
       showToast(t("transferTooLarge").replace("{size}", formatBytes(limits.maxFileBytes)));
       continue;
     }
-    if (total + file.size > limits.maxTotalBytes) {
-      showToast(t("transferTotalLimit").replace("{size}", formatBytes(limits.maxTotalBytes)));
-      continue;
-    }
-    count += 1;
-    total += file.size;
-    uploadSingleTransferFile(file);
+    await uploadSingleTransferFile(file);
   }
 }
 
@@ -2431,6 +2484,7 @@ async function uploadSingleTransferFile(file) {
     updateTransferProgress(upload, { loaded: file.size || 0, total: file.size || 0, percent: 100 });
     if (result.file) {
       state.transferFiles = [normalizeTransferFile(result.file), ...state.transferFiles.filter((item) => item.id !== result.file.id)];
+      await fetchTransferFiles({ silent: true });
     }
     state.transferLastFetchAt = Date.now();
     state.transferScrollToBottom = true;
@@ -2498,6 +2552,16 @@ async function copyTransferImage(id) {
   }
 }
 
+function toggleTransferImage(id) {
+  if (!state.transferImageUrls[id]) return;
+  if (state.transferExpandedImages.has(id)) {
+    state.transferExpandedImages.delete(id);
+  } else {
+    state.transferExpandedImages.add(id);
+  }
+  renderTransferPanel();
+}
+
 async function deleteTransferFile(id) {
   const file = state.transferFiles.find((item) => item.id === id);
   if (!file) return;
@@ -2508,6 +2572,7 @@ async function deleteTransferFile(id) {
       URL.revokeObjectURL(state.transferImageUrls[id]);
       delete state.transferImageUrls[id];
     }
+    state.transferExpandedImages.delete(id);
     state.transferFiles = state.transferFiles.filter((item) => item.id !== id);
     showToast(t("transferDeleted"));
     renderTransferPanel();

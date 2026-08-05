@@ -64,14 +64,6 @@ export async function onRequestPost({ env, request }) {
     return json({ error: "File is too large", maxFileBytes: MAX_FILE_BYTES }, 413);
   }
 
-  const usage = await currentUsage(db);
-  if (usage.count >= MAX_FILE_COUNT) {
-    return json({ error: "Too many files", maxFiles: MAX_FILE_COUNT }, 400);
-  }
-  if (usage.totalBytes + file.size > MAX_TOTAL_BYTES) {
-    return json({ error: "Total file size exceeded", maxTotalBytes: MAX_TOTAL_BYTES }, 400);
-  }
-
   const id = crypto.randomUUID();
   const name = file.name;
   const key = `transfers/${id}/${name}`;
@@ -96,6 +88,7 @@ export async function onRequestPost({ env, request }) {
     )
     .bind(id, name, key, mimeType, file.size, now)
     .run();
+  await trimFiles(db, bucket);
 
   return json({ ok: true, file: { id, name, mimeType, size: file.size, createdAt: now } });
 }
@@ -110,6 +103,11 @@ export async function onRequestDelete({ env, request }) {
 
   await ensureTable(db);
   const url = new URL(request.url);
+  if (url.searchParams.get("all") === "1") {
+    await deleteAllFiles(db, bucket);
+    return json({ ok: true });
+  }
+
   const id = (url.searchParams.get("id") || "").trim();
   if (!id) return json({ error: "Missing file id" }, 400);
 
@@ -124,6 +122,14 @@ export async function onRequestDelete({ env, request }) {
   return json({ ok: true });
 }
 
+async function deleteAllFiles(db, bucket) {
+  const rows = await db.prepare("SELECT r2_key FROM note_transfer_files").all();
+  for (const row of rows?.results || []) {
+    if (row.r2_key) await bucket.delete(row.r2_key);
+  }
+  await db.prepare("DELETE FROM note_transfer_files").run();
+}
+
 async function requireStorage(env) {
   const db = env.NANSTAR_NOTES_DB;
   const bucket = env.NANSTAR_NOTE_FILES;
@@ -136,14 +142,23 @@ async function ensureTable(db) {
   await db.prepare(FILE_TABLE_SQL).run();
 }
 
-async function currentUsage(db) {
-  const result = await db
-    .prepare("SELECT COUNT(*) AS count, COALESCE(SUM(size), 0) AS total_bytes FROM note_transfer_files")
-    .first();
-  return {
-    count: Number(result?.count) || 0,
-    totalBytes: Number(result?.total_bytes) || 0
-  };
+async function trimFiles(db, bucket) {
+  const rows = await db
+    .prepare("SELECT id, r2_key, size FROM note_transfer_files ORDER BY created_at ASC, id ASC")
+    .all();
+  const files = rows?.results || [];
+  let totalBytes = files.reduce((sum, row) => sum + (Number(row.size) || 0), 0);
+  let removeCount = Math.max(0, files.length - MAX_FILE_COUNT);
+  let index = 0;
+
+  while (index < files.length && (removeCount > 0 || totalBytes > MAX_TOTAL_BYTES)) {
+    const row = files[index];
+    index += 1;
+    removeCount -= 1;
+    totalBytes -= Number(row.size) || 0;
+    if (row.r2_key) await bucket.delete(row.r2_key);
+    await db.prepare("DELETE FROM note_transfer_files WHERE id = ?").bind(row.id).run();
+  }
 }
 
 async function readUploadedFile(request) {
