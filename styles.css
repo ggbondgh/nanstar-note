@@ -10454,3 +10454,17 @@ body {
     justify-self: end;
   }
 }
+
+/* Keep text fields quiet while editing. */
+.search-box:focus-within {
+  border-color: #d6deea !important;
+  box-shadow: none !important;
+}
+
+#searchInput:focus,
+#searchInput:focus-visible,
+#titleInput:focus,
+#titleInput:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
