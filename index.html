@@ -14,7 +14,7 @@
     <title>NanStar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=72" />
+    <link rel="stylesheet" href="./styles.css?v=73" />
   </head>
   <body>
     <div class="app-shell">
@@ -69,13 +69,13 @@
           </details>
 
           <div class="youdao-sync-stack" aria-label="云同步">
-            <button class="youdao-nav-item youdao-sync-button save-all-button" id="saveAllButton" type="button" title="保存全部到云端" aria-label="保存全部到云端">
+            <button class="youdao-nav-item youdao-sync-button save-all-button" id="saveAllButton" type="button" title="上传待同步内容" aria-label="上传待同步内容">
               <span aria-hidden="true">⇡</span>
-              <span>保存全部到云端</span>
+              <span>上传待同步内容</span>
             </button>
-            <button class="youdao-nav-item youdao-sync-button sync-refresh-button" id="syncRefreshButton" type="button" title="从云端同步全部" aria-label="从云端同步全部">
+            <button class="youdao-nav-item youdao-sync-button sync-refresh-button" id="syncRefreshButton" type="button" title="从云端恢复" aria-label="从云端恢复">
               <span aria-hidden="true">↻</span>
-              <span>从云端同步全部</span>
+              <span>从云端恢复</span>
             </button>
           </div>
 
@@ -169,10 +169,6 @@
               </summary>
               <div class="topbar-menu-panel">
                 <div class="topbar-menu-group">
-                  <button class="menu-item topbar-install-button" id="topInstallButton" type="button" hidden title="安装到桌面" aria-label="安装到桌面">
-                    <span aria-hidden="true">⤓</span>
-                    <span>安装到桌面</span>
-                  </button>
                   <button class="menu-item" id="importButton" type="button">
                     <span aria-hidden="true">⇣</span>
                     <span>导入</span>
@@ -732,7 +728,7 @@
         </label>
         <div class="sync-grid">
           <button class="primary-button" id="pushCloudButton" type="button">立即同步</button>
-          <button class="ghost-button" id="pullCloudButton" type="button">刷新云端最新</button>
+          <button class="ghost-button" id="pullCloudButton" type="button">从云端恢复</button>
           <button class="ghost-button" id="logoutCloudButton" type="button">清除 Token</button>
         </div>
         <div class="sync-message" id="syncMessage">未连接云同步，本地编辑可正常使用。</div>
@@ -757,6 +753,12 @@
             <strong id="appVersionLabel">正在读取版本信息...</strong>
             <span id="appUpdateStatus" aria-live="polite">可以下载或检查 NanStar Note Android 安装包。</span>
           </div>
+          <div class="android-download-progress" id="androidDownloadProgress" role="progressbar" aria-label="APK 下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
+            <div class="android-download-progress-track">
+              <div class="android-download-progress-fill" id="androidDownloadProgressFill"></div>
+            </div>
+            <span id="androidDownloadProgressText">0%</span>
+          </div>
         </div>
         <div class="sync-grid">
           <button class="primary-button" id="downloadAndroidAppButton" type="button">下载 Android APK</button>
@@ -769,7 +771,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-  <script src="./script.js?v=53"></script>
+  <script src="./script.js?v=54"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
@@ -777,26 +779,19 @@
           .catch(() => {});
       }
       let deferredPrompt;
-      const installButton = document.getElementById("topInstallButton");
-      const setInstallButtonsReady = (ready) => {
-        if (installButton) installButton.hidden = !ready;
-      };
       window.nanstarInstallApp = async () => {
         if (!deferredPrompt) return false;
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === "accepted") setInstallButtonsReady(false);
         deferredPrompt = null;
         return true;
       };
       window.addEventListener("beforeinstallprompt", (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        setInstallButtonsReady(true);
       });
-      installButton?.addEventListener("click", () => window.nanstarInstallApp());
       window.addEventListener("appinstalled", () => {
-        setInstallButtonsReady(false);
+        deferredPrompt = null;
       });
     </script>
   </body>

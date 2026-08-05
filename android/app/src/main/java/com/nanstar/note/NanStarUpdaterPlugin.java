@@ -44,6 +44,7 @@ public class NanStarUpdaterPlugin extends Plugin {
                 File apkFile = downloadApk(url.trim());
                 runOnMainThread(() -> openInstaller(apkFile, call));
             } catch (Exception error) {
+                notifyDownloadProgress(0, 0, "failed");
                 rejectOnMainThread(call, error.getMessage(), "install_failed", error);
             }
         });
@@ -75,14 +76,30 @@ public class NanStarUpdaterPlugin extends Plugin {
             throw new IOException("APK download failed: HTTP " + status);
         }
 
+        long totalBytes = connection.getContentLengthLong();
         try (InputStream input = connection.getInputStream(); FileOutputStream output = new FileOutputStream(apkFile)) {
             byte[] buffer = new byte[8192];
             int read;
+            long downloadedBytes = 0;
+            long lastProgressAt = 0;
+            int lastPercent = -1;
+            notifyDownloadProgress(0, totalBytes, "downloading");
             while ((read = input.read(buffer)) != -1) {
                 output.write(buffer, 0, read);
+                downloadedBytes += read;
+                int percent = totalBytes > 0
+                    ? (int) Math.min(100, (downloadedBytes * 100L) / totalBytes)
+                    : -1;
+                long now = System.currentTimeMillis();
+                if (percent != lastPercent || now - lastProgressAt >= 100) {
+                    notifyDownloadProgress(downloadedBytes, totalBytes, "downloading");
+                    lastProgressAt = now;
+                    lastPercent = percent;
+                }
             }
             output.flush();
             output.getFD().sync();
+            notifyDownloadProgress(downloadedBytes, totalBytes, "completed");
         } finally {
             connection.disconnect();
         }
@@ -91,6 +108,17 @@ public class NanStarUpdaterPlugin extends Plugin {
             throw new IOException("Downloaded APK is empty");
         }
         return apkFile;
+    }
+
+    private void notifyDownloadProgress(long loadedBytes, long totalBytes, String state) {
+        JSObject progress = new JSObject();
+        progress.put("state", state);
+        progress.put("loaded", loadedBytes);
+        progress.put("total", totalBytes);
+        progress.put("percent", totalBytes > 0
+            ? Math.min(100, (int) ((loadedBytes * 100L) / totalBytes))
+            : -1);
+        notifyListeners("downloadProgress", progress);
     }
 
     private void openInstaller(File apkFile, PluginCall call) {

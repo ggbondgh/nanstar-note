@@ -57,6 +57,7 @@ const i18n = {
     androidDownloadOpening: "正在打开 Android 安装包下载链接...",
     androidDownloadInstalling: "正在下载 APK，完成后会打开系统安装器...",
     androidDownloadReadyToInstall: "APK 已下载，请在系统安装器中确认安装。",
+    androidDownloadProgress: "APK 下载进度",
     androidUnknownSourceBlocked: "请允许 NanStar Note 安装未知应用，返回后再点一次下载。",
     androidUpdatePrompt: "发现新版本 {version}，现在下载安装包？",
     androidUnknownVersion: "未知版本",
@@ -218,7 +219,7 @@ const i18n = {
     savedLocal: "已保存本地",
     titleSaved: "已保存",
     titleUnsaved: "未保存",
-    syncRefreshing: "正在刷新云端最新...",
+    syncRefreshing: "正在从云端恢复...",
     syncRefreshedAt: "已从云端刷新 {time}",
     syncPushedAt: "已同步到云端 {time}",
     syncPulledAt: "已从云端更新 {time}",
@@ -237,14 +238,15 @@ const i18n = {
     saveNote: "保存",
     saveNoteShortcut: "保存 Ctrl+S",
     syncNote: "同步",
-    saveAll: "保存全部到云端",
-    syncAll: "从云端同步全部",
+    saveAll: "上传待同步内容",
+    syncAll: "从云端恢复",
     noteSavedToCloud: "当前笔记已保存到云端 {time}",
     notePulledFromCloud: "当前笔记已从云端更新 {time}",
     cloudNoteMissing: "云端没有找到这篇笔记",
     syncStatusSynced: "已和云端一致",
     syncStatusDirty: "本地未保存到云端",
     syncStatusOffline: "未连接云同步",
+    syncForcePullConfirm: "将用云端版本刷新本地内容，可能覆盖尚未同步的修改。确定继续吗？",
     transferAssistantTitle: "文件传输助手",
     transferAssistantBody: "",
     transferAssistantExcerpt: "跨设备临时传文件",
@@ -314,8 +316,8 @@ const i18n = {
     syncCopy: "实时同步会自动上传和拉取云端更新；网络暂时不可用时，内容仍会保存在本地。",
     syncToken: "同步 Token",
     autoSync: "实时同步：自动上传和拉取",
-    pushCloud: "立即上传",
-    pullCloud: "刷新云端最新",
+    pushCloud: "上传待同步内容",
+    pullCloud: "从云端恢复",
     clearToken: "清除 Token",
     syncLocalReady: "未连接云同步，本地编辑可正常使用。",
     tokenCleared: "已清除本地 Token。",
@@ -384,6 +386,7 @@ const i18n = {
     androidDownloadOpening: "Opening Android APK download link...",
     androidDownloadInstalling: "Downloading APK. The Android installer will open when it finishes...",
     androidDownloadReadyToInstall: "APK downloaded. Confirm installation in the Android installer.",
+    androidDownloadProgress: "APK download progress",
     androidUnknownSourceBlocked: "Allow NanStar Note to install unknown apps, then tap download again.",
     androidUpdatePrompt: "New version {version} is available. Download it now?",
     androidUnknownVersion: "Unknown version",
@@ -545,7 +548,7 @@ const i18n = {
     savedLocal: "Saved locally",
     titleSaved: "Saved",
     titleUnsaved: "Unsaved",
-    syncRefreshing: "Refreshing the latest cloud state...",
+    syncRefreshing: "Restoring from the cloud...",
     syncRefreshedAt: "Refreshed from cloud {time}",
     syncPushedAt: "Synced to cloud {time}",
     syncPulledAt: "Updated from cloud {time}",
@@ -564,14 +567,15 @@ const i18n = {
     saveNote: "Save",
     saveNoteShortcut: "Save Ctrl+S",
     syncNote: "Sync",
-    saveAll: "Save all to cloud",
-    syncAll: "Sync all from cloud",
+    saveAll: "Upload pending changes",
+    syncAll: "Restore from cloud",
     noteSavedToCloud: "Current note saved to cloud {time}",
     notePulledFromCloud: "Current note updated from cloud {time}",
     cloudNoteMissing: "This note was not found in cloud",
     syncStatusSynced: "Same as cloud",
     syncStatusDirty: "Local changes not saved to cloud",
     syncStatusOffline: "Cloud sync is not connected",
+    syncForcePullConfirm: "This will refresh local content from the cloud and may overwrite unsynced changes. Continue?",
     transferAssistantTitle: "File Transfer",
     transferAssistantBody: "",
     transferAssistantExcerpt: "Temporary cross-device files",
@@ -641,8 +645,8 @@ const i18n = {
     syncCopy: "Realtime sync automatically pushes and pulls cloud updates. Your content stays local while the network is unavailable.",
     syncToken: "Sync Token",
     autoSync: "Realtime sync: push and pull automatically",
-    pushCloud: "Push now",
-    pullCloud: "Refresh cloud",
+    pushCloud: "Upload pending changes",
+    pullCloud: "Restore from cloud",
     clearToken: "Clear Token",
     syncLocalReady: "Cloud sync is not connected. Local editing still works.",
     tokenCleared: "Local token cleared.",
@@ -1041,6 +1045,7 @@ const ANDROID_UPDATE_URL = `${ANDROID_RELEASE_BASE_URL}/update.json`;
 const ANDROID_RELEASE_API_URL = "https://api.github.com/repos/ggbondgh/nanstar-note/releases/latest";
 const CLOUD_API_ORIGIN = "https://nanstar-note.pages.dev";
 let appRuntimeInfoPromise = null;
+let androidUpdateProgressListenerPromise = null;
 let editorLineMeasureNode = null;
 let editorLineLayoutCache = null;
 let editorLineLayoutFrame = 0;
@@ -1245,6 +1250,9 @@ const elements = {
   androidAppDialog: $("#androidAppDialog"),
   appVersionLabel: $("#appVersionLabel"),
   appUpdateStatus: $("#appUpdateStatus"),
+  androidDownloadProgress: $("#androidDownloadProgress"),
+  androidDownloadProgressFill: $("#androidDownloadProgressFill"),
+  androidDownloadProgressText: $("#androidDownloadProgressText"),
   downloadAndroidAppButton: $("#downloadAndroidAppButton"),
   checkAppUpdateButton: $("#checkAppUpdateButton"),
   exportDialog: $("#exportDialog"),
@@ -1623,9 +1631,9 @@ function bindEvents() {
   elements.syncNoteButton?.addEventListener("click", () => syncCurrentNoteFromCloud());
   elements.saveAllButton?.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "save-all" }));
   elements.pushCloudButton.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "save-all" }));
-  elements.pullCloudButton.addEventListener("click", () => forcePullCloud());
+  elements.pullCloudButton.addEventListener("click", confirmForcePullCloud);
   elements.syncRefreshButton?.addEventListener("click", () => {
-    forcePullCloud();
+    confirmForcePullCloud();
   });
   elements.logoutCloudButton.addEventListener("click", clearSyncToken);
   elements.syncTokenInput.addEventListener("input", handleSyncTokenInput);
@@ -2708,6 +2716,51 @@ function setAppUpdateStatus(message, locked = false) {
   else delete elements.appUpdateStatus.dataset.locked;
 }
 
+function setAndroidDownloadProgress({ loaded = 0, total = 0, state = "downloading" } = {}) {
+  const progress = elements.androidDownloadProgress;
+  const fill = elements.androidDownloadProgressFill;
+  const text = elements.androidDownloadProgressText;
+  if (!progress || !fill || !text) return;
+
+  if (state === "failed") {
+    progress.hidden = true;
+    progress.classList.remove("indeterminate");
+    return;
+  }
+
+  const safeLoaded = Math.max(0, Number(loaded) || 0);
+  const safeTotal = Math.max(0, Number(total) || 0);
+  const hasTotal = safeTotal > 0;
+  const percent = hasTotal ? Math.min(100, Math.round((safeLoaded / safeTotal) * 100)) : -1;
+
+  progress.hidden = false;
+  progress.classList.toggle("indeterminate", !hasTotal);
+  progress.setAttribute("aria-label", t("androidDownloadProgress"));
+  if (hasTotal) {
+    fill.style.width = `${percent}%`;
+    progress.setAttribute("aria-valuenow", String(percent));
+    text.textContent = `${percent}% · ${formatBytes(safeLoaded)} / ${formatBytes(safeTotal)}`;
+  } else {
+    fill.style.width = "34%";
+    progress.removeAttribute("aria-valuenow");
+    text.textContent = safeLoaded ? `${formatBytes(safeLoaded)}` : "…";
+  }
+}
+
+async function ensureAndroidUpdateProgressListener() {
+  const updaterPlugin = window.Capacitor?.Plugins?.NanStarUpdater;
+  if (!nativeRuntime() || !updaterPlugin?.addListener) return;
+  if (!androidUpdateProgressListenerPromise) {
+    androidUpdateProgressListenerPromise = updaterPlugin.addListener("downloadProgress", (event = {}) => {
+      setAndroidDownloadProgress(event);
+    }).catch((error) => {
+      androidUpdateProgressListenerPromise = null;
+      console.warn("Android update progress listener failed", error);
+    });
+  }
+  await androidUpdateProgressListenerPromise;
+}
+
 async function openAndroidDownload() {
   await installAndroidApk(ANDROID_APK_URL);
 }
@@ -2723,11 +2776,6 @@ async function installDesktopClient() {
   elements.youdaoClientMenu?.removeAttribute("open");
   const installed = await window.nanstarInstallApp?.();
   if (!installed) {
-    const topInstallButton = document.getElementById("topInstallButton");
-    if (topInstallButton && !topInstallButton.hidden) {
-      topInstallButton.click();
-      return;
-    }
     showToast(t("installPromptUnavailable"));
   }
 }
@@ -2735,6 +2783,10 @@ async function installDesktopClient() {
 async function installAndroidApk(url) {
   const updaterPlugin = window.Capacitor?.Plugins?.NanStarUpdater;
   if (nativeRuntime() && updaterPlugin?.installApk) {
+    await ensureAndroidUpdateProgressListener();
+    setAndroidDownloadProgress({ state: "downloading" });
+    if (elements.downloadAndroidAppButton) elements.downloadAndroidAppButton.disabled = true;
+    if (elements.checkAppUpdateButton) elements.checkAppUpdateButton.disabled = true;
     try {
       setAppUpdateStatus(t("androidDownloadInstalling"), true);
       await updaterPlugin.installApk({ url });
@@ -2749,12 +2801,17 @@ async function installAndroidApk(url) {
         return;
       }
       console.warn(error);
+      setAndroidDownloadProgress({ state: "failed" });
       setAppUpdateStatus(t("androidUpdateFailed"), true);
       showToast(t("androidUpdateFailed"));
       return;
+    } finally {
+      if (elements.downloadAndroidAppButton) elements.downloadAndroidAppButton.disabled = false;
+      if (elements.checkAppUpdateButton) elements.checkAppUpdateButton.disabled = false;
     }
   }
 
+  setAndroidDownloadProgress({ state: "failed" });
   setAppUpdateStatus(t("androidDownloadOpening"), true);
   await openExternalUrl(url || ANDROID_APK_URL);
 }
@@ -4752,6 +4809,7 @@ function renderSyncMeta() {
   const token = getSyncToken();
   const lastSync = localStorage.getItem(storageKeys.lastSyncAt);
   const auto = elements.autoSyncToggle.checked;
+  document.body.classList.toggle("realtime-sync-mode", Boolean(token) && auto);
   const syncMeta = readSyncMeta();
   const connectionState = syncMeta.connectionState || (navigator.onLine === false ? "offline" : "online");
 
@@ -5412,6 +5470,11 @@ async function pullCloud() {
 
 async function forcePullCloud() {
   return syncCloud({ manual: true, pullOnly: true, forcePull: true, reason: "force-pull" });
+}
+
+function confirmForcePullCloud() {
+  if (!window.confirm(t("syncForcePullConfirm"))) return;
+  void forcePullCloud();
 }
 
 async function saveCurrentNoteToCloud() {
@@ -6450,7 +6513,6 @@ function applyLanguage(language, initial = false) {
     topbarMenuButton.setAttribute("aria-label", t("moreActions"));
   }
   applySidebarCollapsed(state.sidebarCollapsed);
-  setMenuItemLabel(document.getElementById("topInstallButton"), t("installDesktop"));
   setMenuItemLabel(elements.importButton, t("import"));
   setMenuItemLabel(elements.exportButton, t("exportMenu"));
   setMenuItemLabel(elements.androidAppButton, t("androidApp"));
