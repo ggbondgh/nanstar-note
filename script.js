@@ -1082,6 +1082,19 @@ function nativeRuntime() {
   );
 }
 
+function getAndroidUpdaterPlugin() {
+  const capacitor = window.Capacitor;
+  if (!capacitor) return null;
+  if (capacitor.Plugins?.NanStarUpdater) return capacitor.Plugins.NanStarUpdater;
+  if (typeof capacitor.registerPlugin !== "function") return null;
+  try {
+    return capacitor.registerPlugin("NanStarUpdater");
+  } catch (error) {
+    console.warn("Android updater plugin registration failed", error);
+    return null;
+  }
+}
+
 function apiUrl(path) {
   const raw = String(path || "");
   if (/^https?:\/\//i.test(raw)) return raw;
@@ -2917,7 +2930,7 @@ function setAndroidDownloadProgress({ loaded = 0, total = 0, state = "downloadin
 }
 
 async function ensureAndroidUpdateProgressListener() {
-  const updaterPlugin = window.Capacitor?.Plugins?.NanStarUpdater;
+  const updaterPlugin = getAndroidUpdaterPlugin();
   if (!nativeRuntime() || !updaterPlugin?.addListener) return;
   if (!androidUpdateProgressListenerPromise) {
     androidUpdateProgressListenerPromise = updaterPlugin.addListener("downloadProgress", (event = {}) => {
@@ -2958,7 +2971,7 @@ function installAndroidApk(url) {
 }
 
 async function installAndroidApkOnce(url) {
-  const updaterPlugin = window.Capacitor?.Plugins?.NanStarUpdater;
+  const updaterPlugin = getAndroidUpdaterPlugin();
   if (nativeRuntime() && updaterPlugin?.installApk) {
     await ensureAndroidUpdateProgressListener();
     setAndroidDownloadProgress({ state: "downloading" });
