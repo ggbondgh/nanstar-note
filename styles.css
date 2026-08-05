@@ -10535,3 +10535,10 @@ body {
 body.realtime-sync-mode .youdao-sync-stack {
   display: none !important;
 }
+
+@media (min-width: 901px) {
+  body[data-youdao-layout="two"] .youdao-footer-icon,
+  body[data-youdao-layout="two"].sidebar-collapsed .youdao-footer-icon {
+    transform: translateX(-6px) !important;
+  }
+}
