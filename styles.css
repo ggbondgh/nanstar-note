@@ -10536,9 +10536,262 @@ body.realtime-sync-mode .youdao-sync-stack {
   display: none !important;
 }
 
+.youdao-mobile-tools {
+  display: contents;
+}
+
 @media (min-width: 901px) {
   body[data-youdao-layout="two"] .youdao-footer-icon,
   body[data-youdao-layout="two"].sidebar-collapsed .youdao-footer-icon {
     transform: translateX(-6px) !important;
+  }
+}
+
+/* ===== Mobile note-first drawer ===== */
+@media (max-width: 760px) {
+  .sidebar,
+  body.sidebar-collapsed .sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: min(88vw, 360px) !important;
+    padding: max(28px, calc(env(safe-area-inset-top) + 12px)) 12px max(14px, env(safe-area-inset-bottom)) !important;
+    background: #f7f9fc !important;
+  }
+
+  .youdao-rail,
+  body.sidebar-collapsed .youdao-rail {
+    display: grid !important;
+    grid-template-rows: auto auto auto auto auto !important;
+    gap: 0 !important;
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  .brand,
+  body.sidebar-collapsed .brand {
+    min-height: 42px !important;
+    padding: 0 2px 10px !important;
+  }
+
+  .brand-mark {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+    font-size: 12px !important;
+  }
+
+  .brand h1 {
+    font-size: 15px !important;
+    font-weight: 720 !important;
+  }
+
+  .brand p {
+    display: none !important;
+  }
+
+  .sidebar-actions,
+  body.sidebar-collapsed .sidebar-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0 !important;
+    padding: 0 0 10px !important;
+  }
+
+  .sidebar-actions .primary-button {
+    min-height: 44px !important;
+    border-radius: 10px !important;
+    font-size: 15px !important;
+  }
+
+  .youdao-nav {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin: 0 0 8px !important;
+  }
+
+  .youdao-nav-item,
+  .youdao-sync-button,
+  .youdao-rail-footer .text-button,
+  .youdao-client-menu > summary {
+    display: inline-grid !important;
+    grid-template-columns: 1fr !important;
+    place-items: center !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+  }
+
+  .youdao-nav-item > span:first-child,
+  .youdao-sync-button > span:first-child,
+  .youdao-rail-footer .youdao-footer-icon {
+    font-size: 20px !important;
+    line-height: 1 !important;
+  }
+
+  .youdao-nav-item > span:last-child,
+  .youdao-sync-button > span:last-child,
+  .youdao-rail-footer .text-button > span:last-child,
+  .youdao-client-menu > summary > span:last-child {
+    display: none !important;
+  }
+
+  .youdao-nav-item.active {
+    background: #edf4ff !important;
+    color: #2663eb !important;
+    box-shadow: inset 0 0 0 1px rgba(38, 99, 235, 0.16) !important;
+  }
+
+  .folder-panel,
+  body.sidebar-collapsed .folder-panel {
+    min-height: 0 !important;
+    margin: 0 0 8px !important;
+    padding: 0 !important;
+  }
+
+  .folder-panel-summary {
+    min-height: 38px !important;
+    padding: 0 8px !important;
+    border-radius: 9px !important;
+    background: #eef2f7 !important;
+  }
+
+  .folder-list {
+    max-height: 92px !important;
+    padding-top: 4px !important;
+  }
+
+  .folder-item {
+    min-height: 32px !important;
+    padding: 0 8px !important;
+    border-radius: 8px !important;
+  }
+
+  .youdao-mobile-tools {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-height: 44px !important;
+    margin: 0 0 8px !important;
+  }
+
+  .youdao-sync-stack {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  body.realtime-sync-mode .youdao-sync-stack {
+    display: none !important;
+  }
+
+  .youdao-rail-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .youdao-client-menu {
+    position: relative !important;
+  }
+
+  .youdao-client-menu > summary {
+    list-style: none !important;
+    color: #68758c !important;
+  }
+
+  .youdao-client-menu > summary::-webkit-details-marker {
+    display: none !important;
+  }
+
+  .youdao-client-panel {
+    top: auto !important;
+    bottom: calc(100% + 8px) !important;
+    left: 0 !important;
+    right: auto !important;
+  }
+
+  .youdao-view-tabs {
+    display: none !important;
+  }
+
+  .youdao-list-pane {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    gap: 8px !important;
+    background: transparent !important;
+    overflow: hidden !important;
+  }
+
+  .search-box,
+  .youdao-list-pane .search-box {
+    flex: 0 0 auto !important;
+    min-height: 42px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+  }
+
+  .note-list-panel {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    gap: 6px !important;
+  }
+
+  .note-list-header {
+    flex: 0 0 auto !important;
+    min-height: 32px !important;
+    padding: 0 2px 2px !important;
+  }
+
+  .note-list-tabs {
+    display: none !important;
+  }
+
+  .note-list {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    gap: 6px !important;
+    padding: 0 2px 18px 0 !important;
+    overflow-y: auto !important;
+  }
+
+  .note-item,
+  .youdao-list-pane .note-row .note-item {
+    min-height: 92px !important;
+    padding: 12px 12px 11px 42px !important;
+    border-radius: 10px !important;
+  }
+
+  .note-item h3 {
+    font-size: 15px !important;
+  }
+
+  .note-item p {
+    display: -webkit-box !important;
+    max-height: 36px !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
   }
 }

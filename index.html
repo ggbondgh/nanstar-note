@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f7f9fc" />
     <meta
       name="description"
@@ -14,7 +14,7 @@
     <title>NanStar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=74" />
+    <link rel="stylesheet" href="./styles.css?v=75" />
   </head>
   <body>
     <div class="app-shell">
@@ -39,15 +39,15 @@
           </div>
 
           <nav class="youdao-nav" aria-label="常用入口">
-            <button class="youdao-nav-item" id="youdaoTransferButton" type="button">
+            <button class="youdao-nav-item" id="youdaoTransferButton" type="button" title="文件传输助手" aria-label="文件传输助手">
               <span aria-hidden="true">⇄</span>
               <span>文件传输助手</span>
             </button>
-            <button class="youdao-nav-item active" id="youdaoAllNotesButton" data-youdao-filter="all" type="button">
+            <button class="youdao-nav-item active" id="youdaoAllNotesButton" data-youdao-filter="all" type="button" title="全部笔记" aria-label="全部笔记">
               <span aria-hidden="true">▦</span>
               <span>全部笔记</span>
             </button>
-            <button class="youdao-nav-item" id="youdaoFavoriteButton" data-youdao-filter="favorite" type="button">
+            <button class="youdao-nav-item" id="youdaoFavoriteButton" data-youdao-filter="favorite" type="button" title="星标笔记" aria-label="星标笔记">
               <span aria-hidden="true">☆</span>
               <span>星标笔记</span>
             </button>
@@ -68,38 +68,40 @@
             <div class="folder-list" id="folderList"></div>
           </details>
 
-          <div class="youdao-sync-stack" aria-label="云同步">
-            <button class="youdao-nav-item youdao-sync-button save-all-button" id="saveAllButton" type="button" title="上传待同步内容" aria-label="上传待同步内容">
-              <span aria-hidden="true">⇡</span>
-              <span>上传待同步内容</span>
-            </button>
-            <button class="youdao-nav-item youdao-sync-button sync-refresh-button" id="syncRefreshButton" type="button" title="从云端恢复" aria-label="从云端恢复">
-              <span aria-hidden="true">↻</span>
-              <span>从云端恢复</span>
-            </button>
-          </div>
+          <div class="youdao-mobile-tools">
+            <div class="youdao-sync-stack" aria-label="云同步">
+              <button class="youdao-nav-item youdao-sync-button save-all-button" id="saveAllButton" type="button" title="上传待同步内容" aria-label="上传待同步内容">
+                <span aria-hidden="true">⇡</span>
+                <span>上传待同步内容</span>
+              </button>
+              <button class="youdao-nav-item youdao-sync-button sync-refresh-button" id="syncRefreshButton" type="button" title="从云端恢复" aria-label="从云端恢复">
+                <span aria-hidden="true">↻</span>
+                <span>从云端恢复</span>
+              </button>
+            </div>
 
-          <div class="youdao-rail-footer">
-            <button class="text-button" id="youdaoSyncSettingsButton" type="button">
-              <span class="youdao-footer-icon" aria-hidden="true">⚙</span>
-              <span>登录</span>
-            </button>
-            <details class="youdao-client-menu" id="youdaoClientMenu">
-              <summary id="youdaoClientSummary">
-                <span class="youdao-footer-icon" aria-hidden="true">⇩</span>
-                <span>客户端下载</span>
-              </summary>
-              <div class="youdao-client-panel">
-                <button class="youdao-client-item" id="youdaoInstallDesktopButton" type="button">
-                  <span aria-hidden="true">▣</span>
-                  <span>安装到电脑端</span>
-                </button>
-                <button class="youdao-client-item" id="youdaoAndroidAppButton" type="button">
-                  <span aria-hidden="true">▤</span>
-                  <span>Android APP</span>
-                </button>
-              </div>
-            </details>
+            <div class="youdao-rail-footer">
+              <button class="text-button" id="youdaoSyncSettingsButton" type="button" title="登录" aria-label="登录">
+                <span class="youdao-footer-icon" aria-hidden="true">⚙</span>
+                <span>登录</span>
+              </button>
+              <details class="youdao-client-menu" id="youdaoClientMenu">
+                <summary id="youdaoClientSummary" title="客户端下载" aria-label="客户端下载">
+                  <span class="youdao-footer-icon" aria-hidden="true">⇩</span>
+                  <span>客户端下载</span>
+                </summary>
+                <div class="youdao-client-panel">
+                  <button class="youdao-client-item" id="youdaoInstallDesktopButton" type="button">
+                    <span aria-hidden="true">▣</span>
+                    <span>安装到电脑端</span>
+                  </button>
+                  <button class="youdao-client-item" id="youdaoAndroidAppButton" type="button">
+                    <span aria-hidden="true">▤</span>
+                    <span>Android APP</span>
+                  </button>
+                </div>
+              </details>
+            </div>
           </div>
           <div class="youdao-view-tabs" role="group" aria-label="布局切换">
             <button class="youdao-layout-button active" id="youdaoLayoutThreeButton" data-youdao-layout="three" type="button" title="三栏视图" aria-label="三栏视图">
