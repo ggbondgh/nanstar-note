@@ -179,6 +179,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .brand h1, .brand p, .topbar h2, .pane-head h3, .modal-head h2, .note-item h3, .utility-grid span, .note-meta { margin: 0; }
 .brand h1 { font-size: 16px; line-height: 1.1; }
 .brand p { margin-top: 4px; color: var(--muted); font-size: 12px; }
+#cloudStatus { display: none !important; }
 
 [hidden] { display: none !important; }
 
