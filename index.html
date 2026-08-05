@@ -14,7 +14,7 @@
     <title>NanStar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=75" />
+    <link rel="stylesheet" href="./styles.css?v=76" />
   </head>
   <body>
     <div class="app-shell">
@@ -476,19 +476,19 @@
             <div class="transfer-panel-head">
               <div>
                 <h3 id="transferPanelTitle">文件传输助手</h3>
-                <p id="transferPanelMeta">文本和文件不会进入笔记列表，适合跨设备临时中转。</p>
+                <p id="transferPanelMeta">文字、图片和文件会按时间混合显示，适合跨设备临时中转。</p>
               </div>
             </div>
 
-            <section class="transfer-section transfer-text-section" aria-labelledby="transferTextTitle">
+            <section class="transfer-section transfer-unified-section" aria-labelledby="transferStreamTitle">
               <div class="transfer-section-head">
                 <div>
-                  <h4 id="transferTextTitle">文本传输</h4>
-                  <p id="transferTextHint">把临时文本发到这里，其他设备同步后可直接复制。</p>
+                  <h4 id="transferStreamTitle">消息</h4>
+                  <p id="transferStreamHint">文字、图片和文件会按时间混合显示。</p>
                 </div>
                 <div class="transfer-section-actions">
-                  <button class="ghost-button" id="transferTextRefreshButton" type="button">刷新</button>
-                  <button class="ghost-button" id="transferTextClearButton" type="button">清空</button>
+                  <button class="ghost-button" id="transferRefreshButton" type="button" title="刷新消息">刷新</button>
+                  <button class="ghost-button" id="transferTextClearButton" type="button">清空文字</button>
                 </div>
               </div>
               <div class="transfer-message-list" id="transferMessageList" aria-live="polite"></div>
@@ -499,30 +499,17 @@
                   spellcheck="false"
                   placeholder="粘贴要同步到其他设备的文本..."
                 ></textarea>
-                <button class="primary-button" id="transferTextSendButton" type="button">发送</button>
+                <div class="transfer-composer-actions">
+                  <button class="ghost-button transfer-attach-button" id="transferUploadButton" type="button" title="添加图片或文件" aria-label="添加图片或文件">
+                    <span aria-hidden="true">＋</span>
+                    <span>添加</span>
+                  </button>
+                  <button class="primary-button" id="transferTextSendButton" type="button">发送</button>
+                </div>
               </div>
               <div class="transfer-composer-hint" id="transferTextSendHint">Ctrl+Enter 发送，Enter 换行</div>
-            </section>
-
-            <section class="transfer-section transfer-file-section" aria-labelledby="transferFileTitle">
-              <div class="transfer-section-head">
-                <div>
-                  <h4 id="transferFileTitle">文件传输</h4>
-                  <p id="transferFileMeta">最多 8 个文件，单文件最大支持 35 MB，总量最大 50 MB。</p>
-                </div>
-                <div class="transfer-actions">
-                  <button class="ghost-button" id="transferRefreshButton" type="button">刷新</button>
-                  <button class="primary-button" id="transferUploadButton" type="button">上传文件</button>
-                </div>
-              </div>
-              <div class="transfer-dropzone" id="transferDropzone">
-                <input id="transferFileInput" type="file" multiple hidden />
-                <div class="transfer-drop-copy">
-                  <strong id="transferDropTitle">拖放文件到这里，或点击上传。</strong>
-                  <span id="transferDropHint">文件会保存到 Cloudflare R2，不占用笔记正文空间。</span>
-                </div>
-              </div>
-              <div class="transfer-list" id="transferFileList" aria-live="polite"></div>
+              <div class="transfer-drop-hint" id="transferDropHint">也可以直接粘贴图片，或把图片和文件拖到消息区。</div>
+              <input id="transferFileInput" type="file" multiple hidden />
             </section>
           </section>
 
@@ -773,7 +760,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-  <script src="./script.js?v=54"></script>
+  <script src="./script.js?v=55"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
