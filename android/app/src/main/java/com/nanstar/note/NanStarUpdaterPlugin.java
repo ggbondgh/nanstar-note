@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -28,8 +29,10 @@ import java.util.concurrent.Executors;
 public class NanStarUpdaterPlugin extends Plugin {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Object installLock = new Object();
     private File pendingApkFile = null;
     private PluginCall pendingInstallCall = null;
+    private boolean installInProgress = false;
 
     @PluginMethod
     public void installApk(PluginCall call) {
@@ -39,6 +42,14 @@ public class NanStarUpdaterPlugin extends Plugin {
             return;
         }
 
+        synchronized (installLock) {
+            if (installInProgress) {
+                call.reject("APK download already in progress", "download_in_progress");
+                return;
+            }
+            installInProgress = true;
+        }
+
         executor.execute(() -> {
             try {
                 File apkFile = downloadApk(url.trim());
@@ -46,6 +57,7 @@ public class NanStarUpdaterPlugin extends Plugin {
             } catch (Exception error) {
                 notifyDownloadProgress(0, 0, "failed");
                 rejectOnMainThread(call, error.getMessage(), "install_failed", error);
+                finishInstall();
             }
         });
     }
@@ -60,20 +72,28 @@ public class NanStarUpdaterPlugin extends Plugin {
             throw new IOException("Cannot create update directory");
         }
 
-        File apkFile = new File(dir, "nanstar-note-update.apk");
-        if (apkFile.exists() && !apkFile.delete()) {
-            throw new IOException("Cannot replace old APK");
-        }
+        cleanupOldApks(dir);
+        File apkFile = new File(dir, "nanstar-note-update-" + System.currentTimeMillis() + ".apk");
 
         HttpURLConnection connection = (HttpURLConnection) new URL(urlText).openConnection();
         connection.setInstanceFollowRedirects(true);
+        connection.setUseCaches(false);
         connection.setConnectTimeout(20000);
         connection.setReadTimeout(60000);
+        connection.setRequestProperty("Accept", "application/vnd.android.package-archive");
+        connection.setRequestProperty("Cache-Control", "no-cache");
         connection.setRequestProperty("User-Agent", "NanStar-Note-Android");
 
         int status = connection.getResponseCode();
         if (status < 200 || status >= 300) {
+            connection.disconnect();
             throw new IOException("APK download failed: HTTP " + status);
+        }
+
+        String contentType = connection.getContentType();
+        if (contentType != null && contentType.toLowerCase(Locale.ROOT).contains("text/html")) {
+            connection.disconnect();
+            throw new IOException("APK download returned HTML instead of an APK");
         }
 
         long totalBytes = connection.getContentLengthLong();
@@ -110,6 +130,20 @@ public class NanStarUpdaterPlugin extends Plugin {
         return apkFile;
     }
 
+    private void cleanupOldApks(File dir) {
+        File[] files = dir.listFiles((file, name) ->
+            name.startsWith("nanstar-note-update-") && name.endsWith(".apk")
+        );
+        if (files == null) return;
+
+        long cutoff = System.currentTimeMillis() - 24L * 60L * 60L * 1000L;
+        for (File file : files) {
+            if (file.lastModified() < cutoff) {
+                file.delete();
+            }
+        }
+    }
+
     private void notifyDownloadProgress(long loadedBytes, long totalBytes, String state) {
         JSObject progress = new JSObject();
         progress.put("state", state);
@@ -135,6 +169,7 @@ public class NanStarUpdaterPlugin extends Plugin {
             } catch (ActivityNotFoundException error) {
                 clearPendingInstall();
                 call.reject("Allow NanStar Note to install unknown apps, then tap download again.", "unknown_sources", error);
+                finishInstall();
             }
             return;
         }
@@ -142,10 +177,13 @@ public class NanStarUpdaterPlugin extends Plugin {
         try {
             launchInstaller(apkFile);
             resolveInstallStarted(call, apkFile);
+            finishInstall();
         } catch (UnknownSourceException error) {
             call.reject(error.getMessage(), "install_failed", error);
+            finishInstall();
         } catch (Exception error) {
             call.reject(error.getMessage(), "install_failed", error);
+            finishInstall();
         }
     }
 
@@ -198,6 +236,7 @@ public class NanStarUpdaterPlugin extends Plugin {
             PluginCall call = pendingInstallCall;
             clearPendingInstall();
             call.reject("Allow NanStar Note to install unknown apps, then tap download again.", "unknown_sources");
+            finishInstall();
             return;
         }
 
@@ -215,6 +254,12 @@ public class NanStarUpdaterPlugin extends Plugin {
     private void clearPendingInstall() {
         pendingApkFile = null;
         pendingInstallCall = null;
+    }
+
+    private void finishInstall() {
+        synchronized (installLock) {
+            installInProgress = false;
+        }
     }
 
     private void runOnMainThread(Runnable action) {

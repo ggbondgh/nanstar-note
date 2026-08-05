@@ -10949,3 +10949,86 @@ body.realtime-sync-mode .youdao-sync-stack {
     height: 68px;
   }
 }
+
+/* ===== Mobile rail cleanup ===== */
+@media (max-width: 760px) {
+  .youdao-list-pane {
+    border-left: 0 !important;
+  }
+
+  .youdao-rail {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    grid-template-rows: auto auto auto auto auto !important;
+    column-gap: 8px !important;
+    row-gap: 0 !important;
+    align-items: center !important;
+  }
+
+  .brand,
+  body.sidebar-collapsed .brand,
+  .sidebar-actions,
+  body.sidebar-collapsed .sidebar-actions {
+    grid-column: 1 / -1 !important;
+  }
+
+  .brand,
+  body.sidebar-collapsed .brand {
+    grid-row: 1 !important;
+  }
+
+  .sidebar-actions,
+  body.sidebar-collapsed .sidebar-actions {
+    grid-row: 2 !important;
+  }
+
+  .youdao-nav,
+  .youdao-mobile-tools,
+  .youdao-rail-footer {
+    display: contents !important;
+  }
+
+  .youdao-nav-item,
+  #youdaoSyncSettingsButton,
+  #youdaoClientMenu {
+    grid-row: 3 !important;
+  }
+
+  #youdaoTransferButton { grid-column: 1 !important; }
+  #youdaoAllNotesButton { grid-column: 2 !important; }
+  #youdaoFavoriteButton { grid-column: 3 !important; }
+  #youdaoSyncSettingsButton { grid-column: 4 !important; }
+
+  #youdaoClientMenu {
+    display: grid !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    place-items: center !important;
+  }
+
+  #youdaoClientMenu > summary {
+    width: 44px !important;
+    min-width: 44px !important;
+  }
+
+  .folder-panel,
+  body.sidebar-collapsed .folder-panel {
+    grid-column: 1 / -1 !important;
+    grid-row: 4 !important;
+    width: auto !important;
+    margin: 10px 0 0 !important;
+  }
+
+  .youdao-sync-stack {
+    grid-column: 1 / -1 !important;
+    grid-row: 5 !important;
+    width: 100% !important;
+    margin: 8px 0 0 !important;
+  }
+
+  body.realtime-sync-mode .youdao-sync-stack {
+    display: none !important;
+  }
+}

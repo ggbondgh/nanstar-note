@@ -1053,6 +1053,7 @@ const ANDROID_RELEASE_API_URL = "https://api.github.com/repos/ggbondgh/nanstar-n
 const CLOUD_API_ORIGIN = "https://nanstar-note.pages.dev";
 let appRuntimeInfoPromise = null;
 let androidUpdateProgressListenerPromise = null;
+let androidInstallPromise = null;
 let editorLineMeasureNode = null;
 let editorLineLayoutCache = null;
 let editorLineLayoutFrame = 0;
@@ -2864,8 +2865,8 @@ async function ensureAndroidUpdateProgressListener() {
   await androidUpdateProgressListenerPromise;
 }
 
-async function openAndroidDownload() {
-  await installAndroidApk(ANDROID_APK_URL);
+function openAndroidDownload() {
+  return installAndroidApk(ANDROID_APK_URL);
 }
 
 function openAndroidAppDialog() {
@@ -2883,7 +2884,15 @@ async function installDesktopClient() {
   }
 }
 
-async function installAndroidApk(url) {
+function installAndroidApk(url) {
+  if (androidInstallPromise) return androidInstallPromise;
+  androidInstallPromise = installAndroidApkOnce(url).finally(() => {
+    androidInstallPromise = null;
+  });
+  return androidInstallPromise;
+}
+
+async function installAndroidApkOnce(url) {
   const updaterPlugin = window.Capacitor?.Plugins?.NanStarUpdater;
   if (nativeRuntime() && updaterPlugin?.installApk) {
     await ensureAndroidUpdateProgressListener();
