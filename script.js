@@ -4616,6 +4616,7 @@ function renderLists() {
 
 function applyNoteListScope({ viewFilter = state.viewFilter, selectedFolder = state.selectedFolder } = {}) {
   const nextFilter = viewFilter === "favorite" ? "favorite" : "all";
+  const keepMobileSidebar = isMobileLayout();
   state.viewFilter = nextFilter;
   state.selectedFolder = canonicalSelectedFolder(selectedFolder || "");
   state.selectionMode = false;
@@ -4625,14 +4626,14 @@ function applyNoteListScope({ viewFilter = state.viewFilter, selectedFolder = st
   const scopedNotes = sortedNotes();
   const active = activeNote();
   const activeInScope = active && !isTransferAssistant(active) && scopedNotes.some((note) => note.id === active.id);
-  if (!activeInScope && scopedNotes[0]) {
-    switchToNote(scopedNotes[0].id);
+  if (!activeInScope && scopedNotes[0] && !keepMobileSidebar) {
+    switchToNote(scopedNotes[0].id, { keepMobileSidebar });
     return;
   }
 
   renderFilterState();
   renderLists();
-  closeMobileSidebar();
+  if (!keepMobileSidebar) closeMobileSidebar();
 }
 
 function openTransferAssistant() {
@@ -4982,9 +4983,9 @@ function deleteSelectedNotes() {
   showToast(t("selectedDeleted").replace("{count}", ids.length));
 }
 
-function switchToNote(nextId) {
+function switchToNote(nextId, { keepMobileSidebar = false } = {}) {
   if (!nextId || nextId === state.activeId) {
-    closeMobileSidebar();
+    if (!keepMobileSidebar) closeMobileSidebar();
     return;
   }
 
@@ -4994,7 +4995,7 @@ function switchToNote(nextId) {
   state.activeId = nextId;
   saveNotes();
   renderAll();
-  closeMobileSidebar();
+  if (!keepMobileSidebar) closeMobileSidebar();
   if (!isMobileLayout()) elements.bodyInput.focus();
 }
 
