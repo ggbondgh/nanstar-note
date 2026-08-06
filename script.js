@@ -54,6 +54,7 @@ const i18n = {
     androidUpdateLatest: "已是最新版本：{version}",
     androidUpdateChecking: "正在检查新版本...",
     androidUpdateFailed: "检查失败，可以直接下载最新安装包。",
+    androidUpdateUnavailable: "暂时无法确认版本，可以直接下载最新安装包。",
     androidDownloadOpening: "正在打开 Android 安装包下载链接...",
     androidDownloadInstalling: "正在下载 APK，完成后会打开系统安装器...",
     androidDownloadReadyToInstall: "APK 已下载，请在系统安装器中确认安装。",
@@ -391,6 +392,7 @@ const i18n = {
     androidUpdateLatest: "Already latest: {version}",
     androidUpdateChecking: "Checking for updates...",
     androidUpdateFailed: "Update check failed. You can download the latest APK directly.",
+    androidUpdateUnavailable: "The current version could not be confirmed. You can download the latest APK directly.",
     androidDownloadOpening: "Opening Android APK download link...",
     androidDownloadInstalling: "Downloading APK. The Android installer will open when it finishes...",
     androidDownloadReadyToInstall: "APK downloaded. Confirm installation in the Android installer.",
@@ -2841,14 +2843,21 @@ async function checkAndroidUpdate() {
     }
   } catch (error) {
     console.warn(error);
-    setAppUpdateStatus(t("androidUpdateFailed"), true);
-    showToast(t("androidUpdateFailed"));
+    setAppUpdateStatus(t("androidUpdateUnavailable"), true);
+    showToast(t("androidUpdateUnavailable"));
   } finally {
     elements.checkAppUpdateButton.disabled = false;
   }
 }
 
 async function fetchAndroidUpdateInfo() {
+  try {
+    const response = await fetch(apiUrl("/api/android-update"), { cache: "no-store" });
+    if (response.ok) {
+      return normalizeAndroidUpdateInfo(await response.json());
+    }
+  } catch {}
+
   const manifestInfo = await fetchAndroidUpdateManifest();
   if (manifestInfo) return manifestInfo;
 
@@ -3036,8 +3045,7 @@ async function openExternalUrl(url) {
     return;
   }
 
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
-  if (!opened) window.location.href = url;
+  window.location.assign(url);
 }
 
 function loadNotes() {
