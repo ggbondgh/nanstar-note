@@ -11510,3 +11510,76 @@ body.realtime-sync-mode .youdao-sync-stack {
     width: min(320px, calc(100vw - 36px));
   }
 }
+
+/* Give the composer a wider text area and a clear vertical action stack. */
+.transfer-composer {
+  grid-template-columns: minmax(0, 1fr) 96px !important;
+}
+
+.transfer-composer-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: minmax(42px, auto) minmax(52px, auto) !important;
+  align-self: stretch;
+  width: 96px;
+}
+
+.transfer-attach-button,
+.transfer-composer-actions .primary-button {
+  width: 100%;
+  min-width: 0;
+}
+
+.transfer-attach-button {
+  min-height: 42px;
+  padding: 0 8px;
+}
+
+.transfer-composer-actions .primary-button {
+  min-height: 52px;
+  font-size: 14px;
+  font-weight: 780;
+}
+
+#transferTextInput {
+  min-height: 88px;
+}
+
+/* Long-press menus need touch-sized actions and room for the move submenu. */
+@media (max-width: 760px) {
+  .transfer-composer {
+    grid-template-columns: minmax(0, 1fr) 88px !important;
+  }
+
+  .transfer-composer-actions {
+    width: 88px;
+  }
+
+  .transfer-attach-button {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .context-menu {
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
+
+  .context-menu-item {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  .context-sub-list {
+    left: 100%;
+    right: auto;
+    max-width: calc(100vw - 24px);
+  }
+
+  .context-sub-list.open-left {
+    right: 100%;
+    left: auto;
+  }
+}

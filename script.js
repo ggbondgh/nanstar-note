@@ -4304,8 +4304,17 @@ function showNoteContextMenu(x, y) {
   menu.querySelector('[data-action="export"]').textContent = t("exportCurrent");
   menu.querySelector('[data-action="delete"]').textContent = t("delete");
   menu.hidden = false;
-  menu.style.left = `${Math.min(x, window.innerWidth - 170)}px`;
-  menu.style.top = `${Math.min(y, window.innerHeight - 260)}px`;
+  const gutter = isMobileLayout() ? 12 : 8;
+  menu.style.left = `${Math.max(gutter, x)}px`;
+  menu.style.top = `${Math.max(gutter, y)}px`;
+  window.requestAnimationFrame(() => {
+    if (menu.hidden) return;
+    const rect = menu.getBoundingClientRect();
+    const left = Math.min(Math.max(gutter, x), Math.max(gutter, window.innerWidth - rect.width - gutter));
+    const top = Math.min(Math.max(gutter, y), Math.max(gutter, window.innerHeight - rect.height - gutter));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  });
   const note = state.notes.find(n => n.id === state.contextMenuNoteId && !isDeletedNote(n));
   if (note) {
     const pinItem = menu.querySelector('[data-action="pin"]');
@@ -4317,6 +4326,7 @@ function showNoteContextMenu(x, y) {
   const moveList = document.getElementById('noteMoveList');
   const moveTrigger = document.querySelector('.move-trigger');
   if (moveList && moveTrigger) {
+    moveList.classList.remove("open", "open-left");
     const folders = getFolderNames().filter(f => note && f !== canonicalFolderName(note.folder));
     moveList.innerHTML = folders.length
       ? folders.map(f => `<button class="context-menu-item" data-action="move-to" data-folder="${escapeAttribute(f)}" type="button">📁 ${escapeHtml(displayFolderLabel(f))}</button>`).join("")
@@ -4324,14 +4334,21 @@ function showNoteContextMenu(x, y) {
     // Click trigger to toggle submenu
     moveTrigger.onclick = (e) => {
       e.stopPropagation();
-      moveList.classList.toggle('open');
+      const opening = !moveList.classList.contains("open");
+      if (opening && isMobileLayout()) {
+        const menuRect = menu.getBoundingClientRect();
+        moveList.classList.toggle("open-left", menuRect.right + 180 > window.innerWidth - 12);
+      } else {
+        moveList.classList.remove("open-left");
+      }
+      moveList.classList.toggle("open", opening);
     };
     moveList.querySelectorAll('[data-action="move-to"]').forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         const noteId = state.contextMenuNoteId;
         const tf = btn.dataset.folder;
-        moveList.classList.remove('open');
+        moveList.classList.remove("open", "open-left");
         moveNoteToFolder(noteId, tf);
         hideNoteContextMenu();
       });
@@ -4870,7 +4887,46 @@ function renderNoteList() {
   });
 
   elements.noteList.querySelectorAll(".note-item").forEach((button) => {
-    button.addEventListener("click", () => {
+    let longPressTimer = 0;
+    let longPressTriggered = false;
+    let pressStartX = 0;
+    let pressStartY = 0;
+    const cancelLongPress = () => {
+      if (!longPressTimer) return;
+      window.clearTimeout(longPressTimer);
+      longPressTimer = 0;
+    };
+    const finishLongPress = () => {
+      cancelLongPress();
+      if (longPressTriggered) window.setTimeout(() => { longPressTriggered = false; }, 0);
+    };
+    button.addEventListener("pointerdown", (event) => {
+      if (!isMobileLayout() || event.pointerType === "mouse" || event.button !== 0) return;
+      pressStartX = event.clientX;
+      pressStartY = event.clientY;
+      cancelLongPress();
+      longPressTimer = window.setTimeout(() => {
+        longPressTimer = 0;
+        longPressTriggered = true;
+        state.contextMenuNoteId = button.dataset.id;
+        showNoteContextMenu(pressStartX, pressStartY);
+        navigator.vibrate?.(8);
+      }, 520);
+    });
+    button.addEventListener("pointermove", (event) => {
+      if (Math.hypot(event.clientX - pressStartX, event.clientY - pressStartY) > 10) {
+        cancelLongPress();
+      }
+    });
+    button.addEventListener("pointerup", finishLongPress);
+    button.addEventListener("pointercancel", finishLongPress);
+    button.addEventListener("click", (event) => {
+      if (longPressTriggered) {
+        longPressTriggered = false;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       if (state.selectionMode) {
         const noteId = button.dataset.id;
         const note = state.notes.find((item) => item.id === noteId && !isDeletedNote(item));
