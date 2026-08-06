@@ -2938,12 +2938,14 @@ async function ensureAndroidUpdateProgressListener() {
   const updaterPlugin = getAndroidUpdaterPlugin();
   if (!nativeRuntime() || !updaterPlugin?.addListener) return;
   if (!androidUpdateProgressListenerPromise) {
-    androidUpdateProgressListenerPromise = updaterPlugin.addListener("downloadProgress", (event = {}) => {
-      setAndroidDownloadProgress(event);
-    }).catch((error) => {
-      androidUpdateProgressListenerPromise = null;
-      console.warn("Android update progress listener failed", error);
-    });
+    androidUpdateProgressListenerPromise = Promise.resolve()
+      .then(() => updaterPlugin.addListener("downloadProgress", (event = {}) => {
+        setAndroidDownloadProgress(event);
+      }))
+      .catch((error) => {
+        androidUpdateProgressListenerPromise = null;
+        console.warn("Android update progress listener failed", error);
+      });
   }
   await androidUpdateProgressListenerPromise;
 }
@@ -2978,12 +2980,12 @@ function installAndroidApk(url) {
 async function installAndroidApkOnce(url) {
   const updaterPlugin = getAndroidUpdaterPlugin();
   if (nativeRuntime() && updaterPlugin?.installApk) {
-    await ensureAndroidUpdateProgressListener();
     setAndroidDownloadProgress({ state: "downloading" });
     if (elements.downloadAndroidAppButton) elements.downloadAndroidAppButton.disabled = true;
     if (elements.checkAppUpdateButton) elements.checkAppUpdateButton.disabled = true;
     try {
       setAppUpdateStatus(t("androidDownloadInstalling"), true);
+      await ensureAndroidUpdateProgressListener();
       await updaterPlugin.installApk({ url });
       setAppUpdateStatus(t("androidDownloadReadyToInstall"), true);
       showToast(t("androidDownloadReadyToInstall"));
