@@ -4680,7 +4680,7 @@ function renderFilterState() {
   elements.filterTabs.forEach(btn => {
     btn.classList.toggle("active", btn.dataset.filter === state.viewFilter);
   });
-  const transferActive = isTransferAssistant(activeNote());
+  const transferActive = !isMobileLayout() && isTransferAssistant(activeNote());
   elements.youdaoFilterButtons.forEach((button) => {
     const active = !transferActive && !state.selectedFolder && button.dataset.youdaoFilter === state.viewFilter;
     button.classList.toggle("active", active);
