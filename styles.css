@@ -11511,60 +11511,93 @@ body.realtime-sync-mode .youdao-sync-stack {
   }
 }
 
-/* Give the composer a wider text area and a clear vertical action stack. */
+/* Keep the transfer composer as one surface with a simple action row. */
 .transfer-composer {
-  grid-template-columns: minmax(0, 1fr) 96px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 8px !important;
+  padding: 10px 10px 8px !important;
+  border: 1px solid #d8deea;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.transfer-composer:focus-within {
+  border-color: rgba(38, 99, 235, 0.48);
+  box-shadow: 0 0 0 3px rgba(38, 99, 235, 0.1);
 }
 
 .transfer-composer-actions {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) !important;
-  grid-template-rows: minmax(42px, auto) minmax(52px, auto) !important;
-  align-self: stretch;
-  width: 96px;
-}
-
-.transfer-attach-button,
-.transfer-composer-actions .primary-button {
-  width: 100%;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: space-between;
+  width: 100% !important;
   min-width: 0;
+  gap: 8px;
 }
 
 .transfer-attach-button {
+  display: inline-grid !important;
+  width: 42px !important;
+  min-width: 42px !important;
+  height: 42px;
   min-height: 42px;
-  padding: 0 8px;
+  padding: 0 !important;
+  place-items: center;
+}
+
+.transfer-attach-button span:last-child {
+  display: none !important;
 }
 
 .transfer-composer-actions .primary-button {
-  min-height: 52px;
+  flex: 0 0 124px;
+  width: 124px;
+  min-width: 124px;
+  min-height: 50px;
   font-size: 14px;
   font-weight: 780;
 }
 
 #transferTextInput {
-  min-height: 88px;
+  min-height: 94px;
+  padding: 4px 2px 8px;
+  border: 0 !important;
+  border-radius: 0;
+  box-shadow: none !important;
+}
+
+#transferTextInput:focus {
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 /* Long-press menus need touch-sized actions and room for the move submenu. */
 @media (max-width: 760px) {
   .transfer-composer {
-    grid-template-columns: minmax(0, 1fr) 88px !important;
+    padding: 8px !important;
   }
 
-  .transfer-composer-actions {
-    width: 88px;
+  #transferTextInput {
+    min-height: 106px;
   }
 
-  .transfer-attach-button {
-    width: 100%;
+  .transfer-composer-actions .primary-button {
+    flex: 1 1 auto;
+    width: auto;
     min-width: 0;
-    padding: 0;
   }
 
   .context-menu {
+    z-index: 1200 !important;
     max-width: calc(100vw - 24px);
     max-height: calc(100dvh - 24px);
     overflow-y: auto;
+  }
+
+  .context-sub-list {
+    z-index: 1201;
   }
 
   .context-menu-item {
