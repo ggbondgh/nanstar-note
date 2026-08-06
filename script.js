@@ -253,6 +253,7 @@ const i18n = {
     transferAssistantExcerpt: "跨设备临时传文件",
     transferPanelTitle: "文件传输助手",
     transferPanelMeta: "文字、图片和文件会按时间混合显示，适合跨设备临时中转。",
+    transferInfo: "查看传输说明",
     transferStreamTitle: "消息",
     transferStreamHint: "文字、图片和文件会按时间混合显示。",
     transferTextTitle: "文本传输",
@@ -591,6 +592,7 @@ const i18n = {
     transferAssistantExcerpt: "Temporary cross-device files",
     transferPanelTitle: "File Transfer Assistant",
     transferPanelMeta: "Text, images, and files appear together in chronological order.",
+    transferInfo: "View transfer details",
     transferStreamTitle: "Messages",
     transferStreamHint: "Text, images, and files appear together in chronological order.",
     transferTextTitle: "Text Transfer",
@@ -1260,6 +1262,8 @@ const elements = {
   transferPanel: $("#transferPanel"),
   transferPanelTitle: $("#transferPanelTitle"),
   transferPanelMeta: $("#transferPanelMeta"),
+  transferInfoButton: $("#transferInfoButton"),
+  transferInfoPopover: $("#transferInfoPopover"),
   transferStreamTitle: $("#transferStreamTitle"),
   transferStreamHint: $("#transferStreamHint"),
   transferTextClearButton: $("#transferTextClearButton"),
@@ -2072,6 +2076,11 @@ function renderTransferPanel() {
   const textLimits = transferTextLimits();
   if (elements.transferPanelTitle) elements.transferPanelTitle.textContent = t("transferPanelTitle");
   if (elements.transferPanelMeta) elements.transferPanelMeta.textContent = t("transferPanelMeta");
+  if (elements.transferInfoButton) {
+    elements.transferInfoButton.title = t("transferInfo");
+    elements.transferInfoButton.setAttribute("aria-label", t("transferInfo"));
+  }
+  if (elements.transferInfoPopover) elements.transferInfoPopover.setAttribute("aria-label", t("transferInfo"));
   if (elements.transferStreamTitle) elements.transferStreamTitle.textContent = t("transferStreamTitle");
   if (elements.transferStreamHint) {
     elements.transferStreamHint.textContent = `${t("transferStreamHint")} ${t("transferTextLimits")

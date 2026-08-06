@@ -11422,3 +11422,91 @@ body.realtime-sync-mode .youdao-sync-stack {
     flex-wrap: wrap !important;
   }
 }
+
+/* Keep transfer guidance available without taking space from the stream. */
+.transfer-panel-title {
+  min-width: 0;
+}
+
+.transfer-panel-title-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.transfer-info {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+}
+
+.transfer-info > summary {
+  list-style: none;
+}
+
+.transfer-info > summary::-webkit-details-marker {
+  display: none;
+}
+
+.transfer-info-button {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid #b9c7dc;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.transfer-info-button:hover,
+.transfer-info[open] > .transfer-info-button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.transfer-info-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  display: grid;
+  gap: 8px;
+  width: min(360px, calc(100vw - 48px));
+  padding: 12px 14px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(31, 41, 55, 0.14);
+}
+
+.transfer-info:not([open]) .transfer-info-popover {
+  display: none;
+}
+
+.transfer-info-popover p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.transfer-info-popover p + p {
+  padding-top: 8px;
+  border-top: 1px solid #edf0f6;
+}
+
+@media (max-width: 760px) {
+  .transfer-info-popover {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(320px, calc(100vw - 36px));
+  }
+}

@@ -14,7 +14,7 @@
     <title>NanStar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=77" />
+    <link rel="stylesheet" href="./styles.css?v=78" />
   </head>
   <body>
     <div class="app-shell">
@@ -470,9 +470,19 @@
 
           <section class="transfer-panel" id="transferPanel" hidden>
             <div class="transfer-panel-head">
-              <div>
-                <h3 id="transferPanelTitle">文件传输助手</h3>
-                <p id="transferPanelMeta">文字、图片和文件会按时间混合显示，适合跨设备临时中转。</p>
+              <div class="transfer-panel-title">
+                <div class="transfer-panel-title-line">
+                  <h3 id="transferPanelTitle">文件传输助手</h3>
+                  <details class="transfer-info" id="transferInfo">
+                    <summary class="transfer-info-button" id="transferInfoButton" title="查看传输说明" aria-label="查看传输说明">i</summary>
+                    <div class="transfer-info-popover" id="transferInfoPopover" role="note" aria-label="传输说明">
+                      <p id="transferPanelMeta">文字、图片和文件会按时间混合显示，适合跨设备临时中转。</p>
+                      <p id="transferStreamHint">文字、图片和文件会按时间混合显示。</p>
+                      <p id="transferTextSendHint">Enter 换行，Ctrl+Enter 发送；也可以粘贴图片或拖入文件。</p>
+                      <p id="transferDropHint">也可以直接粘贴图片，或把图片和文件拖到消息区。</p>
+                    </div>
+                  </details>
+                </div>
               </div>
             </div>
 
@@ -480,7 +490,6 @@
               <div class="transfer-section-head">
                 <div>
                   <h4 id="transferStreamTitle">消息</h4>
-                  <p id="transferStreamHint">文字、图片和文件会按时间混合显示。</p>
                 </div>
                 <div class="transfer-section-actions">
                   <button class="ghost-button" id="transferRefreshButton" type="button" title="刷新消息">刷新</button>
@@ -503,8 +512,6 @@
                   <button class="primary-button" id="transferTextSendButton" type="button">发送</button>
                 </div>
               </div>
-              <div class="transfer-composer-hint" id="transferTextSendHint">Ctrl+Enter 发送，Enter 换行</div>
-              <div class="transfer-drop-hint" id="transferDropHint">也可以直接粘贴图片，或把图片和文件拖到消息区。</div>
               <input id="transferFileInput" type="file" multiple hidden />
             </section>
           </section>
@@ -756,7 +763,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-  <script src="./script.js?v=60"></script>
+  <script src="./script.js?v=61"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
