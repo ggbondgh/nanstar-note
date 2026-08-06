@@ -1067,6 +1067,7 @@ const CLOUD_API_ORIGIN = "https://nanstar-note.pages.dev";
 let appRuntimeInfoPromise = null;
 let androidUpdateProgressListenerPromise = null;
 let androidInstallPromise = null;
+let androidWebDownloadStarted = false;
 let editorLineMeasureNode = null;
 let editorLineLayoutCache = null;
 let editorLineLayoutFrame = 0;
@@ -2957,6 +2958,8 @@ function openAndroidDownload() {
 function openAndroidAppDialog() {
   elements.topbarMenu?.removeAttribute("open");
   elements.youdaoClientMenu?.removeAttribute("open");
+  androidWebDownloadStarted = false;
+  if (elements.downloadAndroidAppButton) elements.downloadAndroidAppButton.disabled = false;
   hydrateAppUpdatePanel();
   elements.androidAppDialog?.showModal();
 }
@@ -2971,6 +2974,11 @@ async function installDesktopClient() {
 
 function installAndroidApk(url) {
   if (androidInstallPromise) return androidInstallPromise;
+  if (!nativeRuntime() && androidWebDownloadStarted) return Promise.resolve();
+  if (!nativeRuntime()) {
+    androidWebDownloadStarted = true;
+    if (elements.downloadAndroidAppButton) elements.downloadAndroidAppButton.disabled = true;
+  }
   androidInstallPromise = installAndroidApkOnce(url).finally(() => {
     androidInstallPromise = null;
   });
@@ -3009,8 +3017,16 @@ async function installAndroidApkOnce(url) {
   }
 
   setAndroidDownloadProgress({ state: "failed" });
-  setAppUpdateStatus(t("androidDownloadOpening"), true);
-  await openExternalUrl(url || ANDROID_APK_URL);
+  try {
+    setAppUpdateStatus(t("androidDownloadOpening"), true);
+    await openExternalUrl(url || ANDROID_APK_URL);
+  } catch (error) {
+    androidWebDownloadStarted = false;
+    if (elements.downloadAndroidAppButton) elements.downloadAndroidAppButton.disabled = false;
+    console.warn(error);
+    setAppUpdateStatus(t("androidUpdateFailed"), true);
+    showToast(t("androidUpdateFailed"));
+  }
 }
 
 async function openExternalUrl(url) {
