@@ -1066,6 +1066,7 @@ const MOBILE_LAYOUT_QUERY = "(max-width: 760px)";
 const ANDROID_RELEASE_BASE_URL = "https://github.com/ggbondgh/nanstar-note/releases/latest/download";
 const ANDROID_APK_URL = `${ANDROID_RELEASE_BASE_URL}/nanstar-note.apk`;
 const ANDROID_UPDATE_URL = `${ANDROID_RELEASE_BASE_URL}/update.json`;
+const ANDROID_TAGGED_UPDATE_URL = "https://github.com/ggbondgh/nanstar-note/releases/download/android-latest/update.json";
 const ANDROID_RELEASE_API_URL = "https://api.github.com/repos/ggbondgh/nanstar-note/releases/latest";
 const CLOUD_API_ORIGIN = "https://nanstar-note.pages.dev";
 let appRuntimeInfoPromise = null;
@@ -2897,14 +2898,17 @@ async function fetchAndroidUpdateInfo() {
 }
 
 async function fetchAndroidUpdateManifest() {
+  const urls = [ANDROID_TAGGED_UPDATE_URL, ANDROID_UPDATE_URL];
   try {
-    const response = await fetch(freshUrl(ANDROID_UPDATE_URL), { cache: "no-store" });
-    if (!response.ok) return null;
-    const info = await response.json();
-    return normalizeAndroidUpdateInfo(info);
+    for (const url of urls) {
+      const response = await fetch(freshUrl(url), { cache: "no-store" });
+      if (!response.ok) continue;
+      return normalizeAndroidUpdateInfo(await response.json());
+    }
   } catch {
     return null;
   }
+  return null;
 }
 
 function freshUrl(url) {

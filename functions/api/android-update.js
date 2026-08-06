@@ -1,6 +1,7 @@
 const RELEASE_API_URL = "https://api.github.com/repos/ggbondgh/nanstar-note/releases/latest";
 const FALLBACK_APK_URL = "https://github.com/ggbondgh/nanstar-note/releases/latest/download/nanstar-note.apk";
 const FALLBACK_UPDATE_URL = "https://github.com/ggbondgh/nanstar-note/releases/latest/download/update.json";
+const TAGGED_UPDATE_URL = "https://github.com/ggbondgh/nanstar-note/releases/download/android-latest/update.json";
 
 export async function onRequestOptions() {
   return new Response(null, { headers: corsHeaders() });
@@ -38,7 +39,7 @@ export async function onRequestGet() {
 }
 
 async function fetchUpdateManifest() {
-  const urls = [FALLBACK_UPDATE_URL, `${FALLBACK_UPDATE_URL}?t=${Date.now()}`];
+  const urls = [TAGGED_UPDATE_URL, `${TAGGED_UPDATE_URL}?t=${Date.now()}`, FALLBACK_UPDATE_URL, `${FALLBACK_UPDATE_URL}?t=${Date.now()}`];
   for (const url of urls) {
     try {
       const response = await fetch(url, {
