@@ -1417,6 +1417,11 @@ function bindEvents() {
   });
   elements.youdaoInstallDesktopButton?.addEventListener("click", installDesktopClient);
   elements.youdaoAndroidAppButton?.addEventListener("click", openAndroidAppDialog);
+  elements.youdaoClientSummary?.addEventListener("click", (event) => {
+    if (!isMobileLayout()) return;
+    event.preventDefault();
+    openAndroidAppDialog();
+  });
   elements.youdaoClientMenu?.addEventListener("toggle", () => {
     if (elements.youdaoClientMenu.open) window.requestAnimationFrame(positionClientMenu);
   });
