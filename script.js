@@ -2835,6 +2835,7 @@ async function checkAndroidUpdate() {
     const latestCode = Number(latest.versionCode || 0);
     const currentCode = Number(current.versionCode || 0);
     const latestName = latest.versionName || "Android App";
+    if (!latestCode) throw new Error("Missing latest Android versionCode");
     const hasUpdate = !current.native || !currentCode || latestCode > currentCode;
 
     if (!hasUpdate) {
@@ -2860,15 +2861,15 @@ async function checkAndroidUpdate() {
 }
 
 async function fetchAndroidUpdateInfo() {
+  const manifestInfo = await fetchAndroidUpdateManifest();
+  if (manifestInfo) return manifestInfo;
+
   try {
     const response = await fetch(apiUrl("/api/android-update"), { cache: "no-store" });
     if (response.ok) {
       return normalizeAndroidUpdateInfo(await response.json());
     }
   } catch {}
-
-  const manifestInfo = await fetchAndroidUpdateManifest();
-  if (manifestInfo) return manifestInfo;
 
   const response = await fetch(ANDROID_RELEASE_API_URL, {
     cache: "no-store",
@@ -2897,13 +2898,18 @@ async function fetchAndroidUpdateInfo() {
 
 async function fetchAndroidUpdateManifest() {
   try {
-    const response = await fetch(ANDROID_UPDATE_URL, { cache: "no-store" });
+    const response = await fetch(freshUrl(ANDROID_UPDATE_URL), { cache: "no-store" });
     if (!response.ok) return null;
     const info = await response.json();
     return normalizeAndroidUpdateInfo(info);
   } catch {
     return null;
   }
+}
+
+function freshUrl(url) {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}t=${Date.now()}`;
 }
 
 function normalizeAndroidUpdateInfo(info = {}, fallback = {}) {
@@ -4908,6 +4914,7 @@ function renderNoteList() {
       longPressTimer = window.setTimeout(() => {
         longPressTimer = 0;
         longPressTriggered = true;
+        document.getSelection?.()?.removeAllRanges?.();
         state.contextMenuNoteId = button.dataset.id;
         showNoteContextMenu(pressStartX, pressStartY);
         navigator.vibrate?.(8);
