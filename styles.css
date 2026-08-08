@@ -315,6 +315,13 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 }
 .note-list-count { color: var(--muted); font-size: 11px; font-weight: 650; }
 .note-list-tools { display: inline-flex; align-items: center; gap: 8px; }
+.note-refresh-button {
+  width: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  font-size: 15px;
+}
 .note-list-tabs { display: flex; gap: 2px; }
 .filter-tab {
   padding: 4px 12px;

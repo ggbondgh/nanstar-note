@@ -237,6 +237,7 @@ const i18n = {
     syncBlockedDirty: "云端有更新，本地正在编辑，已保留本地",
     syncNoChange: "云端暂无更新",
     syncBusy: "正在同步，请稍后再试",
+    refreshNotes: "刷新笔记",
     saveNote: "保存",
     saveNoteShortcut: "保存 Ctrl+S",
     syncNote: "同步",
@@ -576,6 +577,7 @@ const i18n = {
     syncBlockedDirty: "Cloud changed, local edit kept",
     syncNoChange: "No cloud changes",
     syncBusy: "Sync is already running",
+    refreshNotes: "Refresh notes",
     saveNote: "Save",
     saveNoteShortcut: "Save Ctrl+S",
     syncNote: "Sync",
@@ -945,6 +947,7 @@ const state = {
   syncPollTimer: null,
   transferPollTimer: null,
   syncInFlight: false,
+  noteRefreshInFlight: false,
   syncQueue: [],
   syncAction: "",
   crdtDoc: null,
@@ -1080,6 +1083,7 @@ let editorLineMeasureNode = null;
 let editorLineLayoutCache = null;
 let editorLineLayoutFrame = 0;
 let transferPanelRenderFrame = 0;
+let transferMessageListMarkup = "";
 let transferUploadQueue = Promise.resolve();
 
 function nativeRuntime() {
@@ -1271,6 +1275,7 @@ const elements = {
   transferStreamTitle: $("#transferStreamTitle"),
   transferStreamHint: $("#transferStreamHint"),
   transferTextClearButton: $("#transferTextClearButton"),
+  noteRefreshButton: $("#noteRefreshButton"),
   transferMessageList: $("#transferMessageList"),
   transferTextInput: $("#transferTextInput"),
   transferTextSendButton: $("#transferTextSendButton"),
@@ -1453,6 +1458,9 @@ function bindEvents() {
 
   if (elements.folderAddButton) elements.folderAddButton.addEventListener("click", createFolder);
   if (elements.multiSelectButton) elements.multiSelectButton.addEventListener("click", toggleSelectionMode);
+  elements.noteRefreshButton?.addEventListener("click", () => {
+    void refreshNotesFromCloud();
+  });
   if (elements.bulkSelectAllButton) elements.bulkSelectAllButton.addEventListener("click", selectAllVisibleNotes);
   if (elements.bulkDeleteButton) elements.bulkDeleteButton.addEventListener("click", deleteSelectedNotes);
   if (elements.bulkClearButton) elements.bulkClearButton.addEventListener("click", exitSelectionMode);
@@ -2028,6 +2036,7 @@ function resetTransferState() {
   state.transferImageLoading.clear();
   state.transferExpandedImages.clear();
   state.transferScrollToBottom = false;
+  transferMessageListMarkup = "";
 }
 
 function transferLimits() {
@@ -2141,17 +2150,19 @@ function renderTransferPanel() {
   }
   if (elements.transferTextClearButton) {
     elements.transferTextClearButton.disabled = !enabled
-      || state.transferTextLoading
-      || state.transferLoading
       || uploading
       || !hasTransferRecords;
   }
   if (elements.transferUploadButton) elements.transferUploadButton.disabled = !enabled || uploading;
-  if (elements.transferRefreshButton) elements.transferRefreshButton.disabled = !enabled || state.transferLoading || state.transferTextLoading;
+  if (elements.transferRefreshButton) elements.transferRefreshButton.disabled = !enabled;
 
   if (!enabled) {
     if (elements.transferMessageList) {
-      elements.transferMessageList.innerHTML = `<div class="transfer-empty">${t("transferTextNoToken")}</div>`;
+      const markup = `<div class="transfer-empty">${t("transferTextNoToken")}</div>`;
+      if (markup !== transferMessageListMarkup) {
+        elements.transferMessageList.innerHTML = markup;
+        transferMessageListMarkup = markup;
+      }
     }
     return;
   }
@@ -2170,12 +2181,19 @@ function renderTransferPanel() {
     .filter(Boolean)
     .map((error) => `<div class="transfer-error compact">${escapeHtml(error)}</div>`)
     .join("");
-  const loading = state.transferTextLoading || state.transferLoading;
-  elements.transferMessageList.innerHTML = items.length
+  const loading = state.transferTextLoading
+    || state.transferLoading
+    || !state.transferTextLastFetchAt
+    || !state.transferLastFetchAt;
+  const markup = items.length
     ? `${errorRows}${items.map(renderTransferStreamItem).join("")}`
     : loading
       ? `<div class="transfer-empty">${t("transferLoading")}</div>`
       : `<div class="transfer-empty">${t("transferTextEmpty")}</div>`;
+  if (markup !== transferMessageListMarkup) {
+    elements.transferMessageList.innerHTML = markup;
+    transferMessageListMarkup = markup;
+  }
   if (state.transferScrollToBottom) {
     state.transferScrollToBottom = false;
     scrollTransferStreamToBottom();
@@ -5254,9 +5272,20 @@ function renderSyncMeta() {
     }
   }
   renderActiveNoteCloudStatus(syncMeta);
+  renderNoteRefreshButton();
   updateNoteListSyncIndicators(syncMeta);
   updateTitleSaveStatusFromNote(syncMeta);
   renderDashboardOverview();
+}
+
+function renderNoteRefreshButton() {
+  const button = elements.noteRefreshButton;
+  if (!button) return;
+  const enabled = Boolean(getSyncToken());
+  button.disabled = !enabled;
+  button.title = t("refreshNotes");
+  button.setAttribute("aria-label", t("refreshNotes"));
+  button.setAttribute("aria-busy", String(state.noteRefreshInFlight));
 }
 
 function renderActiveNoteCloudStatus(syncMeta = readSyncMeta()) {
@@ -5279,7 +5308,7 @@ function renderActiveNoteCloudStatus(syncMeta = readSyncMeta()) {
   if (elements.saveNoteButton) elements.saveNoteButton.disabled = disabled;
   if (elements.syncNoteButton) elements.syncNoteButton.disabled = disabled;
   if (elements.saveAllButton) elements.saveAllButton.disabled = state.syncInFlight;
-  if (elements.syncRefreshButton) elements.syncRefreshButton.disabled = state.syncInFlight;
+  if (elements.syncRefreshButton) elements.syncRefreshButton.disabled = false;
 }
 
 function openNewNoteDialog() {
@@ -5854,6 +5883,18 @@ async function pushCloud(options = {}) {
 
 async function pullCloud() {
   return syncCloud({ manual: true, pullOnly: true, reason: "pull" });
+}
+
+async function refreshNotesFromCloud() {
+  if (state.noteRefreshInFlight) return false;
+  state.noteRefreshInFlight = true;
+  renderNoteRefreshButton();
+  try {
+    return await syncCloud({ manual: true, pullOnly: true, reason: "note-refresh" });
+  } finally {
+    state.noteRefreshInFlight = false;
+    renderNoteRefreshButton();
+  }
 }
 
 async function forcePullCloud() {
@@ -6857,6 +6898,7 @@ function applyLanguage(language, initial = false) {
     const label = elements.syncRefreshButton.querySelector("span:last-child");
     if (label) label.textContent = t("syncAll");
   }
+  renderNoteRefreshButton();
   elements.youdaoFilterButtons.forEach((button) => {
     const label = button.querySelector("span:last-child");
     if (!label) return;
