@@ -25,6 +25,14 @@ const PASSWORD_ITERATIONS = 150000;
 export async function ensureAuthTables(db) {
   await db.prepare(AUTH_USERS_SQL).run();
   await db.prepare(AUTH_SESSIONS_SQL).run();
+  await addColumnIfMissing(db, "nanstar_users", "nickname TEXT NOT NULL DEFAULT 'Nanstar'");
+  await addColumnIfMissing(db, "nanstar_users", "password_hash TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(db, "nanstar_users", "password_salt TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(db, "nanstar_users", "created_at INTEGER NOT NULL DEFAULT 0");
+  await addColumnIfMissing(db, "nanstar_users", "updated_at INTEGER NOT NULL DEFAULT 0");
+  await addColumnIfMissing(db, "nanstar_sessions", "user_id TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(db, "nanstar_sessions", "created_at INTEGER NOT NULL DEFAULT 0");
+  await addColumnIfMissing(db, "nanstar_sessions", "expires_at INTEGER NOT NULL DEFAULT 0");
 }
 
 export async function authorize(env, request) {
@@ -198,4 +206,10 @@ function timingSafeEqual(left, right) {
     result |= left.charCodeAt(index) ^ right.charCodeAt(index);
   }
   return result === 0;
+}
+
+async function addColumnIfMissing(db, table, columnSql) {
+  try {
+    await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${columnSql}`).run();
+  } catch {}
 }
