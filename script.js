@@ -349,6 +349,8 @@ const i18n = {
     accountLoggedInMeta: "已登录，内容会自动同步到当前账号。",
     accountLogin: "登录",
     accountRegister: "注册",
+    accountLoggingIn: "正在登录...",
+    accountRegistering: "正在注册...",
     accountSaveNickname: "保存昵称",
     accountLogout: "退出登录",
     legacyTokenSummary: "高级：使用旧 Token",
@@ -720,6 +722,8 @@ const i18n = {
     accountLoggedInMeta: "Signed in. Changes sync automatically to this account.",
     accountLogin: "Sign in",
     accountRegister: "Register",
+    accountLoggingIn: "Signing in...",
+    accountRegistering: "Registering...",
     accountSaveNickname: "Save nickname",
     accountLogout: "Log out",
     legacyTokenSummary: "Advanced: use legacy token",
@@ -2024,6 +2028,7 @@ function closeMobileSidebar() {
 function openSyncDialog() {
   if (!elements.syncDialog) return;
   renderAccountUi();
+  resetSyncDialogMessage();
   elements.syncDialog.showModal();
   const target = state.accountUser ? elements.accountNicknameInput : elements.accountInput;
   target?.focus();
@@ -6934,10 +6939,11 @@ async function submitAccount(action) {
     return;
   }
 
+  showSyncMessage(action === "register" ? t("accountRegistering") : t("accountLoggingIn"));
   elements.loginAccountButton && (elements.loginAccountButton.disabled = true);
   elements.registerAccountButton && (elements.registerAccountButton.disabled = true);
   try {
-    const result = await authApiRequest("POST", { action, email: account, password, nickname });
+    const result = await authApiRequest("POST", { action, email: account, password, nickname }, "");
     await activateCloudSession(result.token, result.user);
     elements.accountPasswordInput.value = "";
     elements.syncDialog?.close();
@@ -7110,6 +7116,19 @@ function getSyncToken() {
 
 function showSyncMessage(message) {
   elements.syncMessage.textContent = isHtmlErrorText(message) ? t("accountApiUnavailable") : String(message || "");
+}
+
+function resetSyncDialogMessage() {
+  if (!elements.syncMessage) return;
+  if (!getSyncToken()) {
+    showSyncMessage(t("syncLocalReady"));
+    return;
+  }
+  if (!state.accountUser) {
+    showSyncMessage(t("accountCheckingMeta"));
+    return;
+  }
+  showSyncMessage(state.accountUser.legacy ? t("accountLegacyConnected") : t("accountLoggedInMeta"));
 }
 
 function cloudErrorText(error) {
