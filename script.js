@@ -1269,6 +1269,7 @@ const elements = {
   transferPanel: $("#transferPanel"),
   transferPanelTitle: $("#transferPanelTitle"),
   transferPanelMeta: $("#transferPanelMeta"),
+  transferInfo: $("#transferInfo"),
   transferInfoButton: $("#transferInfoButton"),
   transferInfoPopover: $("#transferInfoPopover"),
   transferStreamTitle: $("#transferStreamTitle"),
@@ -1937,6 +1938,7 @@ function positionContextMenu(menu, x, y, { estimatedWidth = 180, estimatedHeight
 function setMobileSidebarOpen(open) {
   const shouldOpen = Boolean(open) && isMobileLayout();
   document.body.classList.toggle("mobile-sidebar-open", shouldOpen);
+  if (shouldOpen) elements.transferInfo?.removeAttribute("open");
   if (elements.mobileNotesButton) {
     elements.mobileNotesButton.setAttribute("aria-expanded", String(shouldOpen));
     elements.mobileNotesButton.title = shouldOpen ? t("closeNotes") : t("openNotes");

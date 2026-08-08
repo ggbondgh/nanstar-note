@@ -11515,7 +11515,7 @@ body.realtime-sync-mode .youdao-sync-stack {
 
 @media (max-width: 760px) {
   .transfer-info {
-    z-index: 1300;
+    z-index: 720;
   }
 
   .transfer-info-popover {
@@ -11528,6 +11528,26 @@ body.realtime-sync-mode .youdao-sync-stack {
     overflow: auto;
     transform: none;
     -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 760px) {
+  body.mobile-sidebar-open .transfer-info {
+    z-index: 0;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .transfer-info-button:hover {
+    border-color: #b9c7dc;
+    background: #fff;
+    color: var(--accent);
+  }
+
+  .transfer-info[open] > .transfer-info-button {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
   }
 }
 
@@ -11881,4 +11901,10 @@ summary,
     transition-duration: 1ms !important;
     animation-duration: 1ms !important;
   }
+}
+
+.transfer-info:not([open]) > .transfer-info-button {
+  border-color: #b9c7dc !important;
+  background: #fff !important;
+  color: var(--accent) !important;
 }
