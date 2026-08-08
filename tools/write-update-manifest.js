@@ -9,7 +9,7 @@ const versionName = process.env.ANDROID_VERSION_NAME || "1.0.0";
 const apkUrl = `https://github.com/${repository}/releases/latest/download/nanstar-note.apk`;
 
 const manifest = {
-  app: "Nanstar",
+  app: "Nanstar Note",
   platform: "android",
   packageName: "com.nanstar.note",
   versionCode,

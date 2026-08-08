@@ -63,7 +63,7 @@ const i18n = {
     androidUnknownSourceBlocked: "请允许 Nanstar 安装未知应用，返回后再点一次下载。",
     androidUpdatePrompt: "发现新版本 {version}，现在下载安装包？",
     androidUnknownVersion: "未知版本",
-    androidPanelReady: "可以下载或检查 Nanstar Android 安装包。",
+    androidPanelReady: "可以下载或检查 Nanstar Note Android 安装包。",
     import: "导入",
     exportCurrent: "导出当前",
     exportMenu: "导出",
@@ -403,7 +403,7 @@ const i18n = {
     androidUnknownSourceBlocked: "Allow Nanstar to install unknown apps, then tap download again.",
     androidUpdatePrompt: "New version {version} is available. Download it now?",
     androidUnknownVersion: "Unknown version",
-    androidPanelReady: "Download or check the Nanstar Android package here.",
+    androidPanelReady: "Download or check the Nanstar Note Android package here.",
     import: "Import",
     exportCurrent: "Export Current",
     exportMenu: "Export",
@@ -910,7 +910,7 @@ vim ~/.codex/auth.json
 
 推荐方式
 
-    客户电脑只使用浏览器无痕窗口访问 Nanstar，不安装客户端，不同步本地文件夹。
+    客户电脑只使用浏览器无痕窗口访问 Nanstar Note，不安装客户端，不同步本地文件夹。
 `,
     pinned: false,
     favorite: false,
@@ -4724,7 +4724,7 @@ function exportAllNotesZip() {
         data: exportDataForNote(note)
       }))
     }));
-  const zip = createZipBlob(buildZipEntries([{ type: "folder", name: `Nanstar ${formatFileDate(Date.now())}`, children }]));
+  const zip = createZipBlob(buildZipEntries([{ type: "folder", name: `Nanstar Note ${formatFileDate(Date.now())}`, children }]));
   downloadBlob(`nanstar-note-${formatFileDate(Date.now())}.zip`, zip);
   showToast(t("exportDone"));
 }
@@ -5713,7 +5713,7 @@ function downloadActiveNote() {
 
 function exportAllNotes() {
   const payload = {
-    app: "Nanstar",
+    app: "Nanstar Note",
     version: 2,
     exportedAt: new Date().toISOString(),
     notes: state.notes
@@ -7071,7 +7071,7 @@ function applyLanguage(language, initial = false) {
   const topTitle = document.querySelector(".topbar-title h2");
   if (topTitle) topTitle.textContent = t("workspaceTitle");
   const eyebrow = document.querySelector(".topbar-title .eyebrow");
-  if (eyebrow) eyebrow.textContent = next === "en" ? "Nanstar / Content Desk" : "Nanstar / 内容工作台";
+  if (eyebrow) eyebrow.textContent = next === "en" ? "Nanstar Note / Content Desk" : "Nanstar Note / 内容工作台";
   const brandState = elements.cloudStatus;
   if (brandState && !localStorage.getItem(storageKeys.syncToken)) {
     brandState.textContent = t("localMode");
@@ -9805,7 +9805,7 @@ function plainTextToDocHtml(text) {
 }
 
 function formatDocHtmlExport(note) {
-  const title = escapeHtml(note.title || "Nanstar");
+  const title = escapeHtml(note.title || "Nanstar Note");
   const body = sanitizeDocHtml(note.body || "<p></p>");
   return `<!doctype html>
 <html lang="zh-CN">
@@ -9835,7 +9835,7 @@ function formatDocHtmlExport(note) {
 
 function printableHtmlForNote(note) {
   if (note.mode === "doc") return formatDocHtmlExport(note);
-  const title = escapeHtml(note.title || "Nanstar");
+  const title = escapeHtml(note.title || "Nanstar Note");
   const body = renderMarkdown(note.body || "");
   return `<!doctype html>
 <html lang="zh-CN">
