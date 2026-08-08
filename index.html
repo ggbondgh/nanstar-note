@@ -14,7 +14,7 @@
     <title>Nanstar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=85" />
+    <link rel="stylesheet" href="./styles.css?v=86" />
   </head>
   <body>
     <div class="app-shell">
@@ -29,6 +29,7 @@
             </div>
             <div>
               <h1>Nanstar Note</h1>
+              <p class="account-name" id="accountName">未登录</p>
               <p id="cloudStatus">本地模式</p>
             </div>
           </div>
@@ -714,22 +715,45 @@
           <button class="icon-button" value="cancel" type="submit" aria-label="关闭">×</button>
         </div>
         <p class="modal-copy" id="syncModalCopy">
-          使用 Cloudflare Pages Functions + D1 保存云端笔记。客户电脑建议使用无痕窗口，离开时清除 Token。
+          使用账号和密码登录后，笔记、文件传输和 DOC 图片会分别保存到你的云端空间。
         </p>
-        <label class="field">
-          <span id="syncTokenLabel">同步 Token</span>
-          <input id="syncTokenInput" type="password" placeholder="NOTE_SYNC_TOKEN" autocomplete="current-password" />
-        </label>
-        <label class="toggle-field">
-          <input id="autoSyncToggle" type="checkbox" />
-          <span id="autoSyncLabel">手动同步：点击保存才上传，点击同步才从云端覆盖</span>
-        </label>
-        <div class="sync-grid">
-          <button class="primary-button" id="pushCloudButton" type="button">立即同步</button>
-          <button class="ghost-button" id="pullCloudButton" type="button">从云端恢复</button>
-          <button class="ghost-button" id="logoutCloudButton" type="button">清除 Token</button>
+        <div class="account-status">
+          <strong id="accountStatusName">未登录</strong>
+          <span id="accountStatusMeta">未登录时只使用本地演示笔记，不会写入云端。</span>
+        </div>
+        <div class="account-fields">
+          <label class="field">
+            <span id="accountLabel">邮箱 / 账号</span>
+            <input id="accountInput" type="text" inputmode="email" autocomplete="username" placeholder="输入邮箱或账号" />
+          </label>
+          <label class="field">
+            <span id="passwordLabel">密码</span>
+            <input id="accountPasswordInput" type="password" autocomplete="current-password" placeholder="至少 6 位" />
+          </label>
+          <label class="field account-nickname-field">
+            <span id="nicknameLabel">昵称</span>
+            <input id="accountNicknameInput" type="text" autocomplete="nickname" placeholder="登录后显示在首页" />
+          </label>
+        </div>
+        <div class="sync-grid account-actions">
+          <button class="primary-button" id="loginAccountButton" type="button">登录</button>
+          <button class="ghost-button" id="registerAccountButton" type="button">注册</button>
+          <button class="ghost-button" id="saveProfileButton" type="button">保存昵称</button>
+          <button class="ghost-button" id="logoutCloudButton" type="button">退出登录</button>
         </div>
         <div class="sync-message" id="syncMessage">未连接云同步，本地编辑可正常使用。</div>
+        <details class="legacy-token-panel">
+          <summary id="legacyTokenSummary">高级：使用旧 Token</summary>
+          <label class="field">
+            <span id="syncTokenLabel">同步 Token</span>
+            <input id="syncTokenInput" type="password" placeholder="NOTE_SYNC_TOKEN" autocomplete="current-password" />
+          </label>
+          <button class="ghost-button" id="legacyTokenButton" type="button">使用旧 Token</button>
+        </details>
+        <label class="toggle-field account-auto-field" hidden>
+          <input id="autoSyncToggle" type="checkbox" />
+          <span id="autoSyncLabel">登录后自动同步</span>
+        </label>
         <div class="sync-diagnostics" id="syncDiagnostics" hidden></div>
       </form>
     </dialog>
@@ -776,7 +800,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-  <script src="./script.js?v=66"></script>
+  <script src="./script.js?v=67"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })

@@ -1,6 +1,9 @@
+import { authorize } from "./_auth.js";
+
 const IMAGE_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS note_doc_images (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT 'legacy',
     note_id TEXT NOT NULL,
     name TEXT NOT NULL,
     r2_key TEXT NOT NULL,
@@ -56,8 +59,8 @@ export async function onRequestGet({ env, request }) {
 }
 
 export async function onRequestPost({ env, request }) {
-  const auth = authorize(env, request);
-  if (auth) return auth;
+  const auth = await authorize(env, request);
+  if (auth instanceof Response) return auth;
 
   const setup = await requireStorage(env);
   if (setup instanceof Response) return setup;
@@ -74,7 +77,7 @@ export async function onRequestPost({ env, request }) {
     return json({ error: "Image is too large", maxImageBytes: MAX_IMAGE_BYTES }, 413);
   }
 
-  const usage = await currentUsage(db, noteId);
+  const usage = await currentUsage(db, auth.userId, noteId);
   if (usage.noteCount >= MAX_IMAGES_PER_NOTE) {
     return json({ error: "Too many note images", maxImagesPerNote: MAX_IMAGES_PER_NOTE }, 400);
   }
@@ -83,7 +86,7 @@ export async function onRequestPost({ env, request }) {
   }
 
   const id = crypto.randomUUID();
-  const key = `doc-images/${noteId}/${id}/${file.name}`;
+  const key = `doc-images/${auth.userId}/${noteId}/${id}/${file.name}`;
   const now = Date.now();
 
   await bucket.put(key, file.blob.stream(), {
@@ -93,10 +96,10 @@ export async function onRequestPost({ env, request }) {
 
   await db
     .prepare(
-      `INSERT INTO note_doc_images (id, note_id, name, r2_key, mime_type, size, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO note_doc_images (id, user_id, note_id, name, r2_key, mime_type, size, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(id, noteId, file.name, key, file.type, file.size, now)
+    .bind(id, auth.userId, noteId, file.name, key, file.type, file.size, now)
     .run();
 
   const url = new URL(request.url);
@@ -121,8 +124,8 @@ export async function onRequestPost({ env, request }) {
 }
 
 export async function onRequestDelete({ env, request }) {
-  const auth = authorize(env, request);
-  if (auth) return auth;
+  const auth = await authorize(env, request);
+  if (auth instanceof Response) return auth;
 
   const setup = await requireStorage(env);
   if (setup instanceof Response) return setup;
@@ -133,13 +136,13 @@ export async function onRequestDelete({ env, request }) {
   if (!id) return json({ error: "Missing image id" }, 400);
 
   const row = await db
-    .prepare("SELECT r2_key FROM note_doc_images WHERE id = ?")
-    .bind(id)
+    .prepare("SELECT r2_key FROM note_doc_images WHERE id = ? AND user_id = ?")
+    .bind(id, auth.userId)
     .first();
   if (!row) return json({ error: "Image not found" }, 404);
 
   await bucket.delete(row.r2_key);
-  await db.prepare("DELETE FROM note_doc_images WHERE id = ?").bind(id).run();
+  await db.prepare("DELETE FROM note_doc_images WHERE id = ? AND user_id = ?").bind(id, auth.userId).run();
   return json({ ok: true });
 }
 
@@ -153,15 +156,17 @@ async function requireStorage(env) {
 
 async function ensureTable(db) {
   await db.prepare(IMAGE_TABLE_SQL).run();
+  await addColumnIfMissing(db, "note_doc_images", "user_id TEXT NOT NULL DEFAULT 'legacy'");
 }
 
-async function currentUsage(db, noteId) {
+async function currentUsage(db, userId, noteId) {
   const note = await db
-    .prepare("SELECT COUNT(*) AS count FROM note_doc_images WHERE note_id = ?")
-    .bind(noteId)
+    .prepare("SELECT COUNT(*) AS count FROM note_doc_images WHERE user_id = ? AND note_id = ?")
+    .bind(userId, noteId)
     .first();
   const total = await db
-    .prepare("SELECT COALESCE(SUM(size), 0) AS total_bytes FROM note_doc_images")
+    .prepare("SELECT COALESCE(SUM(size), 0) AS total_bytes FROM note_doc_images WHERE user_id = ?")
+    .bind(userId)
     .first();
   return {
     noteCount: Number(note?.count) || 0,
@@ -207,14 +212,10 @@ function encodeRFC5987ValueChars(value) {
     .replace(/\*/g, "%2A");
 }
 
-function authorize(env, request) {
-  const expected = env.NOTE_SYNC_TOKEN;
-  if (!expected) return json({ error: "Missing NOTE_SYNC_TOKEN" }, 500);
-
-  const header = request.headers.get("authorization") || "";
-  const token = header.replace(/^Bearer\s+/i, "").trim();
-  if (token !== expected) return json({ error: "Unauthorized" }, 401);
-  return null;
+async function addColumnIfMissing(db, table, columnSql) {
+  try {
+    await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${columnSql}`).run();
+  } catch {}
 }
 
 function json(data, status = 200) {

@@ -1,6 +1,9 @@
+import { authorize } from "./_auth.js";
+
 const FILE_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS note_transfer_files (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT 'legacy',
     name TEXT NOT NULL,
     r2_key TEXT NOT NULL,
     mime_type TEXT NOT NULL,
@@ -18,8 +21,8 @@ export async function onRequestOptions() {
 }
 
 export async function onRequestGet({ env, request }) {
-  const auth = authorize(env, request);
-  if (auth) return auth;
+  const auth = await authorize(env, request);
+  if (auth instanceof Response) return auth;
 
   const setup = await requireStorage(env);
   if (setup instanceof Response) return setup;
@@ -28,10 +31,11 @@ export async function onRequestGet({ env, request }) {
   await ensureTable(db);
   const url = new URL(request.url);
   const id = (url.searchParams.get("id") || "").trim();
-  if (id) return downloadFile(db, bucket, id);
+  if (id) return downloadFile(db, bucket, auth.userId, id);
 
   const rows = await db
-    .prepare("SELECT id, name, mime_type, size, created_at FROM note_transfer_files ORDER BY created_at DESC")
+    .prepare("SELECT id, name, mime_type, size, created_at FROM note_transfer_files WHERE user_id = ? ORDER BY created_at DESC")
+    .bind(auth.userId)
     .all();
   const files = (rows?.results || []).map(mapFileRow);
   return json({
@@ -45,8 +49,8 @@ export async function onRequestGet({ env, request }) {
 }
 
 export async function onRequestPost({ env, request }) {
-  const auth = authorize(env, request);
-  if (auth) return auth;
+  const auth = await authorize(env, request);
+  if (auth instanceof Response) return auth;
 
   const setup = await requireStorage(env);
   if (setup instanceof Response) return setup;
@@ -66,7 +70,7 @@ export async function onRequestPost({ env, request }) {
 
   const id = crypto.randomUUID();
   const name = file.name;
-  const key = `transfers/${id}/${name}`;
+  const key = `transfers/${auth.userId}/${id}/${name}`;
   const mimeType = file.type || "application/octet-stream";
   const now = Date.now();
 
@@ -83,19 +87,19 @@ export async function onRequestPost({ env, request }) {
 
   await db
     .prepare(
-      `INSERT INTO note_transfer_files (id, name, r2_key, mime_type, size, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO note_transfer_files (id, user_id, name, r2_key, mime_type, size, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(id, name, key, mimeType, file.size, now)
+    .bind(id, auth.userId, name, key, mimeType, file.size, now)
     .run();
-  await trimFiles(db, bucket);
+  await trimFiles(db, bucket, auth.userId);
 
   return json({ ok: true, file: { id, name, mimeType, size: file.size, createdAt: now } });
 }
 
 export async function onRequestDelete({ env, request }) {
-  const auth = authorize(env, request);
-  if (auth) return auth;
+  const auth = await authorize(env, request);
+  if (auth instanceof Response) return auth;
 
   const setup = await requireStorage(env);
   if (setup instanceof Response) return setup;
@@ -104,7 +108,7 @@ export async function onRequestDelete({ env, request }) {
   await ensureTable(db);
   const url = new URL(request.url);
   if (url.searchParams.get("all") === "1") {
-    await deleteAllFiles(db, bucket);
+    await deleteAllFiles(db, bucket, auth.userId);
     return json({ ok: true });
   }
 
@@ -112,22 +116,22 @@ export async function onRequestDelete({ env, request }) {
   if (!id) return json({ error: "Missing file id" }, 400);
 
   const row = await db
-    .prepare("SELECT r2_key FROM note_transfer_files WHERE id = ?")
-    .bind(id)
+    .prepare("SELECT r2_key FROM note_transfer_files WHERE id = ? AND user_id = ?")
+    .bind(id, auth.userId)
     .first();
   if (!row) return json({ error: "File not found" }, 404);
 
   await bucket.delete(row.r2_key);
-  await db.prepare("DELETE FROM note_transfer_files WHERE id = ?").bind(id).run();
+  await db.prepare("DELETE FROM note_transfer_files WHERE id = ? AND user_id = ?").bind(id, auth.userId).run();
   return json({ ok: true });
 }
 
-async function deleteAllFiles(db, bucket) {
-  const rows = await db.prepare("SELECT r2_key FROM note_transfer_files").all();
+async function deleteAllFiles(db, bucket, userId) {
+  const rows = await db.prepare("SELECT r2_key FROM note_transfer_files WHERE user_id = ?").bind(userId).all();
   for (const row of rows?.results || []) {
     if (row.r2_key) await bucket.delete(row.r2_key);
   }
-  await db.prepare("DELETE FROM note_transfer_files").run();
+  await db.prepare("DELETE FROM note_transfer_files WHERE user_id = ?").bind(userId).run();
 }
 
 async function requireStorage(env) {
@@ -140,11 +144,13 @@ async function requireStorage(env) {
 
 async function ensureTable(db) {
   await db.prepare(FILE_TABLE_SQL).run();
+  await addColumnIfMissing(db, "note_transfer_files", "user_id TEXT NOT NULL DEFAULT 'legacy'");
 }
 
-async function trimFiles(db, bucket) {
+async function trimFiles(db, bucket, userId) {
   const rows = await db
-    .prepare("SELECT id, r2_key, size FROM note_transfer_files ORDER BY created_at ASC, id ASC")
+    .prepare("SELECT id, r2_key, size FROM note_transfer_files WHERE user_id = ? ORDER BY created_at ASC, id ASC")
+    .bind(userId)
     .all();
   const files = rows?.results || [];
   let totalBytes = files.reduce((sum, row) => sum + (Number(row.size) || 0), 0);
@@ -157,7 +163,7 @@ async function trimFiles(db, bucket) {
     removeCount -= 1;
     totalBytes -= Number(row.size) || 0;
     if (row.r2_key) await bucket.delete(row.r2_key);
-    await db.prepare("DELETE FROM note_transfer_files WHERE id = ?").bind(row.id).run();
+    await db.prepare("DELETE FROM note_transfer_files WHERE id = ? AND user_id = ?").bind(row.id, userId).run();
   }
 }
 
@@ -211,10 +217,10 @@ function isUploadPart(value) {
   );
 }
 
-async function downloadFile(db, bucket, id) {
+async function downloadFile(db, bucket, userId, id) {
   const row = await db
-    .prepare("SELECT id, name, r2_key, mime_type, size, created_at FROM note_transfer_files WHERE id = ?")
-    .bind(id)
+    .prepare("SELECT id, name, r2_key, mime_type, size, created_at FROM note_transfer_files WHERE id = ? AND user_id = ?")
+    .bind(id, userId)
     .first();
   if (!row) return json({ error: "File not found" }, 404);
 
@@ -258,14 +264,10 @@ function encodeRFC5987ValueChars(value) {
     .replace(/\*/g, "%2A");
 }
 
-function authorize(env, request) {
-  const expected = env.NOTE_SYNC_TOKEN;
-  if (!expected) return json({ error: "Missing NOTE_SYNC_TOKEN" }, 500);
-
-  const header = request.headers.get("authorization") || "";
-  const token = header.replace(/^Bearer\s+/i, "").trim();
-  if (token !== expected) return json({ error: "Unauthorized" }, 401);
-  return null;
+async function addColumnIfMissing(db, table, columnSql) {
+  try {
+    await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${columnSql}`).run();
+  } catch {}
 }
 
 function json(data, status = 200) {
