@@ -369,6 +369,7 @@ const i18n = {
     accountApiUnavailable: "登录接口不可用，请确认已部署 Cloudflare Pages Functions。",
     accountLegacyConnected: "已连接旧 Token",
     accountProfileFailed: "账号信息读取失败",
+    accountSessionExpired: "登录状态异常，请重新登录账号。",
     loginRequired: "请先登录账号。",
     editorSearchLabel: "查找",
     modeTxt: "TXT",
@@ -742,6 +743,7 @@ const i18n = {
     accountApiUnavailable: "The sign-in API is unavailable. Deploy the Cloudflare Pages Functions first.",
     accountLegacyConnected: "Legacy token connected",
     accountProfileFailed: "Could not load account details",
+    accountSessionExpired: "Sign-in state changed. Please sign in again.",
     loginRequired: "Sign in first.",
     editorSearchLabel: "Find",
     modeTxt: "TXT",
@@ -998,6 +1000,7 @@ const state = {
   syncStartupTimer: null,
   syncPollTimer: null,
   transferPollTimer: null,
+  authSessionVersion: 0,
   syncInFlight: false,
   noteRefreshInFlight: false,
   syncQueue: [],
@@ -1126,6 +1129,7 @@ const ANDROID_UPDATE_URL = `${ANDROID_RELEASE_BASE_URL}/update.json`;
 const ANDROID_TAGGED_UPDATE_URL = "https://github.com/ggbondgh/nanstar-note/releases/download/android-latest/update.json";
 const ANDROID_RELEASE_API_URL = "https://api.github.com/repos/ggbondgh/nanstar-note/releases/latest";
 const CLOUD_API_ORIGIN = "https://nanstar-note.pages.dev";
+const ACCOUNT_TOKEN_PREFIX = "ns_";
 let appRuntimeInfoPromise = null;
 let androidUpdateProgressListenerPromise = null;
 let androidInstallPromise = null;
@@ -1391,7 +1395,7 @@ init();
 function init() {
   lockStandalonePortrait();
   state.accountUser = readStoredAuthUser();
-  migrateImplicitLegacyToken();
+  migrateStoredAuthState();
   state.notes = loadNotes();
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   restoreDirtyNotes();
@@ -1426,9 +1430,32 @@ function init() {
   hydrateAppUpdatePanel();
 }
 
-function migrateImplicitLegacyToken() {
-  if (localStorage.getItem(storageKeys.authMode) || !localStorage.getItem(storageKeys.syncToken)) return;
-  if (state.accountUser && !state.accountUser.legacy) return;
+function migrateStoredAuthState() {
+  const token = (localStorage.getItem(storageKeys.syncToken) || "").trim();
+  const mode = localStorage.getItem(storageKeys.authMode) || "";
+  const user = state.accountUser;
+  if (!token) {
+    localStorage.removeItem(storageKeys.authMode);
+    if (user) {
+      localStorage.removeItem(storageKeys.authUser);
+      state.accountUser = null;
+    }
+    return;
+  }
+  if (!mode && isAccountSessionToken(token)) {
+    localStorage.setItem(storageKeys.authMode, "account");
+    return;
+  }
+  const accountState = mode === "account" || (user && !user.legacy);
+  const mixedLegacyState = mode === "legacy" && user && !user.legacy;
+  const mixedAccountState = mode === "account" && user?.legacy;
+  if ((!mode && !isAccountSessionToken(token)) || (accountState && !isAccountSessionToken(token)) || mixedLegacyState || mixedAccountState) {
+    resetStaleAuthCacheToGuest();
+  }
+}
+
+function resetStaleAuthCacheToGuest() {
+  state.authSessionVersion += 1;
   const notes = withSystemNotes(defaultNotes.map(normalizeNote));
   localStorage.setItem(storageKeys.notes, JSON.stringify({ notes, folders: [INBOX_FOLDER] }));
   localStorage.setItem(storageKeys.guestSeeded, "1");
@@ -2480,12 +2507,14 @@ async function fetchTransferMessages(options = {}) {
     renderTransferPanel();
     return;
   }
+  const sessionVersion = state.authSessionVersion;
   state.transferTextLoading = true;
   state.transferTextError = "";
   state.transferTextLastFetchAt = Date.now();
   renderTransferPanel();
   try {
     const payload = await fetchTransferJson("./api/clipboard");
+    if (sessionVersion !== state.authSessionVersion) return;
     state.transferMessages = Array.isArray(payload.messages)
       ? payload.messages.map(normalizeTransferMessage).sort(compareTransferMessages)
       : [];
@@ -2493,9 +2522,11 @@ async function fetchTransferMessages(options = {}) {
     state.transferTextLastFetchAt = Date.now();
     if (options.scrollToBottom) state.transferScrollToBottom = true;
   } catch (error) {
+    if (sessionVersion !== state.authSessionVersion) return;
     state.transferTextError = transferTextErrorText(error);
     if (options.manual) showToast(state.transferTextError);
   } finally {
+    if (sessionVersion !== state.authSessionVersion) return;
     state.transferTextLoading = false;
     renderTransferPanel();
   }
@@ -2674,20 +2705,24 @@ async function fetchTransferFiles(options = {}) {
     renderTransferPanel();
     return;
   }
+  const sessionVersion = state.authSessionVersion;
   state.transferLoading = true;
   state.transferError = "";
   state.transferLastFetchAt = Date.now();
   renderTransferPanel();
   try {
     const payload = await fetchTransferJson("./api/files");
+    if (sessionVersion !== state.authSessionVersion) return;
     state.transferFiles = Array.isArray(payload.files) ? payload.files.map(normalizeTransferFile) : [];
     state.transferLimits = payload.limits || state.transferLimits;
     state.transferLastFetchAt = Date.now();
     if (options.scrollToBottom) state.transferScrollToBottom = true;
   } catch (error) {
+    if (sessionVersion !== state.authSessionVersion) return;
     state.transferError = transferErrorText(error);
     if (options.manual) showToast(state.transferError);
   } finally {
+    if (sessionVersion !== state.authSessionVersion) return;
     state.transferLoading = false;
     renderTransferPanel();
   }
@@ -6917,6 +6952,7 @@ function authErrorText(error) {
   if (text.includes("Account already exists")) return t("accountAlreadyExists");
   if (text.includes("Invalid account")) return t("accountInvalid");
   if (text.includes("Invalid credentials") || text.includes("Unauthorized")) return t("accountCredentialsInvalid");
+  if (text.includes("Legacy token profile cannot be edited")) return t("accountSessionExpired");
   if (text.includes("Password is too short")) return t("passwordTooShort");
   if (
     isHtmlErrorText(text)
@@ -6977,7 +7013,15 @@ async function submitAccount(action) {
 }
 
 async function saveAccountProfile() {
-  if (!state.accountUser || state.accountUser.legacy || !getSyncToken()) return;
+  if (!state.accountUser || state.accountUser.legacy) return;
+  if (!getSyncToken()) {
+    clearStoredCloudSession();
+    resetLocalNotebookToGuest();
+    showSyncMessage(t("accountSessionExpired"));
+    showToast(t("accountSessionExpired"));
+    renderSyncMeta();
+    return;
+  }
   const nickname = String(elements.accountNicknameInput?.value || "").replace(/\s+/g, " ").trim();
   if (!nickname) {
     elements.accountNicknameInput?.focus();
@@ -6993,6 +7037,11 @@ async function saveAccountProfile() {
     showToast(t("accountProfileSaved"));
   } catch (error) {
     const message = authErrorText(error);
+    if (String(error?.message || error || "").includes("Legacy token profile cannot be edited")) {
+      clearStoredCloudSession();
+      resetLocalNotebookToGuest();
+      renderSyncMeta();
+    }
     showSyncMessage(message);
     showToast(message);
     renderAccountUi();
@@ -7029,6 +7078,7 @@ async function hydrateAccountProfile() {
 
 async function activateCloudSession(token, user) {
   if (!token || !user) throw new Error("Invalid auth response");
+  state.authSessionVersion += 1;
   const previousUserId = state.accountUser?.id || "";
   writeStoredAuthUser(user);
   elements.syncTokenInput.value = "";
@@ -7089,8 +7139,10 @@ function clearSyncToken() {
 }
 
 function clearStoredCloudSession() {
+  state.authSessionVersion += 1;
   elements.syncTokenInput.value = "";
   stopCloudSync();
+  resetTransferState();
   localStorage.removeItem(storageKeys.syncToken);
   localStorage.removeItem(storageKeys.authMode);
   writeStoredAuthUser(null);
@@ -7131,6 +7183,7 @@ function connectLegacyToken() {
   }
 
   stopCloudSync();
+  state.authSessionVersion += 1;
   localStorage.setItem(storageKeys.syncToken, token);
   localStorage.setItem(storageKeys.authMode, "legacy");
   localStorage.setItem(storageKeys.autoSync, "1");
@@ -7142,7 +7195,15 @@ function connectLegacyToken() {
 }
 
 function getSyncToken() {
-  return (localStorage.getItem(storageKeys.syncToken) || "").trim();
+  const token = (localStorage.getItem(storageKeys.syncToken) || "").trim();
+  if (!token) return "";
+  const accountState = localStorage.getItem(storageKeys.authMode) === "account" || (state.accountUser && !state.accountUser.legacy);
+  if (accountState && !isAccountSessionToken(token)) return "";
+  return token;
+}
+
+function isAccountSessionToken(token) {
+  return String(token || "").startsWith(ACCOUNT_TOKEN_PREFIX);
 }
 
 function showSyncMessage(message) {
