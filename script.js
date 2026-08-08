@@ -6870,8 +6870,19 @@ async function authApiRequest(method, payload = null, token = getSyncToken()) {
     headers,
     body: payload ? JSON.stringify(payload) : undefined
   });
-  if (!response.ok) throw new Error(await response.text());
-  return response.json();
+  const contentType = response.headers.get("content-type") || "";
+  const jsonResponse = contentType.includes("application/json");
+  let data = null;
+  if (jsonResponse) {
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error("Invalid auth response");
+    }
+  }
+  if (!response.ok) throw new Error(data?.error || "Auth API unavailable");
+  if (!jsonResponse) throw new Error("Auth API unavailable");
+  return data;
 }
 
 function authErrorText(error) {
@@ -6884,7 +6895,17 @@ function authErrorText(error) {
   if (text.includes("Invalid account")) return t("accountInvalid");
   if (text.includes("Invalid credentials") || text.includes("Unauthorized")) return t("accountCredentialsInvalid");
   if (text.includes("Password is too short")) return t("passwordTooShort");
-  if (text.includes("Failed to fetch") || text.includes("Not found")) return t("accountApiUnavailable");
+  if (
+    isHtmlErrorText(text)
+    || text.includes("Auth API unavailable")
+    || text.includes("Invalid auth response")
+    || text.includes("Unexpected token")
+    || text.includes("Failed to fetch")
+    || text.includes("Not found")
+    || text.includes("Missing D1")
+  ) {
+    return t("accountApiUnavailable");
+  }
   return text.slice(0, 160) || t("accountApiUnavailable");
 }
 
@@ -7088,11 +7109,12 @@ function getSyncToken() {
 }
 
 function showSyncMessage(message) {
-  elements.syncMessage.textContent = message;
+  elements.syncMessage.textContent = isHtmlErrorText(message) ? t("accountApiUnavailable") : String(message || "");
 }
 
 function cloudErrorText(error) {
   const text = String(error?.message || error || "未知错误");
+  if (isHtmlErrorText(text) || text.includes("Unexpected token")) return "接口返回了网页错误页，请刷新后重试。";
   if (error?.name === "AbortError" || text.includes("aborted")) return t("syncTimeout");
   if (text.includes("Failed to fetch")) return "接口不可用。Cloudflare Pages Functions 配好后才能使用。";
   if (text.includes("Missing D1")) return "Cloudflare D1 还没有绑定 NANSTAR_NOTES_DB。";
@@ -7100,6 +7122,10 @@ function cloudErrorText(error) {
   if (text.includes("Unauthorized")) return "Token 不正确。";
   if (text.includes("Not found")) return "本地静态预览没有 /api/notes，部署到 Cloudflare 后可同步。";
   return text.slice(0, 160);
+}
+
+function isHtmlErrorText(value) {
+  return /<!doctype html|<html[\s>]|<\/html>/i.test(String(value || ""));
 }
 
 function persistAndRender(message, options = {}) {
