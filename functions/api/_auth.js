@@ -21,6 +21,7 @@ const AUTH_SESSIONS_SQL = `
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 60;
 const PASSWORD_ITERATIONS = 150000;
+const FALLBACK_PASSWORD_ITERATIONS = 12000;
 
 export async function ensureAuthTables(db) {
   await db.prepare(AUTH_USERS_SQL).run();
@@ -115,6 +116,33 @@ export function safeNickname(value, fallback = "Nanstar") {
 }
 
 export async function hashPassword(password, salt = base64Url(randomBytes(16))) {
+  try {
+    return { salt, hash: `pbkdf2$${await derivePbkdf2Hash(password, salt)}` };
+  } catch {
+    return { salt, hash: `sha256x$${await deriveFallbackHash(password, salt)}` };
+  }
+}
+
+export async function verifyPassword(password, salt, expectedHash) {
+  const expected = String(expectedHash || "");
+  if (expected.startsWith("sha256x$")) {
+    return timingSafeEqual(`sha256x$${await deriveFallbackHash(password, salt)}`, expected);
+  }
+  try {
+    const hash = await derivePbkdf2Hash(password, salt);
+    return timingSafeEqual(`pbkdf2$${hash}`, expected) || timingSafeEqual(hash, expected);
+  } catch {
+    const hash = await deriveFallbackHash(password, salt);
+    return timingSafeEqual(`sha256x$${hash}`, expected) || timingSafeEqual(hash, expected);
+  }
+}
+
+export function randomId() {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `id_${base64Url(randomBytes(16))}`;
+}
+
+async function derivePbkdf2Hash(password, salt) {
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(String(password || "")),
@@ -132,12 +160,15 @@ export async function hashPassword(password, salt = base64Url(randomBytes(16))) 
     key,
     256
   );
-  return { salt, hash: base64Url(new Uint8Array(bits)) };
+  return base64Url(new Uint8Array(bits));
 }
 
-export async function verifyPassword(password, salt, expectedHash) {
-  const { hash } = await hashPassword(password, salt);
-  return timingSafeEqual(hash, String(expectedHash || ""));
+async function deriveFallbackHash(password, salt) {
+  let bytes = new TextEncoder().encode(`${salt}:${String(password || "")}`);
+  for (let index = 0; index < FALLBACK_PASSWORD_ITERATIONS; index += 1) {
+    bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  }
+  return base64Url(bytes);
 }
 
 export function publicUser(row) {
