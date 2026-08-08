@@ -2921,53 +2921,66 @@ async function checkAndroidUpdate() {
 }
 
 async function fetchAndroidUpdateInfo() {
+  const candidates = [];
   const manifestInfo = await fetchAndroidUpdateManifest();
-  if (manifestInfo) return manifestInfo;
+  if (manifestInfo?.versionCode) candidates.push(manifestInfo);
 
   try {
-    const response = await fetch(apiUrl("/api/android-update"), { cache: "no-store" });
+    const response = await fetchWithTimeout(freshUrl(apiUrl("/api/android-update")), { cache: "no-store" });
     if (response.ok) {
-      return normalizeAndroidUpdateInfo(await response.json());
+      const info = normalizeAndroidUpdateInfo(await response.json());
+      if (info.versionCode) candidates.push(info);
     }
   } catch {}
 
-  const response = await fetch(ANDROID_RELEASE_API_URL, {
-    cache: "no-store",
-    headers: { Accept: "application/vnd.github+json" }
-  });
-  if (!response.ok) throw new Error(`GitHub Release query failed: ${response.status}`);
-
-  const release = await response.json();
-  let info = {};
   try {
-    info = JSON.parse(release.body || "{}");
-  } catch {
-    info = {};
-  }
+    const response = await fetchWithTimeout(freshUrl(ANDROID_RELEASE_API_URL), {
+      cache: "no-store",
+      headers: { Accept: "application/vnd.github+json" }
+    });
+    if (response.ok) {
+      const release = await response.json();
+      let info = {};
+      try {
+        info = JSON.parse(release.body || "{}");
+      } catch {}
 
-  const apkAsset = Array.isArray(release.assets)
-    ? release.assets.find((asset) => asset.name === "nanstar-note.apk")
-    : null;
+      const apkAsset = Array.isArray(release.assets)
+        ? release.assets.find((asset) => asset.name === "nanstar-note.apk")
+        : null;
 
-  return normalizeAndroidUpdateInfo(info, {
-    versionName: release.name || "",
-    apkUrl: apkAsset?.browser_download_url || ANDROID_APK_URL,
-    releaseUrl: release.html_url || "https://github.com/ggbondgh/nanstar-note/releases/latest"
-  });
+      const releaseInfo = normalizeAndroidUpdateInfo(info, {
+        versionName: release.name || "",
+        apkUrl: apkAsset?.browser_download_url || ANDROID_APK_URL,
+        releaseUrl: release.html_url || "https://github.com/ggbondgh/nanstar-note/releases/latest"
+      });
+      if (releaseInfo.versionCode) candidates.push(releaseInfo);
+    }
+  } catch {}
+
+  const latest = newestAndroidUpdateInfo(candidates);
+  if (latest) return latest;
+  throw new Error("Missing latest Android versionCode");
 }
 
 async function fetchAndroidUpdateManifest() {
   const urls = [ANDROID_TAGGED_UPDATE_URL, ANDROID_UPDATE_URL];
-  try {
-    for (const url of urls) {
-      const response = await fetch(freshUrl(url), { cache: "no-store" });
+  const candidates = [];
+  for (const url of urls) {
+    try {
+      const response = await fetchWithTimeout(freshUrl(url), { cache: "no-store" });
       if (!response.ok) continue;
-      return normalizeAndroidUpdateInfo(await response.json());
-    }
-  } catch {
-    return null;
+      const info = normalizeAndroidUpdateInfo(await response.json());
+      if (info.versionCode) candidates.push(info);
+    } catch {}
   }
-  return null;
+  return newestAndroidUpdateInfo(candidates);
+}
+
+function newestAndroidUpdateInfo(candidates = []) {
+  return candidates
+    .filter((info) => Number(info?.versionCode) > 0)
+    .sort((a, b) => Number(b.versionCode) - Number(a.versionCode))[0] || null;
 }
 
 function freshUrl(url) {

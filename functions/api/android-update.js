@@ -13,7 +13,7 @@ export async function onRequestGet() {
     return json(manifest);
   }
 
-  const response = await fetch(RELEASE_API_URL, {
+  const response = await fetch(`${RELEASE_API_URL}?t=${Date.now()}`, {
     headers: {
       Accept: "application/vnd.github+json",
       "User-Agent": "nanstar-note-update-check"
@@ -40,6 +40,7 @@ export async function onRequestGet() {
 
 async function fetchUpdateManifest() {
   const urls = [TAGGED_UPDATE_URL, `${TAGGED_UPDATE_URL}?t=${Date.now()}`, FALLBACK_UPDATE_URL, `${FALLBACK_UPDATE_URL}?t=${Date.now()}`];
+  const manifests = [];
   for (const url of urls) {
     try {
       const response = await fetch(url, {
@@ -51,11 +52,17 @@ async function fetchUpdateManifest() {
       if (!response.ok) continue;
       const manifest = parseManifest(await response.text());
       if (manifest.versionCode || manifest.versionName || manifest.apkUrl || manifest.releaseUrl) {
-        return manifest;
+        manifests.push(manifest);
       }
     } catch {}
   }
-  return null;
+  return newestManifest(manifests);
+}
+
+function newestManifest(manifests = []) {
+  return manifests
+    .filter((manifest) => Number(manifest?.versionCode) > 0)
+    .sort((a, b) => Number(b.versionCode) - Number(a.versionCode))[0] || null;
 }
 
 function parseManifest(raw) {
