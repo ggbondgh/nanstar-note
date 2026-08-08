@@ -1943,7 +1943,7 @@ function bindTransferPanelEvents() {
   elements.transferTextSendButton?.addEventListener("click", sendTransferText);
   elements.transferTextClearButton?.addEventListener("click", clearTransferMessages);
   elements.transferTextInput?.addEventListener("keydown", (event) => {
-    if (event.isComposing || event.key !== "Enter" || !event.ctrlKey) return;
+    if (event.isComposing || event.key !== "Enter" || event.shiftKey) return;
     event.preventDefault();
     sendTransferText();
   });
@@ -1975,7 +1975,7 @@ function bindTransferPanelEvents() {
     elements.transferFileInput?.click();
   });
   elements.transferRefreshButton?.addEventListener("click", () => {
-    void refreshTransferPanel({ manual: true, scrollToBottom: true });
+    void refreshTransferPanel({ manual: true });
   });
   elements.transferFileInput?.addEventListener("change", () => {
     uploadTransferFiles(Array.from(elements.transferFileInput.files || []));
@@ -2293,11 +2293,23 @@ async function refreshTransferPanel(options = {}) {
     return false;
   }
   if (state.transferTextLoading || state.transferLoading) return false;
+  const beforeSignature = transferCloudRecordSignature();
   await Promise.all([
     fetchTransferMessages(options),
     fetchTransferFiles(options)
   ]);
+  if (!options.scrollToBottom && beforeSignature !== transferCloudRecordSignature()) {
+    state.transferScrollToBottom = true;
+    renderTransferPanel();
+  }
   return true;
+}
+
+function transferCloudRecordSignature() {
+  return [
+    ...state.transferMessages.map((message) => `text:${message.id}`),
+    ...state.transferFiles.map((file) => `file:${file.id}`)
+  ].sort().join("|");
 }
 
 async function fetchTransferMessages(options = {}) {
