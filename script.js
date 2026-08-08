@@ -254,15 +254,15 @@ const i18n = {
     transferAssistantBody: "",
     transferAssistantExcerpt: "跨设备临时传文件",
     transferPanelTitle: "文件传输助手",
-    transferPanelMeta: "文字、图片和文件会按时间混合显示，适合跨设备临时中转。",
+    transferPanelMeta: "文字 / 图片 / 文件临时中转。",
     transferInfo: "查看传输说明",
     transferStreamTitle: "消息",
-    transferStreamHint: "文字、图片和文件会按时间混合显示。",
+    transferStreamHint: "Enter 发送，Shift+Enter 换行。",
     transferTextTitle: "文本传输",
     transferTextHint: "把临时文本发到这里，其他设备同步后可直接复制。",
-    transferTextLimits: "单条最大 {size}，最近保留 {count} 条。",
+    transferTextLimits: "文本 {size} / {count} 条。",
     transferTextPlaceholder: "粘贴要同步到其他设备的文本...",
-    transferTextSendHint: "Enter 换行，Ctrl+Enter 发送；也可以粘贴图片或拖入文件。",
+    transferTextSendHint: "Enter 发送，Shift+Enter 换行。",
     transferTextSend: "发送",
     transferTextRefresh: "刷新",
     transferTextClear: "清空",
@@ -285,9 +285,9 @@ const i18n = {
     transferTextFailed: "文本传输失败",
     transferTextApiUnavailable: "文本接口不可用，部署到 Cloudflare 后才能使用。",
     transferFileTitle: "文件传输",
-    transferFileMeta: "最多保留 {count} 个文件，新上传时自动移除最早的文件；单文件最大 {fileSize}，总量最大 {totalSize}。",
+    transferFileMeta: "文件 {count} 个 / {totalSize}，新传替换最早。",
     transferDropTitle: "拖放文件到这里，或点击上传。",
-    transferDropHint: "也可以直接粘贴图片，或把图片和文件拖到消息区。",
+    transferDropHint: "可粘贴图片或点 + 上传。",
     transferNoToken: "配置同步 Token 后可使用文件传输。",
     transferEmpty: "暂无文件。",
     transferLoading: "正在读取文件列表...",
@@ -594,15 +594,15 @@ const i18n = {
     transferAssistantBody: "",
     transferAssistantExcerpt: "Temporary cross-device files",
     transferPanelTitle: "File Transfer Assistant",
-    transferPanelMeta: "Text, images, and files appear together in chronological order.",
+    transferPanelMeta: "Temporary text / image / file transfer.",
     transferInfo: "View transfer details",
     transferStreamTitle: "Messages",
-    transferStreamHint: "Text, images, and files appear together in chronological order.",
+    transferStreamHint: "Enter sends, Shift+Enter makes a new line.",
     transferTextTitle: "Text Transfer",
     transferTextHint: "Send temporary text here and copy it from another device after sync.",
-    transferTextLimits: "Max {size} per message, keeping the latest {count}.",
+    transferTextLimits: "Text: {size} / {count}.",
     transferTextPlaceholder: "Paste text to sync to other devices...",
-    transferTextSendHint: "Enter for a new line, Ctrl+Enter to send; paste images or drop files too.",
+    transferTextSendHint: "Enter sends, Shift+Enter starts a new line.",
     transferTextSend: "Send",
     transferTextRefresh: "Refresh",
     transferTextClear: "Clear",
@@ -625,9 +625,9 @@ const i18n = {
     transferTextFailed: "Text transfer failed",
     transferTextApiUnavailable: "Text API is unavailable. It works after Cloudflare deployment.",
     transferFileTitle: "File Transfer",
-    transferFileMeta: "Keep up to {count} files; new uploads replace the oldest file. Max {fileSize} per file, max {totalSize} total.",
+    transferFileMeta: "Files: {count} / {totalSize}; newest replaces oldest.",
     transferDropTitle: "Drop files here, or click upload.",
-    transferDropHint: "You can also paste an image or drop images and files into the message area.",
+    transferDropHint: "Paste images or tap + to upload.",
     transferNoToken: "Configure the sync token to use file transfer.",
     transferEmpty: "No files yet.",
     transferLoading: "Loading files...",
@@ -972,7 +972,6 @@ const state = {
   transferTextLimits: null,
   transferImageUrls: {},
   transferImageLoading: new Set(),
-  transferExpandedImages: new Set(),
   transferScrollToBottom: false,
   lastCloudPullAt: 0,
   dirtyNoteIds: new Set(),
@@ -1299,6 +1298,9 @@ const elements = {
   androidDownloadProgressText: $("#androidDownloadProgressText"),
   downloadAndroidAppButton: $("#downloadAndroidAppButton"),
   checkAppUpdateButton: $("#checkAppUpdateButton"),
+  transferImageDialog: $("#transferImageDialog"),
+  transferImageViewerImg: $("#transferImageViewerImg"),
+  transferImageViewerClose: $("#transferImageViewerClose"),
   exportDialog: $("#exportDialog"),
   exportCurrentButton: $("#exportCurrentButton"),
   exportCurrentFormats: $("#exportCurrentFormats"),
@@ -1324,6 +1326,7 @@ const elements = {
 init();
 
 function init() {
+  lockStandalonePortrait();
   state.notes = loadNotes();
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   restoreDirtyNotes();
@@ -1371,6 +1374,7 @@ function bindEvents() {
   window.visualViewport?.addEventListener?.("resize", refreshEditorLineLayoutSoon);
   window.visualViewport?.addEventListener?.("scroll", refreshEditorLineLayoutSoon);
   window.addEventListener("orientationchange", () => {
+    lockStandalonePortrait();
     window.setTimeout(refreshEditorLineLayoutSoon, 120);
   });
   elements.languageToggleButton?.addEventListener("click", toggleLanguage);
@@ -1753,6 +1757,11 @@ function bindEvents() {
       closeMobileSidebar();
       return;
     }
+    if (key === "escape" && elements.transferImageDialog?.open) {
+      event.preventDefault();
+      closeTransferImageViewer();
+      return;
+    }
     if (key === "escape" && state.editorSearch.open) {
       event.preventDefault();
       closeEditorSearch();
@@ -1778,6 +1787,18 @@ function bindEvents() {
 
 function isMobileLayout() {
   return Boolean(window.matchMedia?.(MOBILE_LAYOUT_QUERY)?.matches || window.innerWidth <= 760);
+}
+
+function isStandalonePwa() {
+  return Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator?.standalone);
+}
+
+function lockStandalonePortrait() {
+  if (!isStandalonePwa() || !isMobileLayout()) return;
+  try {
+    const lock = window.screen?.orientation?.lock;
+    if (typeof lock === "function") lock.call(window.screen.orientation, "portrait").catch(() => {});
+  } catch {}
 }
 
 function closeToolbarMenu(menu) {
@@ -1996,9 +2017,11 @@ function bindTransferPanelEvents() {
     const action = fileButton.dataset.transferAction;
     if (action === "download") downloadTransferFile(id);
     if (action === "copy-image") copyTransferImage(id);
-    if (action === "toggle-image") toggleTransferImage(id);
+    if (action === "preview-image") openTransferImageViewer(id);
     if (action === "delete") deleteTransferFile(id);
   });
+  elements.transferImageViewerClose?.addEventListener("click", closeTransferImageViewer);
+  elements.transferImageDialog?.addEventListener("click", closeTransferImageViewer);
   elements.transferUploadButton?.addEventListener("click", () => {
     if (!transferEnabled()) {
       showToast(t("transferNoToken"));
@@ -2058,7 +2081,6 @@ function resetTransferState() {
   state.transferTextLimits = null;
   state.transferImageUrls = {};
   state.transferImageLoading.clear();
-  state.transferExpandedImages.clear();
   state.transferScrollToBottom = false;
   transferMessageListMarkup = "";
 }
@@ -2469,7 +2491,6 @@ async function clearTransferMessages() {
     Object.values(state.transferImageUrls).forEach((url) => URL.revokeObjectURL(url));
     state.transferImageUrls = {};
     state.transferImageLoading.clear();
-    state.transferExpandedImages.clear();
     showToast(t("transferCleared"));
     renderTransferPanel();
   } catch (error) {
@@ -2520,18 +2541,16 @@ function renderTransferFileRow(file) {
   const downloadingTask = state.transferDownloads.find((item) => item.fileId === file.id && item.status !== "error" && item.status !== "done");
   const downloading = Boolean(downloadingTask);
   const previewUrl = image ? state.transferImageUrls[file.id] : "";
-  const expanded = image && state.transferExpandedImages.has(file.id);
   return `
     <div class="transfer-stream-item transfer-file transfer-file-message ${image ? "is-image" : ""}" data-file-id="${escapeAttribute(file.id)}">
       ${image ? `
         <button
-          class="transfer-image-preview${expanded ? " is-expanded" : ""}"
+          class="transfer-image-preview"
           type="button"
-          data-transfer-action="toggle-image"
+          data-transfer-action="preview-image"
           data-id="${escapeAttribute(file.id)}"
-          title="${escapeAttribute(t(expanded ? "transferImageCollapse" : "transferImageExpand"))}"
-          aria-label="${escapeAttribute(t(expanded ? "transferImageCollapse" : "transferImageExpand"))}"
-          aria-expanded="${expanded ? "true" : "false"}"
+          title="${escapeAttribute(t("transferImageExpand"))}"
+          aria-label="${escapeAttribute(t("transferImageExpand"))}"
         >
           ${previewUrl
             ? `<img src="${escapeAttribute(previewUrl)}" alt="图片" loading="lazy" />`
@@ -2684,22 +2703,34 @@ async function copyTransferImage(id) {
   if (!file || !isTransferImage(file)) return;
   try {
     const blob = await fetchTransferBlob(`./api/files?id=${encodeURIComponent(id)}`);
-    if (!navigator.clipboard?.write || !globalThis.ClipboardItem) throw new Error("clipboard");
-    await navigator.clipboard.write([new ClipboardItem({ [blob.type || file.mimeType || "image/png"]: blob })]);
+    await writeImageBlobToClipboard(blob, file.mimeType);
     showToast(t("transferCopiedImage"));
   } catch (error) {
     showToast(transferErrorText(error));
   }
 }
 
-function toggleTransferImage(id) {
-  if (!state.transferImageUrls[id]) return;
-  if (state.transferExpandedImages.has(id)) {
-    state.transferExpandedImages.delete(id);
+function openTransferImageViewer(id) {
+  const url = state.transferImageUrls[id];
+  if (!url || !elements.transferImageDialog || !elements.transferImageViewerImg) return;
+  const file = state.transferFiles.find((item) => item.id === id);
+  elements.transferImageViewerImg.src = url;
+  elements.transferImageViewerImg.alt = file?.name || t("transferImageExpand");
+  if (typeof elements.transferImageDialog.showModal === "function") {
+    elements.transferImageDialog.showModal();
   } else {
-    state.transferExpandedImages.add(id);
+    elements.transferImageDialog.setAttribute("open", "");
   }
-  renderTransferPanel();
+}
+
+function closeTransferImageViewer() {
+  if (!elements.transferImageDialog || !elements.transferImageViewerImg) return;
+  if (elements.transferImageDialog.open && typeof elements.transferImageDialog.close === "function") {
+    elements.transferImageDialog.close();
+  } else {
+    elements.transferImageDialog.removeAttribute("open");
+  }
+  elements.transferImageViewerImg.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 }
 
 async function deleteTransferFile(id) {
@@ -2712,7 +2743,6 @@ async function deleteTransferFile(id) {
       URL.revokeObjectURL(state.transferImageUrls[id]);
       delete state.transferImageUrls[id];
     }
-    state.transferExpandedImages.delete(id);
     state.transferFiles = state.transferFiles.filter((item) => item.id !== id);
     showToast(t("transferDeleted"));
     renderTransferPanel();
@@ -9471,25 +9501,16 @@ async function copyPreviewImage(src) {
   if (!src) throw new Error("empty");
   if (src.startsWith("data:image/")) {
     const blob = dataUrlToBlob(src);
-    if (navigator.clipboard?.write && globalThis.ClipboardItem) {
-      await navigator.clipboard.write([new ClipboardItem({ [blob.type || "image/png"]: blob })]);
-      return;
-    }
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(src);
-      return;
-    }
-    throw new Error("clipboard");
+    await writeImageBlobToClipboard(blob);
+    return;
   }
   try {
     const response = await fetch(src, { mode: "cors" });
     if (!response.ok) throw new Error("fetch failed");
     const blob = await response.blob();
     if (!blob.type.startsWith("image/")) throw new Error("not image");
-    if (navigator.clipboard?.write && globalThis.ClipboardItem) {
-      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-      return;
-    }
+    await writeImageBlobToClipboard(blob);
+    return;
   } catch {
     // fall through to text copy
   }
@@ -9507,6 +9528,40 @@ function dataUrlToBlob(dataUrl) {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return new Blob([bytes], { type: mime });
+}
+
+async function writeImageBlobToClipboard(blob, fallbackType = "") {
+  if (!navigator.clipboard?.write || !globalThis.ClipboardItem) throw new Error("clipboard");
+  const mime = String(blob.type || fallbackType || "image/png").toLowerCase();
+  const needsPng = mime !== "image/png" || (ClipboardItem.supports && !ClipboardItem.supports(mime));
+  const clipboardBlob = needsPng ? await imageBlobToPngBlob(blob) : blob;
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": clipboardBlob })]);
+}
+
+async function imageBlobToPngBlob(blob) {
+  const imageUrl = URL.createObjectURL(blob);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("clipboard"));
+      img.src = imageUrl;
+    });
+    const width = image.naturalWidth || image.width;
+    const height = image.naturalHeight || image.height;
+    if (!width || !height) throw new Error("clipboard");
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("clipboard");
+    context.drawImage(image, 0, 0);
+    const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!pngBlob) throw new Error("clipboard");
+    return pngBlob;
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
 }
 
 function formatMarkdownExport(note) {

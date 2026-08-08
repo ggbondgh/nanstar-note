@@ -324,9 +324,21 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .note-refresh-button {
   width: 30px;
   min-width: 30px;
+  height: 30px;
   min-height: 30px;
   padding: 0;
-  font-size: 15px;
+  place-items: center;
+  line-height: 1;
+}
+.note-refresh-button svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 .note-list-tabs { display: flex; gap: 2px; }
 .filter-tab {
@@ -11066,10 +11078,6 @@ body.realtime-sync-mode .youdao-sync-stack {
   appearance: none;
 }
 
-.transfer-image-preview.is-expanded {
-  cursor: zoom-out;
-}
-
 .transfer-image-preview img {
   display: block;
   width: auto;
@@ -11077,10 +11085,6 @@ body.realtime-sync-mode .youdao-sync-stack {
   max-width: 100%;
   max-height: 240px;
   object-fit: contain;
-}
-
-.transfer-image-preview.is-expanded img {
-  max-height: min(68vh, 620px);
 }
 
 .transfer-file-message.is-image .transfer-file-actions {
@@ -11091,10 +11095,6 @@ body.realtime-sync-mode .youdao-sync-stack {
 @media (max-width: 760px) {
   .transfer-image-preview img {
     max-height: 220px;
-  }
-
-  .transfer-image-preview.is-expanded img {
-    max-height: calc(100dvh - 190px);
   }
 }
 
@@ -11488,9 +11488,9 @@ body.realtime-sync-mode .youdao-sync-stack {
   left: 0;
   z-index: 20;
   display: grid;
-  gap: 8px;
+  gap: 6px;
   width: min(360px, calc(100vw - 48px));
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 1px solid #dbe3ef;
   border-radius: 8px;
   background: #fff;
@@ -11505,21 +11505,78 @@ body.realtime-sync-mode .youdao-sync-stack {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
 .transfer-info-popover p + p {
-  padding-top: 8px;
-  border-top: 1px solid #edf0f6;
+  padding-top: 0;
+  border-top: 0;
 }
 
 @media (max-width: 760px) {
-  .transfer-info-popover {
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(320px, calc(100vw - 36px));
+  .transfer-info {
+    z-index: 1300;
   }
+
+  .transfer-info-popover {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 112px);
+    right: 14px;
+    left: 14px;
+    width: auto;
+    max-height: min(44dvh, 320px);
+    overflow: auto;
+    transform: none;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+.transfer-image-dialog {
+  z-index: 1500;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.transfer-image-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.transfer-image-viewer {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  padding:
+    max(18px, env(safe-area-inset-top))
+    max(18px, env(safe-area-inset-right))
+    max(18px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-left));
+}
+
+.transfer-image-viewer img {
+  display: block;
+  max-width: min(96vw, 1180px);
+  max-height: calc(100dvh - 56px);
+  border-radius: 10px;
+  object-fit: contain;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+}
+
+.transfer-image-viewer-close {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.9) !important;
 }
 
 /* Keep the transfer composer as one surface with a simple action row. */

@@ -14,7 +14,7 @@
     <title>Nanstar Note</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=82" />
+    <link rel="stylesheet" href="./styles.css?v=84" />
   </head>
   <body>
     <div class="app-shell">
@@ -136,7 +136,9 @@
             <div class="note-list-tools">
               <span class="note-list-count" id="listStatus">0 条</span>
               <button class="icon-button note-refresh-button" id="noteRefreshButton" type="button" title="刷新笔记" aria-label="刷新笔记">
-                <span aria-hidden="true">↻</span>
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M20 11a8.1 8.1 0 0 0-15.5-2m-.5-4v4h4M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
+                </svg>
               </button>
               <button class="text-button note-multi-select-button" id="multiSelectButton" type="button">多选</button>
             </div>
@@ -481,10 +483,9 @@
                   <details class="transfer-info" id="transferInfo">
                     <summary class="transfer-info-button" id="transferInfoButton" title="查看传输说明" aria-label="查看传输说明">i</summary>
                     <div class="transfer-info-popover" id="transferInfoPopover" role="note" aria-label="传输说明">
-                      <p id="transferPanelMeta">文字、图片和文件会按时间混合显示，适合跨设备临时中转。</p>
-                      <p id="transferStreamHint">文字、图片和文件会按时间混合显示。</p>
-                      <p id="transferTextSendHint">Enter 换行，Ctrl+Enter 发送；也可以粘贴图片或拖入文件。</p>
-                      <p id="transferDropHint">也可以直接粘贴图片，或把图片和文件拖到消息区。</p>
+                      <p id="transferPanelMeta">临时同步文字、图片和文件。</p>
+                      <p id="transferStreamHint">Enter 发送，Shift+Enter 换行；可粘贴图片或点 + 上传。</p>
+                      <p id="transferDropHint">文件最多保留 8 个，总量 512 MB。</p>
                     </div>
                   </details>
                 </div>
@@ -764,11 +765,18 @@
       </form>
     </dialog>
 
+    <dialog class="transfer-image-dialog" id="transferImageDialog" aria-label="图片预览">
+      <div class="transfer-image-viewer">
+        <button class="icon-button transfer-image-viewer-close" id="transferImageViewerClose" type="button" aria-label="关闭图片预览">×</button>
+        <img id="transferImageViewerImg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="图片预览" />
+      </div>
+    </dialog>
+
     <input id="importFileInput" type="file" accept=".json,.md,.txt" hidden />
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-  <script src="./script.js?v=64"></script>
+  <script src="./script.js?v=65"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
