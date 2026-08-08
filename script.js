@@ -7,6 +7,7 @@ const storageKeys = {
   crdtPendingUpdates: "nanstar-note-crdt-pending-updates",
   crdtDocState: "nanstar-note-crdt-doc-state",
   crdtStateVersion: "nanstar-note-crdt-state-version",
+  crdtSyncRepair: "nanstar-note-crdt-sync-repair",
   lastSyncAt: "nanstar-note-last-sync-at",
   autoSync: "nanstar-note-auto-sync",
   splitRatio: "nanstar-note-split-ratio",
@@ -942,6 +943,7 @@ const state = {
   syncTokenTimer: null,
   syncStartupTimer: null,
   syncPollTimer: null,
+  transferPollTimer: null,
   syncInFlight: false,
   syncQueue: [],
   syncAction: "",
@@ -1001,6 +1003,7 @@ const SYNC_POLL_INTERVAL = 3000;
 const SYNC_PUSH_DELAY = 500;
 const SYNC_REQUEST_TIMEOUT = 12000;
 const CRDT_STATE_VERSION = "2";
+const CRDT_SYNC_REPAIR_VERSION = "remote-merge-1";
 const NOTE_SYNC_ENGINE = "crdt";
 const DOC_DEFAULT_TEXT_COLOR = "#111827";
 const DOC_DEFAULT_HIGHLIGHT_COLOR = "#fef3c7";
@@ -1326,6 +1329,7 @@ function init() {
   elements.autoSyncToggle.disabled = true;
   migrateFolderState();
   prepareCrdtStorage();
+  repairCrdtSyncCursorOnce();
   saveNotes();
   initCrdtFromState();
   applyLanguage(state.language, true);
@@ -1691,6 +1695,9 @@ function bindEvents() {
     writeSyncMeta({ connectionState: "checking", lastError: "" });
     renderSyncMeta();
     startCloudSync({ immediate: true });
+    if (isTransferAssistant(activeNote())) {
+      void refreshTransferPanel({ silent: true });
+    }
   });
   window.addEventListener("offline", () => {
     writeSyncMeta({ connectionState: "offline" });
@@ -1700,11 +1707,17 @@ function bindEvents() {
   window.addEventListener("focus", () => {
     if (document.visibilityState !== "hidden") {
       syncCloudInBackground({ silent: true, pullOnly: true, reason: "focus" });
+      if (isTransferAssistant(activeNote())) {
+        void refreshTransferPanel({ silent: true });
+      }
     }
   });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       syncCloudInBackground({ silent: true, pullOnly: true, reason: "visible" });
+      if (isTransferAssistant(activeNote())) {
+        void refreshTransferPanel({ silent: true });
+      }
     }
   });
 
@@ -1961,14 +1974,12 @@ function bindTransferPanelEvents() {
     }
     elements.transferFileInput?.click();
   });
-  elements.transferRefreshButton?.addEventListener("click", () => fetchTransferFiles({ manual: true }));
+  elements.transferRefreshButton?.addEventListener("click", () => {
+    void refreshTransferPanel({ manual: true, scrollToBottom: true });
+  });
   elements.transferFileInput?.addEventListener("change", () => {
     uploadTransferFiles(Array.from(elements.transferFileInput.files || []));
     elements.transferFileInput.value = "";
-  });
-  elements.transferRefreshButton?.addEventListener("click", () => {
-    fetchTransferMessages({ manual: true });
-    fetchTransferFiles({ manual: true });
   });
   elements.transferMessageList?.addEventListener("dragover", (event) => {
     event.preventDefault();
@@ -2071,7 +2082,10 @@ function renderTransferPanel() {
   if (!elements.transferPanel) return;
   const activeTransfer = isTransferAssistant(activeNote());
   elements.transferPanel.hidden = !activeTransfer;
-  if (!activeTransfer) return;
+  if (!activeTransfer) {
+    stopTransferPolling();
+    return;
+  }
 
   const limits = transferLimits();
   const textLimits = transferTextLimits();
@@ -2111,6 +2125,8 @@ function renderTransferPanel() {
   if (elements.transferRefreshButton) elements.transferRefreshButton.textContent = t("transferRefresh");
 
   const enabled = transferEnabled();
+  if (enabled) startTransferPolling();
+  else stopTransferPolling();
   const uploading = state.transferUploads.some((item) => item.status === "uploading");
   const hasTransferRecords = Boolean(
     state.transferMessages.length
@@ -2140,11 +2156,12 @@ function renderTransferPanel() {
     return;
   }
 
-  if (!state.transferTextLastFetchAt && !state.transferTextLoading) {
-    fetchTransferMessages({ silent: true });
-  }
-  if (!state.transferLastFetchAt && !state.transferLoading) {
-    fetchTransferFiles({ silent: true });
+  if (
+    (!state.transferTextLastFetchAt || !state.transferLastFetchAt)
+    && !state.transferTextLoading
+    && !state.transferLoading
+  ) {
+    void refreshTransferPanel({ silent: true, scrollToBottom: true });
   }
 
   if (!elements.transferMessageList) return;
@@ -2164,6 +2181,27 @@ function renderTransferPanel() {
     scrollTransferStreamToBottom();
   }
   hydrateTransferImagePreviews();
+}
+
+function startTransferPolling() {
+  if (state.transferPollTimer || !transferEnabled()) return;
+  state.transferPollTimer = window.setInterval(() => {
+    if (
+      document.visibilityState === "hidden"
+      || navigator.onLine === false
+      || !isTransferAssistant(activeNote())
+      || !transferEnabled()
+    ) {
+      return;
+    }
+    void refreshTransferPanel({ silent: true });
+  }, SYNC_POLL_INTERVAL);
+}
+
+function stopTransferPolling() {
+  if (!state.transferPollTimer) return;
+  window.clearInterval(state.transferPollTimer);
+  state.transferPollTimer = null;
 }
 
 function scrollTransferStreamToBottom() {
@@ -2245,6 +2283,23 @@ function hydrateTransferImagePreviews() {
     });
 }
 
+async function refreshTransferPanel(options = {}) {
+  if (!transferEnabled()) {
+    state.transferMessages = [];
+    state.transferFiles = [];
+    state.transferTextError = "";
+    state.transferError = "";
+    renderTransferPanel();
+    return false;
+  }
+  if (state.transferTextLoading || state.transferLoading) return false;
+  await Promise.all([
+    fetchTransferMessages(options),
+    fetchTransferFiles(options)
+  ]);
+  return true;
+}
+
 async function fetchTransferMessages(options = {}) {
   if (!transferEnabled()) {
     state.transferMessages = [];
@@ -2263,7 +2318,7 @@ async function fetchTransferMessages(options = {}) {
       : [];
     state.transferTextLimits = payload.limits || state.transferTextLimits;
     state.transferTextLastFetchAt = Date.now();
-    state.transferScrollToBottom = true;
+    if (options.scrollToBottom) state.transferScrollToBottom = true;
   } catch (error) {
     state.transferTextError = transferTextErrorText(error);
     if (options.manual) showToast(state.transferTextError);
@@ -2303,7 +2358,7 @@ async function sendTransferText() {
         .slice(-limits.maxMessages);
       state.transferScrollToBottom = true;
     } else {
-      await fetchTransferMessages({ silent: true });
+      await fetchTransferMessages({ silent: true, scrollToBottom: true });
     }
     if (input) input.value = "";
   } catch (error) {
@@ -2458,7 +2513,7 @@ async function fetchTransferFiles(options = {}) {
     state.transferFiles = Array.isArray(payload.files) ? payload.files.map(normalizeTransferFile) : [];
     state.transferLimits = payload.limits || state.transferLimits;
     state.transferLastFetchAt = Date.now();
-    state.transferScrollToBottom = true;
+    if (options.scrollToBottom) state.transferScrollToBottom = true;
   } catch (error) {
     state.transferError = transferErrorText(error);
     if (options.manual) showToast(state.transferError);
@@ -2515,7 +2570,7 @@ async function uploadSingleTransferFile(file) {
     updateTransferProgress(upload, { loaded: file.size || 0, total: file.size || 0, percent: 100 });
     if (result.file) {
       state.transferFiles = [normalizeTransferFile(result.file), ...state.transferFiles.filter((item) => item.id !== result.file.id)];
-      await fetchTransferFiles({ silent: true });
+      await fetchTransferFiles({ silent: true, scrollToBottom: true });
     }
     state.transferLastFetchAt = Date.now();
     state.transferScrollToBottom = true;
@@ -2613,7 +2668,7 @@ async function deleteTransferFile(id) {
 }
 
 async function fetchTransferJson(url, options = {}) {
-  const response = await fetch(apiUrl(url), {
+  const response = await fetchWithTimeout(apiUrl(url), {
     ...options,
     cache: "no-store",
     headers: {
@@ -3582,6 +3637,12 @@ function prepareCrdtStorage() {
   localStorage.removeItem(storageKeys.crdtPendingUpdates);
   localStorage.removeItem(storageKeys.crdtUpdateId);
   localStorage.setItem(storageKeys.crdtStateVersion, CRDT_STATE_VERSION);
+}
+
+function repairCrdtSyncCursorOnce() {
+  if (localStorage.getItem(storageKeys.crdtSyncRepair) === CRDT_SYNC_REPAIR_VERSION) return;
+  localStorage.removeItem(storageKeys.crdtUpdateId);
+  localStorage.setItem(storageKeys.crdtSyncRepair, CRDT_SYNC_REPAIR_VERSION);
 }
 
 function readCrdtDocState() {
@@ -6245,7 +6306,6 @@ async function syncCrdtCloud(options = {}) {
   let pushed = false;
   let pulled = false;
   let seedPending = false;
-  let skippedRemoteForLocal = false;
   try {
     const since = forcePull ? 0 : Number(localStorage.getItem(storageKeys.crdtUpdateId) || 0);
     const remotePayload = await fetchAllCrdtState(token, since);
@@ -6254,9 +6314,7 @@ async function syncCrdtCloud(options = {}) {
     const localHasChanges = dirtyNoteIds().length > 0 || Boolean(state.saveTimer || state.savePendingNoteId);
 
     if (updates.length) {
-      if (localHasChanges && !forcePull) {
-        skippedRemoteForLocal = true;
-      } else if ((forcePull || since === 0) && !localHasChanges) {
+      if ((forcePull || since === 0) && !localHasChanges) {
         resetCrdtFromUpdates(updates);
       } else {
         state.crdtApplying = true;
@@ -6562,6 +6620,7 @@ async function syncCloud(options = {}) {
 function clearSyncToken() {
   clearTimeout(state.syncTokenTimer);
   state.syncTokenTimer = null;
+  stopTransferPolling();
   elements.syncTokenInput.value = "";
   stopCloudSync();
   localStorage.removeItem(storageKeys.syncToken);
