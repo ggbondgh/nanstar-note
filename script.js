@@ -1429,9 +1429,16 @@ function init() {
 function migrateImplicitLegacyToken() {
   if (localStorage.getItem(storageKeys.authMode) || !localStorage.getItem(storageKeys.syncToken)) return;
   if (state.accountUser && !state.accountUser.legacy) return;
+  const notes = withSystemNotes(defaultNotes.map(normalizeNote));
+  localStorage.setItem(storageKeys.notes, JSON.stringify({ notes, folders: [INBOX_FOLDER] }));
+  localStorage.setItem(storageKeys.guestSeeded, "1");
   localStorage.removeItem(storageKeys.syncToken);
   localStorage.removeItem(storageKeys.authUser);
   localStorage.removeItem(storageKeys.autoSync);
+  localStorage.removeItem(storageKeys.activeNote);
+  localStorage.removeItem(storageKeys.syncMeta);
+  localStorage.removeItem(storageKeys.lastSyncAt);
+  clearLegacyCrdtSyncState({ clearDocState: true });
   state.accountUser = null;
 }
 
