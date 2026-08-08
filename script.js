@@ -2668,7 +2668,11 @@ async function deleteTransferFile(id) {
 }
 
 async function fetchTransferJson(url, options = {}) {
-  const response = await fetchWithTimeout(apiUrl(url), {
+  const method = String(options.method || "GET").toUpperCase();
+  const requestPath = method === "GET"
+    ? `${url}${String(url).includes("?") ? "&" : "?"}t=${Date.now()}`
+    : url;
+  const response = await fetchWithTimeout(apiUrl(requestPath), {
     ...options,
     cache: "no-store",
     headers: {
