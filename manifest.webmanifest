@@ -1,6 +1,6 @@
 {
-  "name": "NanStar Note",
-  "short_name": "NanStar Note",
+  "name": "Nanstar",
+  "short_name": "Nanstar",
   "description": "个人技术笔记平台 - 纯文本速查、Markdown 预览、云同步",
   "start_url": "./",
   "scope": "./",

@@ -9,7 +9,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    title: "NanStar Note",
+    title: "Nanstar",
     icon: path.join(__dirname, "assets", "icon.svg"),
     webPreferences: {
       nodeIntegration: false,

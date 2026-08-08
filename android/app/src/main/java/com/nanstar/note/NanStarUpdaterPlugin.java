@@ -168,7 +168,7 @@ public class NanStarUpdaterPlugin extends Plugin {
                 getContext().startActivity(settingsIntent);
             } catch (ActivityNotFoundException error) {
                 clearPendingInstall();
-                call.reject("Allow NanStar Note to install unknown apps, then tap download again.", "unknown_sources", error);
+                call.reject("Allow Nanstar to install unknown apps, then tap download again.", "unknown_sources", error);
                 finishInstall();
             }
             return;
@@ -218,7 +218,7 @@ public class NanStarUpdaterPlugin extends Plugin {
     }
 
     private void addApkReadPermission(Intent intent, Uri apkUri) {
-        intent.setClipData(ClipData.newUri(getContext().getContentResolver(), "NanStar Note APK", apkUri));
+        intent.setClipData(ClipData.newUri(getContext().getContentResolver(), "Nanstar APK", apkUri));
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
     }
@@ -235,7 +235,7 @@ public class NanStarUpdaterPlugin extends Plugin {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getContext().getPackageManager().canRequestPackageInstalls()) {
             PluginCall call = pendingInstallCall;
             clearPendingInstall();
-            call.reject("Allow NanStar Note to install unknown apps, then tap download again.", "unknown_sources");
+            call.reject("Allow Nanstar to install unknown apps, then tap download again.", "unknown_sources");
             finishInstall();
             return;
         }

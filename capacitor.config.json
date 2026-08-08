@@ -1,6 +1,6 @@
 {
   "appId": "com.nanstar.note",
-  "appName": "NanStar Note",
+  "appName": "Nanstar",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {

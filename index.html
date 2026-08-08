@@ -6,15 +6,15 @@
     <meta name="theme-color" content="#f7f9fc" />
     <meta
       name="description"
-      content="NanStar Note 是一个面向个人技术笔记、纯文本速查和云同步访问的清爽笔记平台。"
+      content="Nanstar 是一个面向个人技术笔记、纯文本速查和云同步访问的清爽笔记平台。"
     />
-    <meta property="og:title" content="NanStar Note" />
+    <meta property="og:title" content="Nanstar" />
     <meta property="og:description" content="个人技术笔记、纯文本速查、Markdown 预览、云同步入口。" />
     <meta property="og:type" content="website" />
-    <title>NanStar Note</title>
+    <title>Nanstar</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=81" />
+    <link rel="stylesheet" href="./styles.css?v=82" />
   </head>
   <body>
     <div class="app-shell">
@@ -24,9 +24,11 @@
         </button>
         <div class="youdao-rail">
           <div class="brand">
-            <div class="brand-mark" aria-hidden="true">NN</div>
+            <div class="brand-mark" aria-hidden="true">
+              <img src="./assets/icon.svg" alt="" />
+            </div>
             <div>
-              <h1>NanStar Note</h1>
+              <h1>Nanstar</h1>
               <p id="cloudStatus">本地模式</p>
             </div>
           </div>
@@ -157,7 +159,7 @@
       <main class="main">
         <header class="topbar">
           <div class="topbar-title">
-            <p class="eyebrow">NanStar Note / Content Desk</p>
+            <p class="eyebrow">Nanstar / Content Desk</p>
             <h2>内容工作台</h2>
           </div>
           <div class="topbar-actions">
@@ -746,7 +748,7 @@
         <div class="app-update-panel">
           <div>
             <strong id="appVersionLabel">正在读取版本信息...</strong>
-            <span id="appUpdateStatus" aria-live="polite">可以下载或检查 NanStar Note Android 安装包。</span>
+            <span id="appUpdateStatus" aria-live="polite">可以下载或检查 Nanstar Android 安装包。</span>
           </div>
           <div class="android-download-progress" id="androidDownloadProgress" role="progressbar" aria-label="APK 下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
             <div class="android-download-progress-track">
@@ -766,7 +768,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-  <script src="./script.js?v=63"></script>
+  <script src="./script.js?v=64"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
