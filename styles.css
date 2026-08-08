@@ -44,6 +44,11 @@
   --font-ui: "Inter", "Segoe UI Variable", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   --font-editor: "Inter", "Segoe UI Variable", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   --font-mono: "SFMono-Regular", "Cascadia Mono", "Consolas", monospace;
+  --motion-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --motion-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --motion-fast: 140ms;
+  --motion-menu: 180ms;
+  --motion-drawer-time: 300ms;
 }
 
 * { box-sizing: border-box; letter-spacing: 0; }
@@ -332,7 +337,7 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
   color: var(--muted);
   font-size: 12px;
   cursor: pointer;
-  transition: all 150ms ease;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
 .filter-tab:hover { border-color: var(--line-strong); color: var(--soft); }
 .filter-tab.active { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 700; }
@@ -11644,5 +11649,179 @@ body.realtime-sync-mode .youdao-sync-stack {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+  }
+}
+
+/* Mobile motion polish: crisp, touch-first, and spatially anchored. */
+button,
+summary,
+.note-item,
+.folder-item,
+.context-menu-item,
+.youdao-nav-item,
+.youdao-layout-button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.context-menu {
+  transform-origin: var(--menu-origin, top left);
+  transition: opacity var(--motion-menu) var(--motion-out), transform var(--motion-menu) var(--motion-out);
+}
+
+.context-menu:not([hidden]) {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+@starting-style {
+  .context-menu:not([hidden]) {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.96);
+  }
+}
+
+.topbar-menu-panel,
+.toolbar-menu-panel,
+.youdao-client-panel {
+  transform-origin: var(--panel-origin, top right);
+}
+
+.topbar-menu[open] .topbar-menu-panel,
+.toolbar-menu[open] .toolbar-menu-panel,
+.youdao-client-menu[open] .youdao-client-panel {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition: opacity var(--motion-menu) var(--motion-out), transform var(--motion-menu) var(--motion-out);
+}
+
+@starting-style {
+  .topbar-menu[open] .topbar-menu-panel,
+  .toolbar-menu[open] .toolbar-menu-panel,
+  .youdao-client-menu[open] .youdao-client-panel {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0) scale(0.97);
+  }
+}
+
+.modal[open] .modal-card {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition: opacity 180ms var(--motion-out), transform 180ms var(--motion-out);
+}
+
+@starting-style {
+  .modal[open] .modal-card {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.97);
+  }
+}
+
+@media (max-width: 760px) {
+  .mobile-sidebar-backdrop {
+    transition: opacity 220ms var(--motion-out), visibility 0s linear 220ms !important;
+  }
+
+  body.mobile-sidebar-open .mobile-sidebar-backdrop {
+    transition-delay: 0s !important;
+  }
+
+  .sidebar,
+  body.sidebar-collapsed .sidebar {
+    isolation: isolate;
+    contain: paint;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    will-change: transform;
+    transform: translate3d(-104%, 0, 0) !important;
+    transition: transform var(--motion-drawer-time) var(--motion-drawer) !important;
+  }
+
+  body.mobile-sidebar-open .sidebar {
+    transform: translate3d(0, 0, 0) !important;
+  }
+
+  .youdao-rail,
+  .youdao-list-pane {
+    opacity: 0.96;
+    transform: translate3d(-10px, 0, 0);
+    transition: opacity 220ms var(--motion-out), transform 260ms var(--motion-drawer);
+  }
+
+  body.mobile-sidebar-open .youdao-rail,
+  body.mobile-sidebar-open .youdao-list-pane {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .context-menu {
+    z-index: 1200 !important;
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18) !important;
+  }
+
+  .context-sub-list.open {
+    animation: none !important;
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    transform-origin: top left;
+    transition: opacity var(--motion-fast) var(--motion-out), transform var(--motion-fast) var(--motion-out);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .primary-button:hover,
+  .ghost-button:hover,
+  .icon-button:hover,
+  .flag-button:hover,
+  .mode-button:hover,
+  .quick-chip:hover,
+  .toolbar button:hover,
+  .toolbar-menu > summary:hover,
+  .folder-item:hover,
+  .outline-item:hover,
+  .filter-tab:hover,
+  .nav-section summary:hover,
+  .menu-item:hover,
+  .transfer-file-actions button:hover,
+  .doc-image-controls button:hover,
+  .export-format-button:hover,
+  .context-menu-item:hover,
+  .youdao-nav-item:hover,
+  .youdao-sync-button:hover,
+  .youdao-layout-button:hover {
+    transform: none !important;
+  }
+
+  :where(button, summary, .note-item, .folder-item, .context-menu-item, .youdao-nav-item, .youdao-layout-button):active:not(:disabled) {
+    transform: scale(0.97) !important;
+    transition: transform 110ms var(--motion-out) !important;
+  }
+
+  .note-item:active {
+    transform: scale(0.992) !important;
+  }
+
+  .toolbar button:active,
+  .toolbar-menu > summary:active,
+  .mode-button:active,
+  .flag-button:active {
+    transform: scale(0.96) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .context-menu,
+  .topbar-menu-panel,
+  .toolbar-menu-panel,
+  .youdao-client-panel,
+  .mobile-sidebar-backdrop,
+  .sidebar,
+  body.sidebar-collapsed .sidebar,
+  .youdao-rail,
+  .youdao-list-pane {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
   }
 }

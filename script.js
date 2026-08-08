@@ -1834,6 +1834,7 @@ function positionToolbarMenu(menu) {
 
   const measuredWidth = Math.min(panel.getBoundingClientRect().width || 220, maxWidth);
   const left = Math.min(Math.max(gutter, rect.left), Math.max(gutter, viewportWidth - measuredWidth - gutter));
+  const originX = Math.min(Math.max(12, rect.left + rect.width / 2 - left), Math.max(12, measuredWidth - 12));
   const belowTop = rect.bottom + 6;
   const belowSpace = viewportHeight - belowTop - gutter;
   const aboveSpace = rect.top - gutter;
@@ -1842,10 +1843,12 @@ function positionToolbarMenu(menu) {
     panel.style.top = "auto";
     panel.style.bottom = `${Math.max(gutter, viewportHeight - rect.top + 6)}px`;
     panel.style.maxHeight = `${Math.max(140, aboveSpace - 8)}px`;
+    panel.style.setProperty("--panel-origin", `${originX}px 100%`);
   } else {
     panel.style.top = `${belowTop}px`;
     panel.style.bottom = "auto";
     panel.style.maxHeight = `${Math.max(140, belowSpace)}px`;
+    panel.style.setProperty("--panel-origin", `${originX}px 0`);
   }
 }
 
@@ -1884,9 +1887,30 @@ function positionClientMenu() {
   const top = placeAbove
     ? Math.max(gutter, summaryRect.top - height - 8)
     : Math.min(belowTop, Math.max(gutter, viewportHeight - height - gutter));
+  const originX = Math.min(Math.max(12, summaryRect.left + summaryRect.width / 2 - left), Math.max(12, width - 12));
 
   panel.style.setProperty("left", `${left}px`, "important");
   panel.style.setProperty("top", `${top}px`, "important");
+  panel.style.setProperty("--panel-origin", `${originX}px ${placeAbove ? "100%" : "0"}`);
+}
+
+function positionContextMenu(menu, x, y, { estimatedWidth = 180, estimatedHeight = 180 } = {}) {
+  const gutter = isMobileLayout() ? 12 : 8;
+  const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  const apply = (width, height) => {
+    const left = Math.min(Math.max(gutter, x), Math.max(gutter, viewportWidth - width - gutter));
+    const top = Math.min(Math.max(gutter, y), Math.max(gutter, viewportHeight - height - gutter));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    menu.style.setProperty("--menu-origin", `${Math.max(0, x - left)}px ${Math.max(0, y - top)}px`);
+  };
+  apply(estimatedWidth, estimatedHeight);
+  window.requestAnimationFrame(() => {
+    if (menu.hidden) return;
+    const rect = menu.getBoundingClientRect();
+    apply(rect.width || estimatedWidth, rect.height || estimatedHeight);
+  });
 }
 
 function setMobileSidebarOpen(open) {
@@ -4393,8 +4417,7 @@ function showFolderContextMenu(x, y) {
   if (renameBtn) renameBtn.textContent = t("renameFolder");
   if (deleteBtn) deleteBtn.textContent = t("delete");
   menu.hidden = false;
-  menu.style.left = `${Math.min(x, window.innerWidth - 160)}px`;
-  menu.style.top = `${Math.min(y, window.innerHeight - 100)}px`;
+  positionContextMenu(menu, x, y, { estimatedWidth: 170, estimatedHeight: 120 });
   const isInbox = canonicalFolderName(state.contextMenuFolder) === INBOX_FOLDER;
   if (renameBtn) {
     renameBtn.disabled = isInbox;
@@ -4422,17 +4445,7 @@ function showNoteContextMenu(x, y) {
   menu.querySelector('[data-action="export"]').textContent = t("exportCurrent");
   menu.querySelector('[data-action="delete"]').textContent = t("delete");
   menu.hidden = false;
-  const gutter = isMobileLayout() ? 12 : 8;
-  menu.style.left = `${Math.max(gutter, x)}px`;
-  menu.style.top = `${Math.max(gutter, y)}px`;
-  window.requestAnimationFrame(() => {
-    if (menu.hidden) return;
-    const rect = menu.getBoundingClientRect();
-    const left = Math.min(Math.max(gutter, x), Math.max(gutter, window.innerWidth - rect.width - gutter));
-    const top = Math.min(Math.max(gutter, y), Math.max(gutter, window.innerHeight - rect.height - gutter));
-    menu.style.left = `${left}px`;
-    menu.style.top = `${top}px`;
-  });
+  positionContextMenu(menu, x, y, { estimatedWidth: 190, estimatedHeight: 300 });
   const note = state.notes.find(n => n.id === state.contextMenuNoteId && !isDeletedNote(n));
   if (note) {
     const pinItem = menu.querySelector('[data-action="pin"]');
