@@ -5,6 +5,7 @@ const storageKeys = {
   activeNote: "nanstar-note-active",
   syncToken: "nanstar-note-sync-token",
   authUser: "nanstar-note-auth-user",
+  authMode: "nanstar-note-auth-mode",
   syncMeta: "nanstar-note-sync-meta",
   crdtUpdateId: "nanstar-note-crdt-update-id",
   crdtPendingUpdates: "nanstar-note-crdt-pending-updates",
@@ -6989,14 +6990,20 @@ async function hydrateAccountProfile() {
   }
   try {
     const result = await authApiRequest("GET", null, token);
+    if (result.legacy && localStorage.getItem(storageKeys.authMode) === "account") {
+      clearStoredCloudSession();
+      resetLocalNotebookToGuest();
+      renderSyncMeta();
+      return;
+    }
     writeStoredAuthUser(result.legacy ? { ...result.user, legacy: true } : result.user);
+    localStorage.setItem(storageKeys.authMode, result.legacy ? "legacy" : "account");
     renderAccountUi();
     renderSyncMeta();
   } catch (error) {
     const text = String(error?.message || error || "");
     if (text.includes("Unauthorized") && !state.accountUser?.legacy) {
-      localStorage.removeItem(storageKeys.syncToken);
-      writeStoredAuthUser(null);
+      clearStoredCloudSession();
       resetLocalNotebookToGuest();
       renderSyncMeta();
     }
@@ -7008,6 +7015,7 @@ async function activateCloudSession(token, user) {
   const previousUserId = state.accountUser?.id || "";
   writeStoredAuthUser(user);
   elements.syncTokenInput.value = "";
+  localStorage.setItem(storageKeys.authMode, "account");
   localStorage.setItem(storageKeys.syncToken, String(token));
   localStorage.setItem(storageKeys.autoSync, "1");
   elements.autoSyncToggle.checked = true;
@@ -7052,14 +7060,7 @@ function clearSyncToken() {
   stopTransferPolling();
   const token = getSyncToken();
   if (token) void authApiRequest("DELETE", null, token).catch(() => {});
-  elements.syncTokenInput.value = "";
-  stopCloudSync();
-  localStorage.removeItem(storageKeys.syncToken);
-  writeStoredAuthUser(null);
-  localStorage.removeItem(storageKeys.syncMeta);
-  localStorage.removeItem(storageKeys.lastSyncAt);
-  localStorage.setItem(storageKeys.autoSync, "0");
-  elements.autoSyncToggle.checked = false;
+  clearStoredCloudSession();
   resetLocalNotebookToGuest();
   applyFolderSectionVisibility();
   renderFolderDatalist();
@@ -7068,6 +7069,18 @@ function clearSyncToken() {
   renderAccountUi();
   renderSyncMeta();
   showSyncMessage(t("tokenCleared"));
+}
+
+function clearStoredCloudSession() {
+  elements.syncTokenInput.value = "";
+  stopCloudSync();
+  localStorage.removeItem(storageKeys.syncToken);
+  localStorage.removeItem(storageKeys.authMode);
+  writeStoredAuthUser(null);
+  localStorage.removeItem(storageKeys.syncMeta);
+  localStorage.removeItem(storageKeys.lastSyncAt);
+  localStorage.setItem(storageKeys.autoSync, "0");
+  elements.autoSyncToggle.checked = false;
 }
 
 function refreshSyncAccessUi() {
@@ -7102,6 +7115,7 @@ function connectLegacyToken() {
 
   stopCloudSync();
   localStorage.setItem(storageKeys.syncToken, token);
+  localStorage.setItem(storageKeys.authMode, "legacy");
   localStorage.setItem(storageKeys.autoSync, "1");
   elements.autoSyncToggle.checked = true;
   writeStoredAuthUser({ id: "legacy", email: "legacy-token", nickname: t("accountLegacyConnected"), legacy: true });
@@ -7111,7 +7125,7 @@ function connectLegacyToken() {
 }
 
 function getSyncToken() {
-  return (localStorage.getItem(storageKeys.syncToken) || elements.syncTokenInput.value || "").trim();
+  return (localStorage.getItem(storageKeys.syncToken) || "").trim();
 }
 
 function showSyncMessage(message) {

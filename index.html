@@ -746,7 +746,7 @@
           <summary id="legacyTokenSummary">高级：使用旧 Token</summary>
           <label class="field">
             <span id="syncTokenLabel">同步 Token</span>
-            <input id="syncTokenInput" type="password" placeholder="NOTE_SYNC_TOKEN" autocomplete="current-password" />
+            <input id="syncTokenInput" type="password" placeholder="NOTE_SYNC_TOKEN" autocomplete="off" />
           </label>
           <button class="ghost-button" id="legacyTokenButton" type="button">使用旧 Token</button>
         </details>
@@ -800,7 +800,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="./assets/yjs.bundle.js"></script>
-  <script src="./script.js?v=70"></script>
+  <script src="./script.js?v=71"></script>
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
