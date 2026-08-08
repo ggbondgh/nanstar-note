@@ -3811,6 +3811,7 @@ function clearLegacyCrdtSyncState(options = {}) {
   state.crdtPendingUpdates = [];
   localStorage.removeItem(storageKeys.crdtPendingUpdates);
   localStorage.removeItem(storageKeys.crdtUpdateId);
+  if (options.clearDocState) localStorage.removeItem(storageKeys.crdtDocState);
   if (options.clearOrphanPending && !dirtyNoteIds().length && readSyncMeta().pending) {
     writeSyncMeta({ pending: false, dirtyNoteIds: [], lastError: "" });
   }
@@ -6994,7 +6995,7 @@ function resetLocalNotebookForAccount() {
   state.selectedFolder = "";
   state.selectedNoteIds.clear();
   state.dirtyNoteIds.clear();
-  clearLegacyCrdtSyncState();
+  clearLegacyCrdtSyncState({ clearDocState: true });
   localStorage.removeItem(storageKeys.activeNote);
   localStorage.removeItem(storageKeys.syncMeta);
   localStorage.removeItem(storageKeys.lastSyncAt);
@@ -7009,7 +7010,7 @@ function resetLocalNotebookToGuest() {
   state.selectedFolder = "";
   state.selectedNoteIds.clear();
   state.dirtyNoteIds.clear();
-  clearLegacyCrdtSyncState();
+  clearLegacyCrdtSyncState({ clearDocState: true });
   localStorage.removeItem(storageKeys.activeNote);
   localStorage.removeItem(storageKeys.syncMeta);
   localStorage.removeItem(storageKeys.lastSyncAt);
