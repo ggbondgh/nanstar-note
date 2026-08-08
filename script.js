@@ -1391,6 +1391,7 @@ init();
 function init() {
   lockStandalonePortrait();
   state.accountUser = readStoredAuthUser();
+  migrateImplicitLegacyToken();
   state.notes = loadNotes();
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   restoreDirtyNotes();
@@ -1423,6 +1424,15 @@ function init() {
   startCloudSync();
   void hydrateAccountProfile();
   hydrateAppUpdatePanel();
+}
+
+function migrateImplicitLegacyToken() {
+  if (localStorage.getItem(storageKeys.authMode) || !localStorage.getItem(storageKeys.syncToken)) return;
+  if (state.accountUser && !state.accountUser.legacy) return;
+  localStorage.removeItem(storageKeys.syncToken);
+  localStorage.removeItem(storageKeys.authUser);
+  localStorage.removeItem(storageKeys.autoSync);
+  state.accountUser = null;
 }
 
 function bindEvents() {
@@ -6990,7 +7000,7 @@ async function hydrateAccountProfile() {
   }
   try {
     const result = await authApiRequest("GET", null, token);
-    if (result.legacy && localStorage.getItem(storageKeys.authMode) === "account") {
+    if (result.legacy && (localStorage.getItem(storageKeys.authMode) === "account" || (state.accountUser && !state.accountUser.legacy))) {
       clearStoredCloudSession();
       resetLocalNotebookToGuest();
       renderSyncMeta();
