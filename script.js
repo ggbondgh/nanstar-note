@@ -1,5 +1,7 @@
 const storageKeys = {
   notes: "nanstar-note-notes",
+  guestSeeded: "nanstar-note-guest-seeded",
+  legacyLocalNotes: "nanstar-note-legacy-local-notes",
   activeNote: "nanstar-note-active",
   syncToken: "nanstar-note-sync-token",
   authUser: "nanstar-note-auth-user",
@@ -342,6 +344,8 @@ const i18n = {
     nicknamePlaceholder: "登录后显示在首页",
     accountGuest: "未登录",
     accountGuestMeta: "未登录时只使用本地演示笔记，不会写入云端。",
+    accountChecking: "正在确认登录",
+    accountCheckingMeta: "正在确认账号状态，确认后再同步到云端。",
     accountLoggedInMeta: "已登录，内容会自动同步到当前账号。",
     accountLogin: "登录",
     accountRegister: "注册",
@@ -711,6 +715,8 @@ const i18n = {
     nicknamePlaceholder: "Shown on the home screen",
     accountGuest: "Not signed in",
     accountGuestMeta: "Guest mode uses local demo notes only. Nothing is written to the cloud.",
+    accountChecking: "Checking sign-in",
+    accountCheckingMeta: "Confirming the account before cloud sync starts.",
     accountLoggedInMeta: "Signed in. Changes sync automatically to this account.",
     accountLogin: "Sign in",
     accountRegister: "Register",
@@ -3293,6 +3299,11 @@ async function openExternalUrl(url) {
 
 function loadNotes() {
   try {
+    if (!localStorage.getItem(storageKeys.syncToken) && !localStorage.getItem(storageKeys.guestSeeded)) {
+      preserveLegacyLocalNotes();
+      localStorage.setItem(storageKeys.guestSeeded, "1");
+      return withSystemNotes(defaultNotes.map(normalizeNote));
+    }
     const raw = localStorage.getItem(storageKeys.notes);
     if (!raw) return withSystemNotes(defaultNotes.map(normalizeNote));
     const parsed = JSON.parse(raw);
@@ -3318,6 +3329,12 @@ function loadNotes() {
   } catch {
     return withSystemNotes(defaultNotes.map(normalizeNote));
   }
+}
+
+function preserveLegacyLocalNotes() {
+  const raw = localStorage.getItem(storageKeys.notes);
+  if (!raw || localStorage.getItem(storageKeys.legacyLocalNotes)) return;
+  localStorage.setItem(storageKeys.legacyLocalNotes, raw);
 }
 
 function normalizeNote(note) {
@@ -6817,15 +6834,19 @@ function renderAccountUi() {
   const token = getSyncToken();
   const user = state.accountUser;
   const guest = !token;
-  const displayName = guest ? t("accountGuest") : user?.nickname || (user?.legacy ? t("accountLegacyConnected") : "Nanstar");
+  const displayName = guest
+    ? t("accountGuest")
+    : user?.nickname || (user?.legacy ? t("accountLegacyConnected") : t("accountChecking"));
   if (elements.accountName) elements.accountName.textContent = displayName;
   if (elements.accountStatusName) elements.accountStatusName.textContent = displayName;
   if (elements.accountStatusMeta) {
     elements.accountStatusMeta.textContent = guest
       ? t("accountGuestMeta")
-      : user?.legacy
-        ? t("accountLegacyConnected")
-        : t("accountLoggedInMeta");
+      : !user
+        ? t("accountCheckingMeta")
+        : user.legacy
+          ? t("accountLegacyConnected")
+          : t("accountLoggedInMeta");
   }
   if (elements.accountInput && document.activeElement !== elements.accountInput) {
     elements.accountInput.value = user && !user.legacy ? String(user.email || "") : "";
@@ -6982,6 +7003,7 @@ function resetLocalNotebookForAccount() {
 }
 
 function resetLocalNotebookToGuest() {
+  localStorage.setItem(storageKeys.guestSeeded, "1");
   state.notes = withSystemNotes(defaultNotes.map(normalizeNote));
   state.activeId = defaultNotes[0]?.id || null;
   state.selectedFolder = "";
