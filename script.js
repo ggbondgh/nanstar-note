@@ -7050,12 +7050,14 @@ async function saveAccountProfile() {
 
 async function hydrateAccountProfile() {
   const token = getSyncToken();
+  const sessionVersion = state.authSessionVersion;
   if (!token) {
     renderAccountUi();
     return;
   }
   try {
     const result = await authApiRequest("GET", null, token);
+    if (sessionVersion !== state.authSessionVersion || getSyncToken() !== token) return;
     if (result.legacy && (localStorage.getItem(storageKeys.authMode) === "account" || (state.accountUser && !state.accountUser.legacy))) {
       clearStoredCloudSession();
       resetLocalNotebookToGuest();
@@ -7067,6 +7069,7 @@ async function hydrateAccountProfile() {
     renderAccountUi();
     renderSyncMeta();
   } catch (error) {
+    if (sessionVersion !== state.authSessionVersion || getSyncToken() !== token) return;
     const text = String(error?.message || error || "");
     if (text.includes("Unauthorized") && !state.accountUser?.legacy) {
       clearStoredCloudSession();
