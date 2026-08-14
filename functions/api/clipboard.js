@@ -1,9 +1,6 @@
-import { authorize } from "./_auth.js";
-
 const CLIPBOARD_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS note_transfer_texts (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL DEFAULT 'legacy',
     text TEXT NOT NULL,
     size_bytes INTEGER NOT NULL,
     created_at INTEGER NOT NULL
@@ -18,16 +15,15 @@ export async function onRequestOptions() {
 }
 
 export async function onRequestGet({ env, request }) {
-  const auth = await authorize(env, request);
-  if (auth instanceof Response) return auth;
+  const auth = authorize(env, request);
+  if (auth) return auth;
 
   const db = await requireDatabase(env);
   if (db instanceof Response) return db;
 
   await ensureTable(db);
   const rows = await db
-    .prepare("SELECT id, text, size_bytes, created_at FROM note_transfer_texts WHERE user_id = ? ORDER BY created_at ASC")
-    .bind(auth.userId)
+    .prepare("SELECT id, text, size_bytes, created_at FROM note_transfer_texts ORDER BY created_at ASC")
     .all();
 
   return json({
@@ -40,8 +36,8 @@ export async function onRequestGet({ env, request }) {
 }
 
 export async function onRequestPost({ env, request }) {
-  const auth = await authorize(env, request);
-  if (auth instanceof Response) return auth;
+  const auth = authorize(env, request);
+  if (auth) return auth;
 
   const db = await requireDatabase(env);
   if (db instanceof Response) return db;
@@ -71,19 +67,19 @@ export async function onRequestPost({ env, request }) {
 
   await db
     .prepare(
-      `INSERT INTO note_transfer_texts (id, user_id, text, size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?)`
+      `INSERT INTO note_transfer_texts (id, text, size_bytes, created_at)
+       VALUES (?, ?, ?, ?)`
     )
-    .bind(message.id, auth.userId, message.text, message.sizeBytes, message.createdAt)
+    .bind(message.id, message.text, message.sizeBytes, message.createdAt)
     .run();
-  await trimMessages(db, auth.userId);
+  await trimMessages(db);
 
   return json({ ok: true, message });
 }
 
 export async function onRequestDelete({ env, request }) {
-  const auth = await authorize(env, request);
-  if (auth instanceof Response) return auth;
+  const auth = authorize(env, request);
+  if (auth) return auth;
 
   const db = await requireDatabase(env);
   if (db instanceof Response) return db;
@@ -91,14 +87,14 @@ export async function onRequestDelete({ env, request }) {
   await ensureTable(db);
   const url = new URL(request.url);
   if (url.searchParams.get("all") === "1") {
-    await db.prepare("DELETE FROM note_transfer_texts WHERE user_id = ?").bind(auth.userId).run();
+    await db.prepare("DELETE FROM note_transfer_texts").run();
     return json({ ok: true });
   }
 
   const id = (url.searchParams.get("id") || "").trim();
   if (!id) return json({ error: "Missing message id" }, 400);
 
-  await db.prepare("DELETE FROM note_transfer_texts WHERE id = ? AND user_id = ?").bind(id, auth.userId).run();
+  await db.prepare("DELETE FROM note_transfer_texts WHERE id = ?").bind(id).run();
   return json({ ok: true });
 }
 
@@ -110,21 +106,19 @@ async function requireDatabase(env) {
 
 async function ensureTable(db) {
   await db.prepare(CLIPBOARD_TABLE_SQL).run();
-  await addColumnIfMissing(db, "note_transfer_texts", "user_id TEXT NOT NULL DEFAULT 'legacy'");
 }
 
-async function trimMessages(db, userId) {
+async function trimMessages(db) {
   await db
     .prepare(
       `DELETE FROM note_transfer_texts
-       WHERE user_id = ? AND id NOT IN (
+       WHERE id NOT IN (
          SELECT id FROM note_transfer_texts
-         WHERE user_id = ?
          ORDER BY created_at DESC
          LIMIT ?
        )`
     )
-    .bind(userId, userId, MAX_MESSAGES)
+    .bind(MAX_MESSAGES)
     .run();
 }
 
@@ -142,10 +136,14 @@ function byteLength(value) {
   return new TextEncoder().encode(String(value || "")).length;
 }
 
-async function addColumnIfMissing(db, table, columnSql) {
-  try {
-    await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${columnSql}`).run();
-  } catch {}
+function authorize(env, request) {
+  const expected = env.NOTE_SYNC_TOKEN;
+  if (!expected) return json({ error: "Missing NOTE_SYNC_TOKEN" }, 500);
+
+  const header = request.headers.get("authorization") || "";
+  const token = header.replace(/^Bearer\s+/i, "").trim();
+  if (token !== expected) return json({ error: "Unauthorized" }, 401);
+  return null;
 }
 
 function json(data, status = 200) {

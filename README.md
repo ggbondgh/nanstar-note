@@ -13,7 +13,6 @@ NanStar Note is a lightweight personal note platform for technical notes, client
 - Export all notes as JSON and download a single note as Markdown.
 - Share-link import for one note.
 - Cloudflare Pages Functions + D1 sync with a Yjs CRDT update log.
-- Account login with an account/email, password, and editable nickname.
 
 ## Local preview
 
@@ -67,22 +66,13 @@ Variable name: NANSTAR_NOTE_FILES
 R2 bucket: nanstar-note-files
 ```
 
-Add an environment variable for the legacy single-owner token:
+Add an environment variable:
 
 ```txt
 NOTE_SYNC_TOKEN=choose-a-long-private-token
 ```
 
-New users register directly in NanStar Note with an account and password. The
-old `NOTE_SYNC_TOKEN` remains available under the advanced login section so
-existing single-owner data keeps working. Account sessions are stored as
-hashes and expire after 60 days. Passwords use salted PBKDF2-SHA-256 hashes.
-
-Unauthenticated visitors only get three local demo notes (TXT, MD, and DOC).
-They are not written to D1. Logging out returns the browser to those demo notes.
-
-The auth function creates `nanstar_users` and `nanstar_sessions` tables
-automatically.
+After deployment, open the sync dialog in NanStar Note and enter the same token.
 
 ## DOC images
 
@@ -97,7 +87,6 @@ The function creates this D1 table automatically:
 ```sql
 CREATE TABLE IF NOT EXISTS note_doc_images (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL DEFAULT 'legacy',
   note_id TEXT NOT NULL,
   name TEXT NOT NULL,
   r2_key TEXT NOT NULL,
@@ -116,7 +105,6 @@ Text transfer uses D1 only. Current limits are 100 recent messages and 20 KB per
 ```sql
 CREATE TABLE IF NOT EXISTS note_transfer_texts (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL DEFAULT 'legacy',
   text TEXT NOT NULL,
   size_bytes INTEGER NOT NULL,
   created_at INTEGER NOT NULL
@@ -130,7 +118,6 @@ The Pages Functions route is `GET/POST/DELETE /api/files`. It uses the same `NOT
 ```sql
 CREATE TABLE IF NOT EXISTS note_transfer_files (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL DEFAULT 'legacy',
   name TEXT NOT NULL,
   r2_key TEXT NOT NULL,
   mime_type TEXT NOT NULL,
@@ -151,11 +138,6 @@ File upload pitfall fixed in this repo:
 
 Cloud sync is local-first. The browser keeps notes in `localStorage`, records local edits as Yjs CRDT updates, and automatically pushes/pulls those updates through Cloudflare Pages Functions + D1. Notes and folders are stored in the same CRDT document, so folder create, rename, delete, and note moves sync across devices.
 
-New note, transfer, file, and DOC image records are partitioned by the
-authenticated user id. Existing tables are upgraded lazily on the first
-request; old rows keep the `legacy` owner and remain available through
-`NOTE_SYNC_TOKEN`.
-
 The API still keeps the old JSON table for migration/backward compatibility:
 
 ```sql
@@ -171,7 +153,6 @@ New sync writes append-only CRDT updates here:
 ```sql
 CREATE TABLE IF NOT EXISTS note_crdt_updates (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id TEXT NOT NULL DEFAULT 'legacy',
   update_data TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );

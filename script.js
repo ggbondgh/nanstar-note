@@ -1,11 +1,7 @@
 const storageKeys = {
   notes: "nanstar-note-notes",
-  guestSeeded: "nanstar-note-guest-seeded",
-  legacyLocalNotes: "nanstar-note-legacy-local-notes",
   activeNote: "nanstar-note-active",
   syncToken: "nanstar-note-sync-token",
-  authUser: "nanstar-note-auth-user",
-  authMode: "nanstar-note-auth-mode",
   syncMeta: "nanstar-note-sync-meta",
   crdtUpdateId: "nanstar-note-crdt-update-id",
   crdtPendingUpdates: "nanstar-note-crdt-pending-updates",
@@ -186,7 +182,7 @@ const i18n = {
     docImageResize: "拖动调整图片大小",
     docImageUploading: "图片上传中...",
     docImageUploaded: "图片已插入",
-    docImageTokenRequired: "登录后才能插入图片。",
+    docImageTokenRequired: "配置同步 Token 后才能插入图片。",
     docImageTooLarge: "图片太大，单张上限 {size}。",
     docImageTypeUnsupported: "仅支持 JPG、PNG、WebP、GIF、AVIF 图片。",
     docImageCountLimit: "每篇 DOC 最多插入 {count} 张图片。",
@@ -273,7 +269,7 @@ const i18n = {
     transferClearAll: "清空",
     transferTextCopy: "复制",
     transferTextDelete: "删除",
-    transferTextNoToken: "登录后可使用文本传输。",
+    transferTextNoToken: "配置同步 Token 后可使用文本传输。",
     transferTextEmpty: "暂无文本消息。",
     transferTextLoading: "正在读取文本消息...",
     transferTextSending: "正在发送...",
@@ -292,7 +288,7 @@ const i18n = {
     transferFileMeta: "文件 {count} 个 / {totalSize}，新传替换最早。",
     transferDropTitle: "拖放文件到这里，或点击上传。",
     transferDropHint: "可粘贴图片或点 + 上传。",
-    transferNoToken: "登录后可使用文件传输。",
+    transferNoToken: "配置同步 Token 后可使用文件传输。",
     transferEmpty: "暂无文件。",
     transferLoading: "正在读取文件列表...",
     transferUpload: "上传文件",
@@ -329,48 +325,14 @@ const i18n = {
     layoutTwo: "两栏视图",
     layoutOne: "内容视图",
     installPromptUnavailable: "当前浏览器暂未提供桌面安装入口。",
-    syncCopy: "使用账号和密码登录后，笔记、文件传输和 DOC 图片会分别保存到你的云端空间。",
+    syncCopy: "实时同步会自动上传和拉取云端更新；网络暂时不可用时，内容仍会保存在本地。",
     syncToken: "同步 Token",
-    autoSync: "登录后自动同步",
+    autoSync: "实时同步：自动上传和拉取",
     pushCloud: "上传待同步内容",
     pullCloud: "从云端恢复",
-    clearToken: "退出登录",
+    clearToken: "清除 Token",
     syncLocalReady: "未连接云同步，本地编辑可正常使用。",
-    tokenCleared: "已退出登录，当前使用本地演示笔记。",
-    accountLabel: "邮箱 / 账号",
-    passwordLabel: "密码",
-    nicknameLabel: "昵称",
-    accountPlaceholder: "输入邮箱或账号",
-    passwordPlaceholder: "至少 6 位",
-    nicknamePlaceholder: "登录后显示在首页",
-    accountGuest: "未登录",
-    accountGuestMeta: "未登录时只使用本地演示笔记，不会写入云端。",
-    accountChecking: "正在确认登录",
-    accountCheckingMeta: "正在确认账号状态，确认后再同步到云端。",
-    accountLoggedInMeta: "已登录，内容会自动同步到当前账号。",
-    accountLogin: "登录",
-    accountRegister: "注册",
-    accountLoggingIn: "正在登录...",
-    accountRegistering: "正在注册...",
-    accountSaveNickname: "保存昵称",
-    accountLogout: "退出登录",
-    legacyTokenSummary: "高级：使用旧 Token",
-    legacyTokenButton: "使用旧 Token",
-    accountRequired: "请输入邮箱或账号。",
-    passwordRequired: "请输入密码。",
-    passwordTooShort: "密码至少需要 6 位。",
-    accountLoginSuccess: "登录成功",
-    accountRegisterSuccess: "注册成功",
-    accountProfileSaved: "昵称已保存",
-    accountLoggedOut: "已退出登录",
-    accountAlreadyExists: "这个账号已经注册过了。",
-    accountInvalid: "账号格式不正确，请输入不含空格的账号。",
-    accountCredentialsInvalid: "账号或密码不正确。",
-    accountApiUnavailable: "登录接口不可用，请确认已部署 Cloudflare Pages Functions。",
-    accountLegacyConnected: "已连接旧 Token",
-    accountProfileFailed: "账号信息读取失败",
-    accountSessionExpired: "登录状态异常，请重新登录账号。",
-    loginRequired: "请先登录账号。",
+    tokenCleared: "已清除本地 Token。",
     editorSearchLabel: "查找",
     modeTxt: "TXT",
     modeMd: "MD",
@@ -560,7 +522,7 @@ const i18n = {
     docImageResize: "Drag to resize image",
     docImageUploading: "Uploading image...",
     docImageUploaded: "Image inserted",
-    docImageTokenRequired: "Sign in before inserting images.",
+    docImageTokenRequired: "Configure the sync token before inserting images.",
     docImageTooLarge: "Image is too large. Limit: {size}.",
     docImageTypeUnsupported: "Only JPG, PNG, WebP, GIF, and AVIF images are supported.",
     docImageCountLimit: "Keep at most {count} images in each DOC note.",
@@ -647,7 +609,7 @@ const i18n = {
     transferClearAll: "Clear all",
     transferTextCopy: "Copy",
     transferTextDelete: "Delete",
-    transferTextNoToken: "Sign in to use text transfer.",
+    transferTextNoToken: "Configure the sync token to use text transfer.",
     transferTextEmpty: "No text messages yet.",
     transferTextLoading: "Loading text messages...",
     transferTextSending: "Sending...",
@@ -666,7 +628,7 @@ const i18n = {
     transferFileMeta: "Files: {count} / {totalSize}; newest replaces oldest.",
     transferDropTitle: "Drop files here, or click upload.",
     transferDropHint: "Paste images or tap + to upload.",
-    transferNoToken: "Sign in to use file transfer.",
+    transferNoToken: "Configure the sync token to use file transfer.",
     transferEmpty: "No files yet.",
     transferLoading: "Loading files...",
     transferUpload: "Upload File",
@@ -703,48 +665,14 @@ const i18n = {
     layoutTwo: "Two Columns",
     layoutOne: "Content Only",
     installPromptUnavailable: "The desktop install prompt is not available in this browser yet.",
-    syncCopy: "Sign in with an account and password to keep notes, transfers, and DOC images in your private cloud space.",
+    syncCopy: "Realtime sync automatically pushes and pulls cloud updates. Your content stays local while the network is unavailable.",
     syncToken: "Sync Token",
-    autoSync: "Sync automatically after login",
+    autoSync: "Realtime sync: push and pull automatically",
     pushCloud: "Upload pending changes",
     pullCloud: "Restore from cloud",
-    clearToken: "Log out",
+    clearToken: "Clear Token",
     syncLocalReady: "Cloud sync is not connected. Local editing still works.",
-    tokenCleared: "Logged out. Local demo notes are now active.",
-    accountLabel: "Email / account",
-    passwordLabel: "Password",
-    nicknameLabel: "Nickname",
-    accountPlaceholder: "Enter email or account",
-    passwordPlaceholder: "At least 6 characters",
-    nicknamePlaceholder: "Shown on the home screen",
-    accountGuest: "Not signed in",
-    accountGuestMeta: "Guest mode uses local demo notes only. Nothing is written to the cloud.",
-    accountChecking: "Checking sign-in",
-    accountCheckingMeta: "Confirming the account before cloud sync starts.",
-    accountLoggedInMeta: "Signed in. Changes sync automatically to this account.",
-    accountLogin: "Sign in",
-    accountRegister: "Register",
-    accountLoggingIn: "Signing in...",
-    accountRegistering: "Registering...",
-    accountSaveNickname: "Save nickname",
-    accountLogout: "Log out",
-    legacyTokenSummary: "Advanced: use legacy token",
-    legacyTokenButton: "Use legacy token",
-    accountRequired: "Enter an email or account.",
-    passwordRequired: "Enter a password.",
-    passwordTooShort: "Password must be at least 6 characters.",
-    accountLoginSuccess: "Signed in",
-    accountRegisterSuccess: "Account created",
-    accountProfileSaved: "Nickname saved",
-    accountLoggedOut: "Logged out",
-    accountAlreadyExists: "That account already exists.",
-    accountInvalid: "Use an account without spaces.",
-    accountCredentialsInvalid: "The account or password is incorrect.",
-    accountApiUnavailable: "The sign-in API is unavailable. Deploy the Cloudflare Pages Functions first.",
-    accountLegacyConnected: "Legacy token connected",
-    accountProfileFailed: "Could not load account details",
-    accountSessionExpired: "Sign-in state changed. Please sign in again.",
-    loginRequired: "Sign in first.",
+    tokenCleared: "Local token cleared.",
     editorSearchLabel: "Find",
     modeTxt: "TXT",
     modeMd: "MD",
@@ -911,64 +839,83 @@ templates.blank = templates.txt;
 
 const defaultNotes = [
   {
-    id: "demo-txt",
-    title: "欢迎使用 Nanstar",
-    mode: "txt",
-    folder: "默认文件夹",
-    body: `这是 Nanstar Note 的本地演示笔记。
+    id: createId(),
+    title: "wk_note 速查",
+    mode: "md",
+    folder: "技术速查",
+    body: `# wk_note 速查
 
-未登录时，你可以自由试用编辑、搜索和文件夹。
-登录账号后，自己的内容才会自动同步到云端。`,
+## 拉取代码
+
+在路径下 cmd 执行该命令：
+
+\`\`\`bash
+git clone --recurse-submodules http://192.168.14.105:10086/technology_r_d_center/project_center/hisilicon/hi3321/project/WK-TG0732-1.git
+\`\`\`
+
+在 \`WK-TG0732-1\` 路径下执行：
+
+\`\`\`bash
+python3 git_auto_pull.py
+python3 wk_build_menu.py
+\`\`\`
+
+## 烧录包路径
+
+本地路径：
+
+\`\`\`txt
+\\WK-TG0732-1\\hisilicon_sdk\\tools\\pkg\\fwpkg\\brandy
+\`\`\`
+
+服务器绝对路径：
+
+\`\`\`txt
+Y:\\20260116\\WK-TG0732-1\\hisilicon_sdk\\tools\\pkg\\fwpkg\\brandy
+Z:\\20260116\\WK-TG0732-1\\hisilicon_sdk\\output\\brandy\\acore\\brandy-ssb-native-js
+Z:\\lyq\\20260508\\WK-TG0732-1\\hisilicon_sdk\\tools\\pkg\\fwpkg\\brandy
+\`\`\`
+
+## 编译报错
+
+1. 清理文件系统：删除目录 \`WK-TG0732-1/hisilicon_sdk/build/config/target_config/brandy/mk_fs_image/fs\`
+2. 清理编译缓存：删除目录 \`WK-TG0732-1/hisilicon_sdk/output\`
+
+## API Key 配置
+
+建议不要把真实 key 放进临时登录的笔记平台。这里只保留配置文件路径：
+
+\`\`\`bash
+vim ~/.codex/config.toml
+vim ~/.codex/auth.json
+\`\`\`
+`,
     pinned: true,
     favorite: true,
-    createdAt: Date.now() - 1000 * 60 * 30,
-    updatedAt: Date.now() - 1000 * 60 * 10
+    createdAt: Date.now() - 1000 * 60 * 60 * 24,
+    updatedAt: Date.now() - 1000 * 60 * 15
   },
   {
-    id: "demo-md",
-    title: "Markdown 快速开始",
-    mode: "md",
-    folder: "默认文件夹",
-    body: `# Markdown 快速开始
+    id: createId(),
+    title: "客户电脑离场检查",
+    mode: "txt",
+    folder: "客户现场",
+    body: `退出时记得
 
-## 让内容更清楚
+[ ] 退出微软账号、OneDrive、微信、钉钉、飞书
+[ ] 删除微信聊天记录、钉钉、OneDrive 挂载目录等临时痕迹
+[ ] 卸载临时软件
+[ ] 资料转移与删除，回收站删除
+[ ] 关闭无痕窗口
 
-- 用标题组织结构
-- 用列表拆分任务
-- 用代码块记录命令
+推荐方式
 
-> 你可以直接修改这篇演示笔记，体验实时预览。
-
-\`\`\`js
-console.log("Hello, Nanstar");
-\`\`\`
+    客户电脑只使用浏览器无痕窗口访问 Nanstar Note，不安装客户端，不同步本地文件夹。
 `,
     pinned: false,
     favorite: false,
-    createdAt: Date.now() - 1000 * 60 * 20,
-    updatedAt: Date.now() - 1000 * 60 * 8
-  },
-  {
-    id: "demo-doc",
-    title: "一篇带格式的文档",
-    mode: "doc",
-    folder: "默认文件夹",
-    body: `<h1>一篇带格式的文档</h1>
-<p><strong>Nanstar Note</strong> 也支持更接近文档的编辑体验。</p>
-<h2>常用样式</h2>
-<p><em>斜体</em>、<u>下划线</u>、<s>删除线</s>、<span style="color:#2663EB">蓝色文字</span> 和 <span style="background-color:#fef3c7">高亮重点</span>。</p>
-<blockquote>把重要内容放在合适的位置，阅读会更轻松。</blockquote>
-<h2>今日清单</h2>
-<p><span class="doc-task-box" data-doc-task="checked" contenteditable="false">☑</span><span class="doc-task-label">完成第一篇笔记</span></p>
-<p><span class="doc-task-box" data-doc-task="unchecked" contenteditable="false">☐</span><span class="doc-task-label">试试工具栏里的格式</span></p>
-<h2>小结</h2>
-<p>TXT、MD 和 DOC 可以按不同场景选择，内容都只属于当前账号。</p>`,
-    pinned: false,
-    favorite: true,
-    editorSectionOpen: true,
-    previewVisible: false,
-    createdAt: Date.now() - 1000 * 60 * 15,
-    updatedAt: Date.now() - 1000 * 60 * 5
+    createdAt: Date.now() - 1000 * 60 * 60 * 8,
+    updatedAt: Date.now() - 1000 * 60 * 60
   }
 ];
 
@@ -981,7 +928,6 @@ const state = {
   query: "",
   viewFilter: localStorage.getItem("nanstar-note-view") || "all",
   language: localStorage.getItem(storageKeys.language) === "en" ? "en" : "zh",
-  accountUser: null,
   previewFocus: false,
   editorSearch: {
     open: false,
@@ -1000,7 +946,6 @@ const state = {
   syncStartupTimer: null,
   syncPollTimer: null,
   transferPollTimer: null,
-  authSessionVersion: 0,
   syncInFlight: false,
   noteRefreshInFlight: false,
   syncQueue: [],
@@ -1129,7 +1074,6 @@ const ANDROID_UPDATE_URL = `${ANDROID_RELEASE_BASE_URL}/update.json`;
 const ANDROID_TAGGED_UPDATE_URL = "https://github.com/ggbondgh/nanstar-note/releases/download/android-latest/update.json";
 const ANDROID_RELEASE_API_URL = "https://api.github.com/repos/ggbondgh/nanstar-note/releases/latest";
 const CLOUD_API_ORIGIN = "https://nanstar-note.pages.dev";
-const ACCOUNT_TOKEN_PREFIX = "ns_";
 let appRuntimeInfoPromise = null;
 let androidUpdateProgressListenerPromise = null;
 let androidInstallPromise = null;
@@ -1223,7 +1167,6 @@ const elements = {
   mobileNotesButton: $("#mobileNotesButton"),
   mobileSidebarBackdrop: $("#mobileSidebarBackdrop"),
   cloudStatus: $("#cloudStatus"),
-  accountName: $("#accountName"),
   sidebarToggleButton: $("#sidebarToggleButton"),
   sidebarQuickNewButton: $("#sidebarQuickNewButton"),
   newNoteButton: $("#newNoteButton"),
@@ -1371,15 +1314,6 @@ const elements = {
   duplicateButton: $("#duplicateButton"),
   importFileInput: $("#importFileInput"),
   syncDialog: $("#syncDialog"),
-  accountStatusName: $("#accountStatusName"),
-  accountStatusMeta: $("#accountStatusMeta"),
-  accountInput: $("#accountInput"),
-  accountPasswordInput: $("#accountPasswordInput"),
-  accountNicknameInput: $("#accountNicknameInput"),
-  loginAccountButton: $("#loginAccountButton"),
-  registerAccountButton: $("#registerAccountButton"),
-  saveProfileButton: $("#saveProfileButton"),
-  legacyTokenButton: $("#legacyTokenButton"),
   syncTokenInput: $("#syncTokenInput"),
   autoSyncToggle: $("#autoSyncToggle"),
   pushCloudButton: $("#pushCloudButton"),
@@ -1394,13 +1328,11 @@ init();
 
 function init() {
   lockStandalonePortrait();
-  state.accountUser = readStoredAuthUser();
-  migrateStoredAuthState();
   state.notes = loadNotes();
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   restoreDirtyNotes();
-  elements.syncTokenInput.value = "";
-  const hasSyncToken = Boolean(localStorage.getItem(storageKeys.syncToken));
+  elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
+  const hasSyncToken = Boolean(elements.syncTokenInput.value.trim());
   localStorage.setItem(storageKeys.autoSync, hasSyncToken ? "1" : "0");
   elements.autoSyncToggle.checked = hasSyncToken;
   elements.autoSyncToggle.disabled = true;
@@ -1423,50 +1355,9 @@ function init() {
   bindEvents();
   ensureActiveNote();
   renderAll();
-  renderAccountUi();
   setSaveStatus("已保存本地");
   startCloudSync();
-  void hydrateAccountProfile();
   hydrateAppUpdatePanel();
-}
-
-function migrateStoredAuthState() {
-  const token = (localStorage.getItem(storageKeys.syncToken) || "").trim();
-  const mode = localStorage.getItem(storageKeys.authMode) || "";
-  const user = state.accountUser;
-  if (!token) {
-    localStorage.removeItem(storageKeys.authMode);
-    if (user) {
-      localStorage.removeItem(storageKeys.authUser);
-      state.accountUser = null;
-    }
-    return;
-  }
-  if (!mode && isAccountSessionToken(token)) {
-    localStorage.setItem(storageKeys.authMode, "account");
-    return;
-  }
-  const accountState = mode === "account" || (user && !user.legacy);
-  const mixedLegacyState = mode === "legacy" && user && !user.legacy;
-  const mixedAccountState = mode === "account" && user?.legacy;
-  if ((!mode && !isAccountSessionToken(token)) || (accountState && !isAccountSessionToken(token)) || mixedLegacyState || mixedAccountState) {
-    resetStaleAuthCacheToGuest();
-  }
-}
-
-function resetStaleAuthCacheToGuest() {
-  state.authSessionVersion += 1;
-  const notes = withSystemNotes(defaultNotes.map(normalizeNote));
-  localStorage.setItem(storageKeys.notes, JSON.stringify({ notes, folders: [INBOX_FOLDER] }));
-  localStorage.setItem(storageKeys.guestSeeded, "1");
-  localStorage.removeItem(storageKeys.syncToken);
-  localStorage.removeItem(storageKeys.authUser);
-  localStorage.removeItem(storageKeys.autoSync);
-  localStorage.removeItem(storageKeys.activeNote);
-  localStorage.removeItem(storageKeys.syncMeta);
-  localStorage.removeItem(storageKeys.lastSyncAt);
-  clearLegacyCrdtSyncState({ clearDocState: true });
-  state.accountUser = null;
 }
 
 function bindEvents() {
@@ -1558,7 +1449,9 @@ function bindEvents() {
   });
   elements.youdaoSyncSettingsButton?.addEventListener("click", () => {
     elements.youdaoClientMenu?.removeAttribute("open");
-    openSyncDialog();
+    elements.syncDialog.showModal();
+    elements.syncTokenInput.focus();
+    elements.syncTokenInput.select();
   });
 
   $$(".quick-chip").forEach((button) => {
@@ -1594,7 +1487,6 @@ function bindEvents() {
   document.addEventListener("click", (event) => {
     if (!event.target.closest("#folderContextMenu")) hideFolderContextMenu();
     if (!event.target.closest("#noteContextMenu")) hideNoteContextMenu();
-    if (!event.target.closest("#transferInfo")) elements.transferInfo?.removeAttribute("open");
     if (!event.target.closest(".topbar-menu")) elements.topbarMenu?.removeAttribute("open");
     if (!event.target.closest("#youdaoClientMenu")) elements.youdaoClientMenu?.removeAttribute("open");
     if (!event.target.closest(".toolbar-menu")) closeToolbarMenus();
@@ -1789,27 +1681,23 @@ function bindEvents() {
   });
 
   if (elements.topSyncButton) {
-    elements.topSyncButton.addEventListener("click", openSyncDialog);
+    elements.topSyncButton.addEventListener("click", () => {
+      elements.syncDialog.showModal();
+      elements.syncTokenInput.focus();
+      elements.syncTokenInput.select();
+    });
   }
 
   elements.saveNoteButton?.addEventListener("click", () => saveCurrentNoteToCloud());
   elements.syncNoteButton?.addEventListener("click", () => syncCurrentNoteFromCloud());
   elements.saveAllButton?.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "save-all" }));
-  elements.pushCloudButton?.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "save-all" }));
-  elements.pullCloudButton?.addEventListener("click", confirmForcePullCloud);
+  elements.pushCloudButton.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "save-all" }));
+  elements.pullCloudButton.addEventListener("click", confirmForcePullCloud);
   elements.syncRefreshButton?.addEventListener("click", () => {
     confirmForcePullCloud();
   });
-  elements.loginAccountButton?.addEventListener("click", () => void submitAccount("login"));
-  elements.registerAccountButton?.addEventListener("click", () => void submitAccount("register"));
-  elements.saveProfileButton?.addEventListener("click", () => void saveAccountProfile());
-  elements.logoutCloudButton?.addEventListener("click", clearSyncToken);
-  elements.legacyTokenButton?.addEventListener("click", connectLegacyToken);
-  elements.syncTokenInput.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    connectLegacyToken();
-  });
+  elements.logoutCloudButton.addEventListener("click", clearSyncToken);
+  elements.syncTokenInput.addEventListener("input", handleSyncTokenInput);
   elements.autoSyncToggle.addEventListener("change", () => {
     localStorage.setItem(storageKeys.autoSync, elements.autoSyncToggle.checked ? "1" : "0");
     renderSyncMeta();
@@ -2068,16 +1956,6 @@ function openMobileSidebar() {
 
 function closeMobileSidebar() {
   setMobileSidebarOpen(false);
-}
-
-function openSyncDialog() {
-  if (!elements.syncDialog) return;
-  renderAccountUi();
-  resetSyncDialogMessage();
-  elements.syncDialog.showModal();
-  const target = state.accountUser ? elements.accountNicknameInput : elements.accountInput;
-  target?.focus();
-  target?.select?.();
 }
 
 function bindNoteInput(input) {
@@ -2507,14 +2385,12 @@ async function fetchTransferMessages(options = {}) {
     renderTransferPanel();
     return;
   }
-  const sessionVersion = state.authSessionVersion;
   state.transferTextLoading = true;
   state.transferTextError = "";
   state.transferTextLastFetchAt = Date.now();
   renderTransferPanel();
   try {
     const payload = await fetchTransferJson("./api/clipboard");
-    if (sessionVersion !== state.authSessionVersion) return;
     state.transferMessages = Array.isArray(payload.messages)
       ? payload.messages.map(normalizeTransferMessage).sort(compareTransferMessages)
       : [];
@@ -2522,11 +2398,9 @@ async function fetchTransferMessages(options = {}) {
     state.transferTextLastFetchAt = Date.now();
     if (options.scrollToBottom) state.transferScrollToBottom = true;
   } catch (error) {
-    if (sessionVersion !== state.authSessionVersion) return;
     state.transferTextError = transferTextErrorText(error);
     if (options.manual) showToast(state.transferTextError);
   } finally {
-    if (sessionVersion !== state.authSessionVersion) return;
     state.transferTextLoading = false;
     renderTransferPanel();
   }
@@ -2705,24 +2579,20 @@ async function fetchTransferFiles(options = {}) {
     renderTransferPanel();
     return;
   }
-  const sessionVersion = state.authSessionVersion;
   state.transferLoading = true;
   state.transferError = "";
   state.transferLastFetchAt = Date.now();
   renderTransferPanel();
   try {
     const payload = await fetchTransferJson("./api/files");
-    if (sessionVersion !== state.authSessionVersion) return;
     state.transferFiles = Array.isArray(payload.files) ? payload.files.map(normalizeTransferFile) : [];
     state.transferLimits = payload.limits || state.transferLimits;
     state.transferLastFetchAt = Date.now();
     if (options.scrollToBottom) state.transferScrollToBottom = true;
   } catch (error) {
-    if (sessionVersion !== state.authSessionVersion) return;
     state.transferError = transferErrorText(error);
     if (options.manual) showToast(state.transferError);
   } finally {
-    if (sessionVersion !== state.authSessionVersion) return;
     state.transferLoading = false;
     renderTransferPanel();
   }
@@ -3357,11 +3227,6 @@ async function openExternalUrl(url) {
 
 function loadNotes() {
   try {
-    if (!localStorage.getItem(storageKeys.syncToken) && !localStorage.getItem(storageKeys.guestSeeded)) {
-      preserveLegacyLocalNotes();
-      localStorage.setItem(storageKeys.guestSeeded, "1");
-      return withSystemNotes(defaultNotes.map(normalizeNote));
-    }
     const raw = localStorage.getItem(storageKeys.notes);
     if (!raw) return withSystemNotes(defaultNotes.map(normalizeNote));
     const parsed = JSON.parse(raw);
@@ -3387,12 +3252,6 @@ function loadNotes() {
   } catch {
     return withSystemNotes(defaultNotes.map(normalizeNote));
   }
-}
-
-function preserveLegacyLocalNotes() {
-  const raw = localStorage.getItem(storageKeys.notes);
-  if (!raw || localStorage.getItem(storageKeys.legacyLocalNotes)) return;
-  localStorage.setItem(storageKeys.legacyLocalNotes, raw);
 }
 
 function normalizeNote(note) {
@@ -3869,7 +3728,6 @@ function clearLegacyCrdtSyncState(options = {}) {
   state.crdtPendingUpdates = [];
   localStorage.removeItem(storageKeys.crdtPendingUpdates);
   localStorage.removeItem(storageKeys.crdtUpdateId);
-  if (options.clearDocState) localStorage.removeItem(storageKeys.crdtDocState);
   if (options.clearOrphanPending && !dirtyNoteIds().length && readSyncMeta().pending) {
     writeSyncMeta({ pending: false, dirtyNoteIds: [], lastError: "" });
   }
@@ -6109,7 +5967,7 @@ async function saveNoteToCloud(noteId) {
   const token = getSyncToken();
   const note = state.notes.find((item) => item.id === noteId && !isDeletedNote(item));
   if (!token) {
-    showSyncMessage(t("loginRequired"));
+    showSyncMessage("请先填写同步 Token。");
     showToast(t("syncStatusOffline"));
     renderSyncMeta();
     return false;
@@ -6201,7 +6059,7 @@ async function syncCurrentNoteFromCloud() {
   const token = getSyncToken();
   const noteId = state.activeId;
   if (!token) {
-    showSyncMessage(t("loginRequired"));
+    showSyncMessage("请先填写同步 Token。");
     showToast(t("syncStatusOffline"));
     renderSyncMeta();
     return false;
@@ -6505,7 +6363,7 @@ async function syncCrdtCloud(options = {}) {
   const pullOnly = Boolean(options.pullOnly) || forcePull;
 
   if (!token) {
-    if (manual) showSyncMessage(t("loginRequired"));
+    if (manual) showSyncMessage("请先填写同步 Token。");
     renderSyncMeta();
     return false;
   }
@@ -6728,7 +6586,7 @@ async function syncCloud(options = {}) {
   const pullOnly = (Boolean(options.pullOnly) || forcePull) && !forcePush;
 
   if (!token) {
-    if (manual) showSyncMessage(t("loginRequired"));
+    if (manual) showSyncMessage("请先填写同步 Token。");
     renderSyncMeta();
     return false;
   }
@@ -6874,285 +6732,23 @@ async function syncCloud(options = {}) {
   }
 }
 
-function readStoredAuthUser() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(storageKeys.authUser) || "null");
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredAuthUser(user) {
-  state.accountUser = user && typeof user === "object" ? user : null;
-  if (state.accountUser) localStorage.setItem(storageKeys.authUser, JSON.stringify(state.accountUser));
-  else localStorage.removeItem(storageKeys.authUser);
-}
-
-function renderAccountUi() {
-  const token = getSyncToken();
-  const user = state.accountUser;
-  const guest = !token;
-  const displayName = guest
-    ? t("accountGuest")
-    : user?.nickname || (user?.legacy ? t("accountLegacyConnected") : t("accountChecking"));
-  if (elements.accountName) elements.accountName.textContent = displayName;
-  if (elements.accountStatusName) elements.accountStatusName.textContent = displayName;
-  if (elements.accountStatusMeta) {
-    elements.accountStatusMeta.textContent = guest
-      ? t("accountGuestMeta")
-      : !user
-        ? t("accountCheckingMeta")
-        : user.legacy
-          ? t("accountLegacyConnected")
-          : t("accountLoggedInMeta");
-  }
-  if (elements.accountInput && document.activeElement !== elements.accountInput) {
-    elements.accountInput.value = user && !user.legacy ? String(user.email || "") : "";
-  }
-  if (elements.accountNicknameInput && document.activeElement !== elements.accountNicknameInput) {
-    elements.accountNicknameInput.value = user && !user.legacy ? String(user.nickname || "") : "";
-  }
-  if (elements.loginAccountButton) elements.loginAccountButton.disabled = Boolean(user && !user.legacy);
-  if (elements.registerAccountButton) elements.registerAccountButton.disabled = Boolean(user && !user.legacy);
-  if (elements.saveProfileButton) elements.saveProfileButton.disabled = !user || Boolean(user.legacy);
-  if (elements.logoutCloudButton) elements.logoutCloudButton.disabled = guest;
-}
-
-async function authApiRequest(method, payload = null, token = getSyncToken()) {
-  const headers = payload ? { "content-type": "application/json" } : {};
-  if (token) headers.authorization = `Bearer ${token}`;
-  const response = await fetchWithTimeout(apiUrl("/api/auth"), {
-    method,
-    cache: "no-store",
-    headers,
-    body: payload ? JSON.stringify(payload) : undefined
-  });
-  const contentType = response.headers.get("content-type") || "";
-  const jsonResponse = contentType.includes("application/json");
-  let data = null;
-  if (jsonResponse) {
-    try {
-      data = await response.json();
-    } catch {
-      throw new Error("Invalid auth response");
-    }
-  }
-  if (!response.ok) throw new Error(data?.error || "Auth API unavailable");
-  if (!jsonResponse) throw new Error("Auth API unavailable");
-  return data;
-}
-
-function authErrorText(error) {
-  const raw = String(error?.message || error || "");
-  let text = raw;
-  try {
-    text = JSON.parse(raw).error || raw;
-  } catch {}
-  if (text.includes("Account already exists")) return t("accountAlreadyExists");
-  if (text.includes("Invalid account")) return t("accountInvalid");
-  if (text.includes("Invalid credentials") || text.includes("Unauthorized")) return t("accountCredentialsInvalid");
-  if (text.includes("Legacy token profile cannot be edited")) return t("accountSessionExpired");
-  if (text.includes("Password is too short")) return t("passwordTooShort");
-  if (
-    isHtmlErrorText(text)
-    || text.includes("Auth API unavailable")
-    || text.includes("Invalid auth response")
-    || text.includes("Unexpected token")
-    || text.includes("Failed to fetch")
-    || text.includes("Not found")
-    || text.includes("Missing D1")
-  ) {
-    return t("accountApiUnavailable");
-  }
-  return text.slice(0, 160) || t("accountApiUnavailable");
-}
-
-async function submitAccount(action) {
-  const account = String(elements.accountInput?.value || "").trim().toLowerCase();
-  const password = String(elements.accountPasswordInput?.value || "");
-  const nickname = String(elements.accountNicknameInput?.value || "").trim();
-  if (!account) {
-    showSyncMessage(t("accountRequired"));
-    elements.accountInput?.focus();
-    return;
-  }
-  if (!/^\S{3,160}$/.test(account)) {
-    showSyncMessage(t("accountInvalid"));
-    elements.accountInput?.focus();
-    return;
-  }
-  if (!password) {
-    showSyncMessage(t("passwordRequired"));
-    elements.accountPasswordInput?.focus();
-    return;
-  }
-  if (password.length < 6) {
-    showSyncMessage(t("passwordTooShort"));
-    elements.accountPasswordInput?.focus();
-    return;
-  }
-
-  showSyncMessage(action === "register" ? t("accountRegistering") : t("accountLoggingIn"));
-  elements.loginAccountButton && (elements.loginAccountButton.disabled = true);
-  elements.registerAccountButton && (elements.registerAccountButton.disabled = true);
-  try {
-    const result = await authApiRequest("POST", { action, email: account, password, nickname }, "");
-    await activateCloudSession(result.token, result.user);
-    elements.accountPasswordInput.value = "";
-    elements.syncDialog?.close();
-    const message = action === "register" ? t("accountRegisterSuccess") : t("accountLoginSuccess");
-    showSyncMessage(message);
-    showToast(message);
-  } catch (error) {
-    const message = authErrorText(error);
-    showSyncMessage(message);
-    showToast(message);
-    renderAccountUi();
-  }
-}
-
-async function saveAccountProfile() {
-  if (!state.accountUser || state.accountUser.legacy) return;
-  if (!getSyncToken()) {
-    clearStoredCloudSession();
-    resetLocalNotebookToGuest();
-    showSyncMessage(t("accountSessionExpired"));
-    showToast(t("accountSessionExpired"));
-    renderSyncMeta();
-    return;
-  }
-  const nickname = String(elements.accountNicknameInput?.value || "").replace(/\s+/g, " ").trim();
-  if (!nickname) {
-    elements.accountNicknameInput?.focus();
-    return;
-  }
-  if (elements.saveProfileButton) elements.saveProfileButton.disabled = true;
-  try {
-    const result = await authApiRequest("PUT", { nickname });
-    writeStoredAuthUser(result.user);
-    renderAccountUi();
-    renderAll();
-    showSyncMessage(t("accountProfileSaved"));
-    showToast(t("accountProfileSaved"));
-  } catch (error) {
-    const message = authErrorText(error);
-    if (String(error?.message || error || "").includes("Legacy token profile cannot be edited")) {
-      clearStoredCloudSession();
-      resetLocalNotebookToGuest();
-      renderSyncMeta();
-    }
-    showSyncMessage(message);
-    showToast(message);
-    renderAccountUi();
-  }
-}
-
-async function hydrateAccountProfile() {
-  const token = getSyncToken();
-  const sessionVersion = state.authSessionVersion;
-  if (!token) {
-    renderAccountUi();
-    return;
-  }
-  try {
-    const result = await authApiRequest("GET", null, token);
-    if (sessionVersion !== state.authSessionVersion || getSyncToken() !== token) return;
-    if (result.legacy && (localStorage.getItem(storageKeys.authMode) === "account" || (state.accountUser && !state.accountUser.legacy))) {
-      clearStoredCloudSession();
-      resetLocalNotebookToGuest();
-      renderSyncMeta();
-      return;
-    }
-    writeStoredAuthUser(result.legacy ? { ...result.user, legacy: true } : result.user);
-    localStorage.setItem(storageKeys.authMode, result.legacy ? "legacy" : "account");
-    renderAccountUi();
-    renderSyncMeta();
-  } catch (error) {
-    if (sessionVersion !== state.authSessionVersion || getSyncToken() !== token) return;
-    const text = String(error?.message || error || "");
-    if (text.includes("Unauthorized") && !state.accountUser?.legacy) {
-      clearStoredCloudSession();
-      resetLocalNotebookToGuest();
-      renderSyncMeta();
-    }
-  }
-}
-
-async function activateCloudSession(token, user) {
-  if (!token || !user) throw new Error("Invalid auth response");
-  state.authSessionVersion += 1;
-  const previousUserId = state.accountUser?.id || "";
-  writeStoredAuthUser(user);
-  elements.syncTokenInput.value = "";
-  localStorage.setItem(storageKeys.authMode, "account");
-  localStorage.setItem(storageKeys.syncToken, String(token));
-  localStorage.setItem(storageKeys.autoSync, "1");
-  elements.autoSyncToggle.checked = true;
-  if (previousUserId !== user.id) resetLocalNotebookForAccount();
-  refreshSyncAccessUi();
-  startCloudSync({ immediate: true });
-}
-
-function resetLocalNotebookForAccount() {
-  state.notes = withSystemNotes([]);
-  state.activeId = TRANSFER_NOTE_ID;
-  state.selectedFolder = "";
-  state.selectedNoteIds.clear();
-  state.dirtyNoteIds.clear();
-  clearLegacyCrdtSyncState({ clearDocState: true });
-  localStorage.removeItem(storageKeys.activeNote);
-  localStorage.removeItem(storageKeys.syncMeta);
-  localStorage.removeItem(storageKeys.lastSyncAt);
-  initCrdtFromState({ clearPending: true });
-  saveNotes();
-}
-
-function resetLocalNotebookToGuest() {
-  localStorage.setItem(storageKeys.guestSeeded, "1");
-  state.notes = withSystemNotes(defaultNotes.map(normalizeNote));
-  state.activeId = defaultNotes[0]?.id || null;
-  state.selectedFolder = "";
-  state.selectedNoteIds.clear();
-  state.dirtyNoteIds.clear();
-  clearLegacyCrdtSyncState({ clearDocState: true });
-  localStorage.removeItem(storageKeys.activeNote);
-  localStorage.removeItem(storageKeys.syncMeta);
-  localStorage.removeItem(storageKeys.lastSyncAt);
-  initCrdtFromState({ clearPending: true });
-  saveNotes();
-  renderAll();
-}
-
 function clearSyncToken() {
   clearTimeout(state.syncTokenTimer);
   state.syncTokenTimer = null;
   stopTransferPolling();
-  const token = getSyncToken();
-  if (token) void authApiRequest("DELETE", null, token).catch(() => {});
-  clearStoredCloudSession();
-  resetLocalNotebookToGuest();
-  applyFolderSectionVisibility();
-  renderFolderDatalist();
-  renderExportFolderSelect();
-  renderLists();
-  renderAccountUi();
-  renderSyncMeta();
-  showSyncMessage(t("tokenCleared"));
-}
-
-function clearStoredCloudSession() {
-  state.authSessionVersion += 1;
   elements.syncTokenInput.value = "";
   stopCloudSync();
-  resetTransferState();
   localStorage.removeItem(storageKeys.syncToken);
-  localStorage.removeItem(storageKeys.authMode);
-  writeStoredAuthUser(null);
   localStorage.removeItem(storageKeys.syncMeta);
   localStorage.removeItem(storageKeys.lastSyncAt);
   localStorage.setItem(storageKeys.autoSync, "0");
   elements.autoSyncToggle.checked = false;
+  applyFolderSectionVisibility();
+  renderFolderDatalist();
+  renderExportFolderSelect();
+  renderLists();
+  renderSyncMeta();
+  showSyncMessage(t("tokenCleared"));
 }
 
 function refreshSyncAccessUi() {
@@ -7163,7 +6759,6 @@ function refreshSyncAccessUi() {
   renderLists();
   renderTransferPanel();
   renderSyncMeta();
-  renderAccountUi();
 }
 
 function applyFolderSectionVisibility() {
@@ -7176,59 +6771,45 @@ function applyFolderSectionVisibility() {
   state.selectedFolder = enabled ? canonicalSelectedFolder(state.selectedFolder) : "";
 }
 
-function connectLegacyToken() {
+function handleSyncTokenInput() {
   clearTimeout(state.syncTokenTimer);
   const token = elements.syncTokenInput.value.trim();
 
   if (!token) {
-    showSyncMessage(t("accountRequired"));
+    localStorage.removeItem(storageKeys.syncToken);
+    localStorage.setItem(storageKeys.autoSync, "0");
+    elements.autoSyncToggle.checked = false;
+    stopCloudSync();
+    refreshSyncAccessUi();
+    showSyncMessage(t("syncLocalReady"));
     return;
   }
 
   stopCloudSync();
-  state.authSessionVersion += 1;
   localStorage.setItem(storageKeys.syncToken, token);
-  localStorage.setItem(storageKeys.authMode, "legacy");
   localStorage.setItem(storageKeys.autoSync, "1");
   elements.autoSyncToggle.checked = true;
-  writeStoredAuthUser({ id: "legacy", email: "legacy-token", nickname: t("accountLegacyConnected"), legacy: true });
   refreshSyncAccessUi();
   startCloudSync({ immediate: true });
-  showSyncMessage(t("accountLegacyConnected"));
+
+  state.syncTokenTimer = window.setTimeout(async () => {
+    state.syncTokenTimer = null;
+    if (!getSyncToken()) return;
+    showSyncMessage(t("cloudReady"));
+    renderSyncMeta();
+  }, 900);
 }
 
 function getSyncToken() {
-  const token = (localStorage.getItem(storageKeys.syncToken) || "").trim();
-  if (!token) return "";
-  const accountState = localStorage.getItem(storageKeys.authMode) === "account" || (state.accountUser && !state.accountUser.legacy);
-  if (accountState && !isAccountSessionToken(token)) return "";
-  return token;
-}
-
-function isAccountSessionToken(token) {
-  return String(token || "").startsWith(ACCOUNT_TOKEN_PREFIX);
+  return (elements.syncTokenInput.value || localStorage.getItem(storageKeys.syncToken) || "").trim();
 }
 
 function showSyncMessage(message) {
-  elements.syncMessage.textContent = isHtmlErrorText(message) ? t("accountApiUnavailable") : String(message || "");
-}
-
-function resetSyncDialogMessage() {
-  if (!elements.syncMessage) return;
-  if (!getSyncToken()) {
-    showSyncMessage(t("syncLocalReady"));
-    return;
-  }
-  if (!state.accountUser) {
-    showSyncMessage(t("accountCheckingMeta"));
-    return;
-  }
-  showSyncMessage(state.accountUser.legacy ? t("accountLegacyConnected") : t("accountLoggedInMeta"));
+  elements.syncMessage.textContent = message;
 }
 
 function cloudErrorText(error) {
   const text = String(error?.message || error || "未知错误");
-  if (isHtmlErrorText(text) || text.includes("Unexpected token")) return "接口返回了网页错误页，请刷新后重试。";
   if (error?.name === "AbortError" || text.includes("aborted")) return t("syncTimeout");
   if (text.includes("Failed to fetch")) return "接口不可用。Cloudflare Pages Functions 配好后才能使用。";
   if (text.includes("Missing D1")) return "Cloudflare D1 还没有绑定 NANSTAR_NOTES_DB。";
@@ -7236,10 +6817,6 @@ function cloudErrorText(error) {
   if (text.includes("Unauthorized")) return "Token 不正确。";
   if (text.includes("Not found")) return "本地静态预览没有 /api/notes，部署到 Cloudflare 后可同步。";
   return text.slice(0, 160);
-}
-
-function isHtmlErrorText(value) {
-  return /<!doctype html|<html[\s>]|<\/html>/i.test(String(value || ""));
 }
 
 function persistAndRender(message, options = {}) {
@@ -7556,30 +7133,6 @@ function applyLanguage(language, initial = false) {
   if (syncTokenLabel) syncTokenLabel.textContent = t("syncToken");
   const autoSyncLabel = document.getElementById("autoSyncLabel");
   if (autoSyncLabel) autoSyncLabel.textContent = t("autoSync");
-  const accountLabel = document.getElementById("accountLabel");
-  if (accountLabel) accountLabel.textContent = t("accountLabel");
-  const passwordLabel = document.getElementById("passwordLabel");
-  if (passwordLabel) passwordLabel.textContent = t("passwordLabel");
-  const nicknameLabel = document.getElementById("nicknameLabel");
-  if (nicknameLabel) nicknameLabel.textContent = t("nicknameLabel");
-  if (elements.accountInput) {
-    elements.accountInput.placeholder = t("accountPlaceholder");
-    elements.accountInput.setAttribute("aria-label", t("accountLabel"));
-  }
-  if (elements.accountPasswordInput) {
-    elements.accountPasswordInput.placeholder = t("passwordPlaceholder");
-    elements.accountPasswordInput.setAttribute("aria-label", t("passwordLabel"));
-  }
-  if (elements.accountNicknameInput) {
-    elements.accountNicknameInput.placeholder = t("nicknamePlaceholder");
-    elements.accountNicknameInput.setAttribute("aria-label", t("nicknameLabel"));
-  }
-  if (elements.loginAccountButton) elements.loginAccountButton.textContent = t("accountLogin");
-  if (elements.registerAccountButton) elements.registerAccountButton.textContent = t("accountRegister");
-  if (elements.saveProfileButton) elements.saveProfileButton.textContent = t("accountSaveNickname");
-  const legacyTokenSummary = document.getElementById("legacyTokenSummary");
-  if (legacyTokenSummary) legacyTokenSummary.textContent = t("legacyTokenSummary");
-  if (elements.legacyTokenButton) elements.legacyTokenButton.textContent = t("legacyTokenButton");
   const androidAppDialogTitle = document.getElementById("androidAppDialogTitle");
   if (androidAppDialogTitle) androidAppDialogTitle.textContent = t("androidAppTitle");
   const androidAppDialogCopy = document.getElementById("androidAppDialogCopy");
@@ -7590,7 +7143,6 @@ function applyLanguage(language, initial = false) {
   if (checkAppUpdateButton) checkAppUpdateButton.textContent = t("androidCheckUpdate");
   hydrateAppUpdatePanel();
   if (elements.syncMessage && !getSyncToken()) elements.syncMessage.textContent = t("syncLocalReady");
-  renderAccountUi();
   renderFolderDatalist();
   renderLists();
   renderSystemNoteTitles();

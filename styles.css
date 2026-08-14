@@ -185,7 +185,6 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .brand h1, .brand p, .topbar h2, .pane-head h3, .modal-head h2, .note-item h3, .utility-grid span, .note-meta { margin: 0; }
 .brand h1 { font-size: 16px; line-height: 1.1; }
 .brand p { margin-top: 4px; color: var(--muted); font-size: 12px; }
-.brand .account-name { margin-top: 4px; max-width: 150px; overflow: hidden; color: var(--soft); font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 #cloudStatus { display: none !important; }
 
 [hidden] { display: none !important; }
@@ -1369,17 +1368,6 @@ body.preview-focus-mode .preview-content {
 .field, .toggle-field { display: grid; gap: 7px; color: var(--soft); font-weight: 650; }
 .field input { height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; font-weight: 400; }
 .field input:focus { border-color: rgba(38, 99, 235,0.42); box-shadow: 0 0 0 3px rgba(38, 99, 235,0.1); }
-.account-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.account-nickname-field { grid-column: 1 / -1; }
-.account-status { display: grid; gap: 3px; padding: 11px 12px; border: 1px solid #dbe3ef; border-radius: var(--radius); background: #f7f9fc; }
-.account-status strong { overflow: hidden; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
-.account-status span { color: var(--muted); font-size: 12px; line-height: 1.45; }
-.account-actions { flex-wrap: wrap; }
-.account-actions button { min-width: 0; }
-.legacy-token-panel { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
-.legacy-token-panel > summary { color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 650; }
-.legacy-token-panel .field { margin-top: 2px; }
-.legacy-token-panel > .ghost-button { justify-self: start; }
 .toggle-field { grid-template-columns: auto minmax(0, 1fr); align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: #fbfcfe; }
 .toggle-field input { width: 16px; height: 16px; }
 .sync-grid button { flex: 1; }
@@ -1492,8 +1480,6 @@ body.preview-focus-mode .preview-content {
   .brand h1 { font-size: 14px; }
   .title-input { font-size: 18px; }
   .topbar-actions, .sync-grid { grid-template-columns: 1fr; }
-  .account-fields { grid-template-columns: 1fr; }
-  .account-nickname-field { grid-column: auto; }
   .toolbar { padding: 6px 10px; overflow-x: auto; flex-wrap: nowrap; }
   .toolbar button { min-width: 32px; padding: 0 8px; font-size: 12px; }
   .toolbar-separator { margin: 4px 0; }
