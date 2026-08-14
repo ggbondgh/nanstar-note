@@ -1005,7 +1005,7 @@ const SYNC_POLL_INTERVAL = 3000;
 const SYNC_PUSH_DELAY = 500;
 const SYNC_REQUEST_TIMEOUT = 12000;
 const CRDT_STATE_VERSION = "2";
-const CRDT_SYNC_REPAIR_VERSION = "remote-merge-1";
+const CRDT_SYNC_REPAIR_VERSION = "preserve-pending-2";
 const NOTE_SYNC_ENGINE = "crdt";
 const DOC_DEFAULT_TEXT_COLOR = "#111827";
 const DOC_DEFAULT_HIGHLIGHT_COLOR = "#fef3c7";
@@ -3936,14 +3936,18 @@ function applyCrdtToState({ render = true } = {}) {
 
 function resetCrdtFromUpdates(updates) {
   if (!window.Y) return;
+  const pending = [...state.crdtPendingUpdates];
   createCrdtDoc();
   state.crdtSeedIsDefault = false;
   state.crdtApplying = true;
-  updates.forEach((item) => {
-    const update = typeof item === "string" ? item : item?.update;
-    if (update) window.Y.applyUpdate(state.crdtDoc, base64ToBytes(update), "remote");
-  });
-  state.crdtApplying = false;
+  try {
+    [...updates, ...pending].forEach((item) => {
+      const update = typeof item === "string" ? item : item?.update;
+      if (update) window.Y.applyUpdate(state.crdtDoc, base64ToBytes(update), "remote");
+    });
+  } finally {
+    state.crdtApplying = false;
+  }
   applyCrdtToState();
 }
 
@@ -4105,14 +4109,21 @@ function renderEditor() {
   }
   if (note.mode !== "md") state.previewFocus = false;
 
-  elements.titleInput.value = note.title;
+  if (elements.titleInput.value !== note.title) elements.titleInput.value = note.title;
   if (elements.folderInput) {
-    elements.folderInput.value = folderManagementEnabled() ? canonicalFolderName(note.folder) : INBOX_FOLDER;
+    const folderValue = folderManagementEnabled() ? canonicalFolderName(note.folder) : INBOX_FOLDER;
+    if (elements.folderInput.value !== folderValue) elements.folderInput.value = folderValue;
     elements.folderInput.disabled = !folderManagementEnabled();
   }
-  elements.bodyInput.value = note.mode === "doc" ? docHtmlToText(note.body) : note.body;
-  if (elements.docInput) elements.docInput.innerHTML = note.mode === "doc" ? sanitizeDocHtml(note.body || "<p></p>") : "";
-  resetDocHistory(note);
+  const bodyValue = note.mode === "doc" ? docHtmlToText(note.body) : note.body;
+  if (elements.bodyInput.value !== bodyValue) elements.bodyInput.value = bodyValue;
+  if (elements.docInput) {
+    const docHtml = note.mode === "doc" ? sanitizeDocHtml(note.body || "<p></p>") : "";
+    const docChanged = elements.docInput.innerHTML !== docHtml;
+    if (docChanged) elements.docInput.innerHTML = docHtml;
+    const docHistoryNoteId = note.mode === "doc" ? note.id : null;
+    if (docChanged || state.docHistory.noteId !== docHistoryNoteId) resetDocHistory(note);
+  }
 
   if (elements.pinButton) {
     elements.pinButton.classList.toggle("active", note.pinned);
@@ -6426,17 +6437,32 @@ async function syncCrdtCloud(options = {}) {
     const remotePayload = await fetchAllCrdtState(token, since);
     const updates = Array.isArray(remotePayload.updates) ? remotePayload.updates : [];
     const latestId = Number(remotePayload.latestId) || 0;
-    const localHasChanges = dirtyNoteIds().length > 0 || Boolean(state.saveTimer || state.savePendingNoteId);
+    if (state.noteInputComposing) {
+      queueSyncRequest(options);
+      return false;
+    }
+    if (state.saveTimer || state.savePendingNoteId) {
+      if (!prepareCurrentNoteForSync({ noteId: state.activeId })) {
+        queueSyncRequest(options);
+        return false;
+      }
+    }
+    const localHasChanges = dirtyNoteIds().length > 0
+      || state.crdtPendingUpdates.length > 0
+      || Boolean(state.saveTimer || state.savePendingNoteId);
 
     if (updates.length) {
       if ((forcePull || since === 0) && !localHasChanges) {
         resetCrdtFromUpdates(updates);
       } else {
         state.crdtApplying = true;
-        updates.forEach((item) => {
-          if (item?.update) window.Y.applyUpdate(state.crdtDoc, base64ToBytes(item.update), "remote");
-        });
-        state.crdtApplying = false;
+        try {
+          updates.forEach((item) => {
+            if (item?.update) window.Y.applyUpdate(state.crdtDoc, base64ToBytes(item.update), "remote");
+          });
+        } finally {
+          state.crdtApplying = false;
+        }
         applyCrdtToState();
       }
       state.crdtSeedIsDefault = false;
@@ -6464,17 +6490,25 @@ async function syncCrdtCloud(options = {}) {
       if (result?.skipped) {
         const nextPayload = await fetchAllCrdtState(token, 0);
         const nextUpdates = Array.isArray(nextPayload.updates) ? nextPayload.updates : [];
+        if (state.noteInputComposing) {
+          queueSyncRequest(options);
+          return false;
+        }
+        if (state.saveTimer || state.savePendingNoteId) prepareCurrentNoteForSync({ noteId: state.activeId });
+        const currentPending = state.crdtPendingUpdates;
+        const sentPrefixMatches = pending.every((update, index) => currentPending[index] === update);
+        state.crdtPendingUpdates = sentPrefixMatches ? currentPending.slice(pending.length) : [];
+        writeCrdtPendingUpdates();
         if (nextUpdates.length) {
           resetCrdtFromUpdates(nextUpdates);
           localStorage.setItem(storageKeys.crdtUpdateId, String(Number(nextPayload.latestId) || Number(result.latestId) || 0));
-          state.crdtPendingUpdates = [];
-          writeCrdtPendingUpdates();
           clearSyncPending(Date.now(), {
             lastPullAt: Date.now(),
             lastCheckedAt: Date.now(),
             lastSuccessAt: Date.now(),
             connectionState: "online"
           });
+          if (state.crdtPendingUpdates.length) scheduleAutoSync();
           pulled = true;
           return true;
         }
@@ -6495,15 +6529,6 @@ async function syncCrdtCloud(options = {}) {
         lastSuccessAt: Date.now(),
         connectionState: "online"
       }, dirtySnapshot);
-      try {
-        const canonicalPayload = await fetchAllCrdtState(token, 0);
-        const canonicalUpdates = Array.isArray(canonicalPayload.updates) ? canonicalPayload.updates : [];
-        if (canonicalUpdates.length) {
-          resetCrdtFromUpdates(canonicalUpdates);
-          localStorage.setItem(storageKeys.crdtUpdateId, String(Number(canonicalPayload.latestId) || postedLatestId));
-          pulled = true;
-        }
-      } catch {}
       pushed = true;
     } else if (forcePull || pulled) {
       clearSyncPending(Date.now(), {
