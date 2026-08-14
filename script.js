@@ -1005,7 +1005,7 @@ const SYNC_POLL_INTERVAL = 1200;
 const SYNC_PUSH_DELAY = 350;
 const SYNC_REQUEST_TIMEOUT = 12000;
 const CRDT_STATE_VERSION = "2";
-const CRDT_SYNC_REPAIR_VERSION = "cursor-after-push-3";
+const CRDT_SYNC_REPAIR_VERSION = "legacy-scope-4";
 const NOTE_SYNC_ENGINE = "crdt";
 const DOC_DEFAULT_TEXT_COLOR = "#111827";
 const DOC_DEFAULT_HIGHLIGHT_COLOR = "#fef3c7";
@@ -3571,8 +3571,8 @@ function looksLikeMarkdown(body) {
     || /(^|\n)\|.+\|/.test(body);
 }
 
-function saveNotes() {
-  writeStateToCrdt();
+function saveNotes(options = {}) {
+  writeStateToCrdt(options);
   localStorage.setItem(storageKeys.notes, JSON.stringify({
     notes: state.notes,
     folders: storedFolders()
@@ -3618,8 +3618,8 @@ function flushPendingSave(noteId = state.activeId) {
   if (state.saveTimer) {
     clearTimeout(state.saveTimer);
     state.saveTimer = null;
-    saveNotes();
     markNoteDirty(pendingNoteId);
+    saveNotes();
     markSyncPending(pendingNoteId);
     state.savePendingNoteId = null;
     setSaveStatus(getSyncToken() ? t("syncPending") : t("savedLocal"));
@@ -3733,6 +3733,7 @@ function clearLegacyCrdtSyncState(options = {}) {
   state.crdtPendingUpdates = [];
   localStorage.removeItem(storageKeys.crdtPendingUpdates);
   localStorage.removeItem(storageKeys.crdtUpdateId);
+  if (options.clearDocState) localStorage.removeItem(storageKeys.crdtDocState);
   if (options.clearOrphanPending && !dirtyNoteIds().length && readSyncMeta().pending) {
     writeSyncMeta({ pending: false, dirtyNoteIds: [], lastError: "" });
   }
@@ -3749,6 +3750,31 @@ function prepareCrdtStorage() {
 
 function repairCrdtSyncCursorOnce() {
   if (localStorage.getItem(storageKeys.crdtSyncRepair) === CRDT_SYNC_REPAIR_VERSION) return;
+  let retiredAccountState = localStorage.getItem("nanstar-note-auth-mode") === "account";
+  try {
+    const user = JSON.parse(localStorage.getItem("nanstar-note-auth-user") || "null");
+    retiredAccountState = retiredAccountState || Boolean(user && !user.legacy);
+  } catch {}
+  if (retiredAccountState) {
+    state.notes = withSystemNotes(defaultNotes.map(normalizeNote));
+    state.activeId = defaultNotes[0]?.id || null;
+    state.localStateSource = "default";
+    state.dirtyNoteIds.clear();
+    clearLegacyCrdtSyncState({ clearDocState: true });
+    localStorage.setItem(storageKeys.notes, JSON.stringify({
+      notes: state.notes,
+      folders: storedFolders()
+    }));
+    localStorage.removeItem(storageKeys.activeNote);
+    localStorage.removeItem(storageKeys.syncMeta);
+    localStorage.removeItem(storageKeys.lastSyncAt);
+    if (String(localStorage.getItem(storageKeys.syncToken) || "").startsWith("ns_")) {
+      localStorage.removeItem(storageKeys.syncToken);
+      if (elements.syncTokenInput) elements.syncTokenInput.value = "";
+    }
+    localStorage.removeItem("nanstar-note-auth-mode");
+    localStorage.removeItem("nanstar-note-auth-user");
+  }
   localStorage.removeItem(storageKeys.crdtUpdateId);
   localStorage.setItem(storageKeys.crdtSyncRepair, CRDT_SYNC_REPAIR_VERSION);
 }
@@ -3849,10 +3875,14 @@ function syncYText(yText, nextValue) {
 
 function writeStateToCrdt(options = {}) {
   if (!crdtAvailable() || (state.crdtApplying && !options.force)) return;
-  const noteIds = new Set(state.notes.filter((note) => !isFolderRegistry(note)).map((note) => note.id));
+  const syncAll = Boolean(options.force || options.all);
+  const targetIds = syncAll
+    ? null
+    : new Set(Array.isArray(options.noteIds) ? options.noteIds : dirtyNoteIds());
+  const shouldSyncFolders = syncAll || targetIds.has(FOLDER_REGISTRY_NOTE_ID);
   state.crdtDoc.transact(() => {
     state.notes.forEach((note) => {
-      if (isFolderRegistry(note)) return;
+      if (isFolderRegistry(note) || (!syncAll && !targetIds.has(note.id))) return;
       const normalized = normalizeNote(note);
       const noteMap = getCrdtNoteMap(normalized.id, true);
       if (!noteMap) return;
@@ -3867,15 +3897,20 @@ function writeStateToCrdt(options = {}) {
       syncYText(body, normalized.body);
     });
 
-    Array.from(state.crdtNotes.keys()).forEach((id) => {
-      if (!noteIds.has(id)) state.crdtNotes.delete(id);
-    });
+    if (syncAll) {
+      const noteIds = new Set(state.notes.filter((note) => !isFolderRegistry(note)).map((note) => note.id));
+      Array.from(state.crdtNotes.keys()).forEach((id) => {
+        if (!noteIds.has(id)) state.crdtNotes.delete(id);
+      });
+    }
 
-    const folders = new Set(storedFolders().map(canonicalFolderName));
-    folders.forEach((folder) => state.crdtFolders.set(folder, true));
-    Array.from(state.crdtFolders.keys()).forEach((folder) => {
-      if (!folders.has(canonicalFolderName(folder))) state.crdtFolders.delete(folder);
-    });
+    if (shouldSyncFolders) {
+      const folders = new Set(storedFolders().map(canonicalFolderName));
+      folders.forEach((folder) => state.crdtFolders.set(folder, true));
+      Array.from(state.crdtFolders.keys()).forEach((folder) => {
+        if (!folders.has(canonicalFolderName(folder))) state.crdtFolders.delete(folder);
+      });
+    }
   }, options.origin || "local");
 }
 
@@ -4382,6 +4417,7 @@ function createFolder() {
     return;
   }
   const registry = setStoredFolders([...storedFolders(), name]);
+  markNoteDirty(registry.id);
   saveNotes();
   markSyncPending(registry.id);
   state.selectedFolder = name;
@@ -4414,6 +4450,8 @@ function renameFolder(oldName) {
   });
   const registry = setStoredFolders(storedFolders().filter((name) => canonicalFolderName(name) !== oldName).concat(newName));
   if (state.selectedFolder === oldName) state.selectedFolder = newName;
+  markNoteDirty(registry.id);
+  changedIds.forEach((id) => markNoteDirty(id));
   saveNotes();
   markSyncPending(registry.id);
   changedIds.forEach((id) => markSyncPending(id));
@@ -4444,6 +4482,8 @@ function deleteFolder(name) {
   });
   const registry = setStoredFolders(storedFolders().filter((folder) => canonicalFolderName(folder) !== name));
   if (state.selectedFolder === name) state.selectedFolder = "";
+  markNoteDirty(registry.id);
+  changedIds.forEach((id) => markNoteDirty(id));
   saveNotes();
   markSyncPending(registry.id);
   changedIds.forEach((id) => markSyncPending(id));
@@ -5245,6 +5285,7 @@ function deleteSelectedNotes() {
   state.selectionMode = false;
   state.selectedNoteIds.clear();
   ensureActiveNote();
+  ids.forEach((id) => markNoteDirty(id));
   saveNotes();
   ids.forEach((id) => markSyncPending(id));
   renderAll();
@@ -5485,6 +5526,7 @@ function togglePreview() {
   note.previewVisible = note.previewVisible !== true;
   state.previewFocus = false;
   note.updatedAt = Date.now();
+  markNoteDirty(note.id);
   saveNotes();
   markSyncPending(note.id);
   renderModeState();
@@ -5497,6 +5539,7 @@ function togglePreviewFocus() {
   state.previewFocus = !state.previewFocus;
   if (state.previewFocus) note.previewVisible = true;
   note.updatedAt = Date.now();
+  markNoteDirty(note.id);
   saveNotes();
   markSyncPending(note.id);
   renderModeState();
@@ -5510,6 +5553,7 @@ function handleEditorSectionToggle() {
   if (note.editorSectionOpen === nextOpen) return;
   note.editorSectionOpen = nextOpen;
   note.updatedAt = Date.now();
+  markNoteDirty(note.id);
   saveNotes();
   markSyncPending(note.id);
   renderModeState();
@@ -5863,9 +5907,11 @@ function mergeNotes(incoming, options = {}) {
   const before = notesSignature();
   const incomingNotes = incoming.map(normalizeNote);
   const map = new Map(state.notes.map((note) => [note.id, normalizeNote(note)]));
+  const changedIds = new Set();
   incomingNotes.forEach((note) => {
     const existing = map.get(note.id);
     if (!existing || noteVersion(note) >= noteVersion(existing)) {
+      if (!existing || notesSignature([existing]) !== notesSignature([note])) changedIds.add(note.id);
       map.set(note.id, note);
     }
   });
@@ -5874,6 +5920,10 @@ function mergeNotes(incoming, options = {}) {
   if (!activeNote()) state.activeId = firstVisibleNote()?.id || null;
   ensureActiveNote();
   const changed = before !== notesSignature();
+  if (options.scheduleSync !== false) {
+    changedIds.forEach((id) => markNoteDirty(id));
+    if (Array.isArray(options.folders)) markNoteDirty(FOLDER_REGISTRY_NOTE_ID);
+  }
   saveNotes();
   renderAll();
   setSaveStatus("已保存本地");
@@ -5930,6 +5980,7 @@ function decodeSharedNote() {
     note.updatedAt = Date.now();
     state.notes.unshift(note);
     state.activeId = note.id;
+    markNoteDirty(note.id);
     saveNotes();
     history.replaceState(null, "", location.pathname);
     showToast("已导入分享笔记");
@@ -6848,6 +6899,7 @@ function cloudErrorText(error) {
 
 function persistAndRender(message, options = {}) {
   const dirtyId = options.dirtyNoteId || state.activeId;
+  markNoteDirty(dirtyId);
   saveNotes();
   renderAll();
   if (elements.saveStatus) elements.saveStatus.textContent = getSyncToken() ? t("syncPending") : t("savedLocal");
