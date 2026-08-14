@@ -8693,10 +8693,10 @@ body.is-dragging-split * {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "title title"
-      "mode actions";
+      "title mode"
+      "actions actions";
     min-height: 0 !important;
-    padding: 8px 10px 10px !important;
+    padding: 8px 10px !important;
     align-items: center !important;
     gap: 8px 10px;
   }
@@ -8705,7 +8705,7 @@ body.is-dragging-split * {
     grid-area: title;
     width: 100%;
     height: auto;
-    min-height: 38px;
+    min-height: 36px;
     gap: 8px;
   }
 
@@ -8724,7 +8724,7 @@ body.is-dragging-split * {
 
   .note-mode-switch {
     grid-area: mode;
-    justify-self: start;
+    justify-self: end;
     margin-left: 0 !important;
   }
 
