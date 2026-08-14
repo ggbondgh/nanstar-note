@@ -1001,11 +1001,11 @@ const YOUDAO_RAIL_WIDTH_MIN = 168;
 const YOUDAO_RAIL_WIDTH_MAX = 286;
 const YOUDAO_LIST_WIDTH_MIN = 260;
 const YOUDAO_LIST_WIDTH_MAX = 480;
-const SYNC_POLL_INTERVAL = 3000;
-const SYNC_PUSH_DELAY = 500;
+const SYNC_POLL_INTERVAL = 1200;
+const SYNC_PUSH_DELAY = 350;
 const SYNC_REQUEST_TIMEOUT = 12000;
 const CRDT_STATE_VERSION = "2";
-const CRDT_SYNC_REPAIR_VERSION = "preserve-pending-2";
+const CRDT_SYNC_REPAIR_VERSION = "cursor-after-push-3";
 const NOTE_SYNC_ENGINE = "crdt";
 const DOC_DEFAULT_TEXT_COLOR = "#111827";
 const DOC_DEFAULT_HIGHLIGHT_COLOR = "#fef3c7";
@@ -1708,9 +1708,7 @@ function bindEvents() {
     writeSyncMeta({ connectionState: "checking", lastError: "" });
     renderSyncMeta();
     startCloudSync({ immediate: true });
-    if (isTransferAssistant(activeNote())) {
-      void refreshTransferPanel({ silent: true });
-    }
+    refreshRealtimeData("online");
   });
   window.addEventListener("offline", () => {
     writeSyncMeta({ connectionState: "offline" });
@@ -1718,21 +1716,20 @@ function bindEvents() {
     stopCloudSync();
   });
   window.addEventListener("focus", () => {
-    if (document.visibilityState !== "hidden") {
-      syncCloudInBackground({ silent: true, pullOnly: true, reason: "focus" });
-      if (isTransferAssistant(activeNote())) {
-        void refreshTransferPanel({ silent: true });
-      }
-    }
+    refreshRealtimeData("focus");
   });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-      syncCloudInBackground({ silent: true, pullOnly: true, reason: "visible" });
-      if (isTransferAssistant(activeNote())) {
-        void refreshTransferPanel({ silent: true });
-      }
+      refreshRealtimeData("visible");
     }
   });
+  try {
+    const appPlugin = window.Capacitor?.Plugins?.App;
+    appPlugin?.addListener?.("appStateChange", ({ isActive }) => {
+      if (isActive) refreshRealtimeData("app-active");
+    })?.catch?.(() => {});
+    appPlugin?.addListener?.("resume", () => refreshRealtimeData("app-resume"))?.catch?.(() => {});
+  } catch {}
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
@@ -1973,6 +1970,14 @@ function bindNoteInput(input) {
     window.setTimeout(() => updateActiveFromInputs({ force: true }), 0);
   });
   input.addEventListener("input", handleNoteInput);
+}
+
+function refreshRealtimeData(reason = "foreground") {
+  if (document.visibilityState === "hidden") return;
+  syncCloudInBackground({ silent: true, pullOnly: true, reason });
+  if (isTransferAssistant(activeNote())) {
+    void refreshTransferPanel({ silent: true });
+  }
 }
 
 function handleNoteInput(event) {
@@ -6518,10 +6523,6 @@ async function syncCrdtCloud(options = {}) {
       state.crdtPendingUpdates = sentPrefixMatches
         ? currentPending.slice(pending.length)
         : [fullCrdtUpdateBase64()];
-      const postedLatestId = Number(result.latestId) || 0;
-      if (postedLatestId > Number(localStorage.getItem(storageKeys.crdtUpdateId) || 0)) {
-        localStorage.setItem(storageKeys.crdtUpdateId, String(postedLatestId));
-      }
       writeCrdtPendingUpdates();
       clearSyncPending(Number(result.updatedAt) || Date.now(), {
         lastPushAt: Date.now(),
@@ -6529,6 +6530,7 @@ async function syncCrdtCloud(options = {}) {
         lastSuccessAt: Date.now(),
         connectionState: "online"
       }, dirtySnapshot);
+      queueSyncRequest({ silent: true, pullOnly: true, reason: "post-push-pull" });
       pushed = true;
     } else if (forcePull || pulled) {
       clearSyncPending(Date.now(), {
