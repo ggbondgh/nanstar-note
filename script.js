@@ -241,6 +241,9 @@ const i18n = {
     saveNote: "保存",
     saveNoteShortcut: "保存 Ctrl+S",
     syncNote: "同步",
+    pushNoteNow: "立即上传",
+    pullNoteLatest: "拉取最新",
+    pullNoteLatestConfirm: "本地还有未上传的修改，拉取最新会覆盖这些修改。确定继续吗？",
     saveAll: "上传待同步内容",
     syncAll: "从云端恢复",
     noteSavedToCloud: "当前笔记已保存到云端 {time}",
@@ -581,6 +584,9 @@ const i18n = {
     saveNote: "Save",
     saveNoteShortcut: "Save Ctrl+S",
     syncNote: "Sync",
+    pushNoteNow: "Upload now",
+    pullNoteLatest: "Pull latest",
+    pullNoteLatestConfirm: "There are unsynced local changes. Pulling the latest version will overwrite them. Continue?",
     saveAll: "Upload pending changes",
     syncAll: "Restore from cloud",
     noteSavedToCloud: "Current note saved to cloud {time}",
@@ -1230,6 +1236,8 @@ const elements = {
   activeNoteSyncDot: $("#activeNoteSyncDot"),
   saveNoteButton: $("#saveNoteButton"),
   syncNoteButton: $("#syncNoteButton"),
+  pushNoteButton: $("#pushNoteButton"),
+  pullNoteButton: $("#pullNoteButton"),
   folderInput: $("#folderInput"),
   editorFindBar: $("#editorFindBar"),
   editorSearchInput: $("#editorSearchInput"),
@@ -1691,6 +1699,8 @@ function bindEvents() {
 
   elements.saveNoteButton?.addEventListener("click", () => saveCurrentNoteToCloud());
   elements.syncNoteButton?.addEventListener("click", () => syncCurrentNoteFromCloud());
+  elements.pushNoteButton?.addEventListener("click", () => pushCurrentNoteNow());
+  elements.pullNoteButton?.addEventListener("click", () => pullCurrentNoteLatest());
   elements.saveAllButton?.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "save-all" }));
   elements.pushCloudButton.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "save-all" }));
   elements.pullCloudButton.addEventListener("click", confirmForcePullCloud);
@@ -3954,9 +3964,9 @@ function snapshotFromCrdtUpdates(updates) {
   }
 }
 
-function applyCrdtToState({ render = true } = {}) {
+function applyCrdtToState({ render = true, preserveLockedActiveNote = true } = {}) {
   if (!crdtAvailable()) return;
-  const lockedNote = captureLockedActiveNote();
+  const lockedNote = preserveLockedActiveNote ? captureLockedActiveNote() : null;
   const snapshot = readStateFromCrdt();
   state.crdtApplying = true;
   state.notes = snapshot.notes.sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
@@ -3973,7 +3983,7 @@ function applyCrdtToState({ render = true } = {}) {
   if (render) renderAll();
 }
 
-function resetCrdtFromUpdates(updates) {
+function resetCrdtFromUpdates(updates, options = {}) {
   if (!window.Y) return;
   createCrdtDoc();
   state.crdtSeedIsDefault = false;
@@ -3983,7 +3993,51 @@ function resetCrdtFromUpdates(updates) {
     if (update) window.Y.applyUpdate(state.crdtDoc, base64ToBytes(update), "remote");
   });
   state.crdtApplying = false;
-  applyCrdtToState();
+  applyCrdtToState({
+    preserveLockedActiveNote: options.preserveLockedActiveNote !== false
+  });
+}
+
+function replaceCrdtFromRemoteForNote(updates, noteId) {
+  if (!window.Y || !noteId) return;
+  const localNotes = state.notes.map(normalizeNote);
+  const dirtyIds = new Set(dirtyNoteIds().filter((id) => id && id !== noteId));
+  const remoteDoc = new window.Y.Doc();
+  const remoteUpdates = Array.isArray(updates) ? updates : [];
+
+  try {
+    remoteUpdates.forEach((item) => {
+      if (item?.update) window.Y.applyUpdate(remoteDoc, base64ToBytes(item.update), "remote-replace");
+    });
+    const remoteSnapshot = readStateFromCrdtDoc(remoteDoc);
+    const localMap = new Map(localNotes.map((note) => [note.id, note]));
+    const mergedNotes = remoteSnapshot.notes.map(normalizeNote);
+
+    dirtyIds.forEach((dirtyId) => {
+      const localNote = localMap.get(dirtyId);
+      if (!localNote) return;
+      const index = mergedNotes.findIndex((note) => note.id === dirtyId);
+      if (index >= 0) mergedNotes[index] = localNote;
+      else mergedNotes.push(localNote);
+    });
+
+    state.crdtApplying = true;
+    createCrdtDoc();
+    state.notes = mergedNotes.sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
+    setStoredFolders(
+      dirtyIds.has(FOLDER_REGISTRY_NOTE_ID)
+        ? storedFolders()
+        : remoteSnapshot.folders
+    );
+    writeStateToCrdt({ force: true, origin: "remote-replace" });
+    state.crdtApplying = false;
+    state.dirtyNoteIds = dirtyIds;
+    state.crdtPendingUpdates = dirtyIds.size ? [fullCrdtUpdateBase64()] : [];
+    writeCrdtPendingUpdates();
+    applyCrdtToState({ preserveLockedActiveNote: false });
+  } finally {
+    remoteDoc.destroy?.();
+  }
 }
 
 function mergeCloudNotesSafely(incomingNotes) {
@@ -4134,7 +4188,7 @@ function renderEditor() {
   const transferMode = isTransferAssistant(note);
   elements.editorCard.classList.toggle("transfer-mode", transferMode);
   if (elements.transferPanel) elements.transferPanel.hidden = !transferMode;
-  if (elements.noteCloudActions) elements.noteCloudActions.hidden = !showManualNoteCloudActions(note);
+  renderNoteCloudActions(note);
   if (transferMode) {
     state.previewFocus = false;
     document.body.classList.remove("preview-focus-mode");
@@ -5166,6 +5220,36 @@ function showManualNoteCloudActions(note = activeNote()) {
   return Boolean(note && !isTransferAssistant(note) && !isFolderRegistry(note) && showPerNoteSyncIndicators());
 }
 
+function showAutomaticNoteCloudActions(note = activeNote()) {
+  return Boolean(
+    note
+      && !isTransferAssistant(note)
+      && !isFolderRegistry(note)
+      && NOTE_SYNC_ENGINE === "crdt"
+      && getSyncToken()
+      && elements.autoSyncToggle?.checked
+  );
+}
+
+function renderNoteCloudActions(note = activeNote()) {
+  const manualVisible = showManualNoteCloudActions(note);
+  const automaticVisible = showAutomaticNoteCloudActions(note);
+  if (elements.noteCloudActions) elements.noteCloudActions.hidden = !manualVisible && !automaticVisible;
+
+  [elements.saveNoteButton, elements.syncNoteButton].forEach((button) => {
+    if (button) button.hidden = !manualVisible;
+  });
+  [elements.pushNoteButton, elements.pullNoteButton].forEach((button) => {
+    if (button) button.hidden = !automaticVisible;
+  });
+
+  const disabled = state.syncInFlight || (!manualVisible && !automaticVisible);
+  if (elements.saveNoteButton) elements.saveNoteButton.disabled = disabled;
+  if (elements.syncNoteButton) elements.syncNoteButton.disabled = disabled;
+  if (elements.pushNoteButton) elements.pushNoteButton.disabled = disabled;
+  if (elements.pullNoteButton) elements.pullNoteButton.disabled = disabled;
+}
+
 function updateNoteListSyncIndicators(syncMeta = readSyncMeta()) {
   if (!elements.noteList) return;
   if (!showPerNoteSyncIndicators()) {
@@ -5392,11 +5476,7 @@ function renderActiveNoteCloudStatus(syncMeta = readSyncMeta()) {
       elements.activeNoteSyncDot.setAttribute("aria-label", status.label);
     }
   }
-  const manualNoteActionsVisible = showManualNoteCloudActions(note);
-  if (elements.noteCloudActions) elements.noteCloudActions.hidden = !manualNoteActionsVisible;
-  const disabled = !manualNoteActionsVisible || state.syncInFlight;
-  if (elements.saveNoteButton) elements.saveNoteButton.disabled = disabled;
-  if (elements.syncNoteButton) elements.syncNoteButton.disabled = disabled;
+  renderNoteCloudActions(note);
   if (elements.saveAllButton) elements.saveAllButton.disabled = state.syncInFlight;
   if (elements.syncRefreshButton) elements.syncRefreshButton.disabled = false;
 }
@@ -6008,6 +6088,48 @@ async function saveCurrentNoteToCloud() {
   return saveNoteToCloud(noteId);
 }
 
+function currentNoteHasUnsyncedChanges(note = activeNote()) {
+  if (!note) return false;
+  if (state.savePendingNoteId === note.id || isDirtyNoteId(note.id)) return true;
+
+  const meta = readSyncMeta();
+  const knownSignature = meta.cloudNoteSignatures?.[note.id] || "";
+  if (knownSignature) return notesSignature([note]) !== knownSignature;
+  return NOTE_SYNC_ENGINE === "crdt" && state.crdtPendingUpdates.length > 0;
+}
+
+async function pushCurrentNoteNow() {
+  return saveCurrentNoteToCloud();
+}
+
+async function pullCurrentNoteLatest() {
+  const note = activeNote();
+  if (!note || isTransferAssistant(note) || isFolderRegistry(note)) return false;
+  if (!getSyncToken()) {
+    showSyncMessage("请先填写同步 Token。");
+    showToast(t("syncStatusOffline"));
+    renderSyncMeta();
+    return false;
+  }
+  if (state.syncInFlight) {
+    showToast(t("syncBusy"));
+    return false;
+  }
+  if (currentNoteHasUnsyncedChanges(note) && !window.confirm(t("pullNoteLatestConfirm"))) return false;
+
+  if (NOTE_SYNC_ENGINE === "crdt") {
+    return syncCloud({
+      manual: true,
+      pullOnly: true,
+      forcePull: true,
+      allowActiveNoteReplace: true,
+      noteId: note.id,
+      reason: "pull-note"
+    });
+  }
+  return syncCurrentNoteFromCloud();
+}
+
 async function saveNoteToCloud(noteId) {
   const token = getSyncToken();
   const note = state.notes.find((item) => item.id === noteId && !isDeletedNote(item));
@@ -6410,6 +6532,7 @@ async function syncCrdtCloud(options = {}) {
   const manual = Boolean(options.manual);
   const silent = Boolean(options.silent);
   const forcePull = Boolean(options.forcePull);
+  const allowActiveNoteReplace = Boolean(options.allowActiveNoteReplace);
   const pullOnly = Boolean(options.pullOnly) || forcePull;
 
   if (!token) {
@@ -6476,18 +6599,30 @@ async function syncCrdtCloud(options = {}) {
     const remotePayload = await fetchAllCrdtState(token, since);
     const updates = Array.isArray(remotePayload.updates) ? remotePayload.updates : [];
     const latestId = Number(remotePayload.latestId) || 0;
-    const localHasChanges = dirtyNoteIds().length > 0 || Boolean(state.saveTimer || state.savePendingNoteId);
+    const localHasChanges = dirtyNoteIds().length > 0
+      || state.crdtPendingUpdates.length > 0
+      || Boolean(state.saveTimer || state.savePendingNoteId);
 
-    if (updates.length) {
+    if (updates.length && allowActiveNoteReplace && localHasChanges && options.noteId) {
+      replaceCrdtFromRemoteForNote(updates, options.noteId);
+      state.crdtSeedIsDefault = false;
+      const lastRemoteId = Number(updates[updates.length - 1]?.id) || latestId;
+      if (lastRemoteId > since) localStorage.setItem(storageKeys.crdtUpdateId, String(lastRemoteId));
+      pulled = true;
+    } else if (updates.length) {
       if ((forcePull || since === 0) && !localHasChanges) {
-        resetCrdtFromUpdates(updates);
+        resetCrdtFromUpdates(updates, {
+          preserveLockedActiveNote: !allowActiveNoteReplace
+        });
       } else {
         state.crdtApplying = true;
         updates.forEach((item) => {
           if (item?.update) window.Y.applyUpdate(state.crdtDoc, base64ToBytes(item.update), "remote");
         });
         state.crdtApplying = false;
-        applyCrdtToState();
+        applyCrdtToState({
+          preserveLockedActiveNote: !allowActiveNoteReplace
+        });
       }
       state.crdtSeedIsDefault = false;
       const lastRemoteId = Number(updates[updates.length - 1]?.id) || latestId;
@@ -7030,6 +7165,18 @@ function applyLanguage(language, initial = false) {
   }
   updateTitleSaveStatusFromNote();
   if (elements.syncNoteButton) elements.syncNoteButton.textContent = t("syncNote");
+  if (elements.pushNoteButton) {
+    const label = elements.pushNoteButton.querySelector("span:last-child");
+    if (label) label.textContent = t("pushNoteNow");
+    elements.pushNoteButton.title = t("pushNoteNow");
+    elements.pushNoteButton.setAttribute("aria-label", t("pushNoteNow"));
+  }
+  if (elements.pullNoteButton) {
+    const label = elements.pullNoteButton.querySelector("span:last-child");
+    if (label) label.textContent = t("pullNoteLatest");
+    elements.pullNoteButton.title = t("pullNoteLatest");
+    elements.pullNoteButton.setAttribute("aria-label", t("pullNoteLatest"));
+  }
   const topbarMenuButton = document.querySelector(".topbar-menu-button");
   if (topbarMenuButton) {
     topbarMenuButton.title = t("moreActions");
