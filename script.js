@@ -3581,6 +3581,24 @@ function shouldForceCrdtPull() {
   return !hasDirtyNotes() && !state.noteInputComposing && !state.saveTimer && !state.savePendingNoteId;
 }
 
+function isActiveNoteEditLocked(note = activeNote()) {
+  if (!note || note.id !== state.activeId) return false;
+  if (state.noteInputComposing || state.saveTimer || state.savePendingNoteId) return true;
+  const focused = document.activeElement;
+  return focused === elements.titleInput
+    || focused === elements.bodyInput
+    || focused === elements.folderInput
+    || focused === elements.docInput
+    || docSelectionInsideEditor();
+}
+
+function captureLockedActiveNote() {
+  const note = activeNote();
+  if (!isActiveNoteEditLocked(note)) return null;
+  const { note: updated } = applyActiveInputsToNote({ touchUpdatedAt: false });
+  return normalizeNote(updated || note);
+}
+
 function saveNotes() {
   writeStateToCrdt();
   localStorage.setItem(storageKeys.notes, JSON.stringify({
@@ -3938,14 +3956,20 @@ function snapshotFromCrdtUpdates(updates) {
 
 function applyCrdtToState({ render = true } = {}) {
   if (!crdtAvailable()) return;
+  const lockedNote = captureLockedActiveNote();
   const snapshot = readStateFromCrdt();
   state.crdtApplying = true;
   state.notes = snapshot.notes.sort((a, b) => Number(b.pinned) - Number(a.pinned) || noteVersion(b) - noteVersion(a));
+  if (lockedNote) {
+    const index = state.notes.findIndex((note) => note.id === lockedNote.id);
+    if (index >= 0) state.notes[index] = lockedNote;
+    else state.notes.unshift(lockedNote);
+  }
   setStoredFolders(snapshot.folders);
   ensureActiveNote();
+  state.crdtApplying = false;
   saveNotes();
   writeCrdtDocState();
-  state.crdtApplying = false;
   if (render) renderAll();
 }
 
@@ -4106,6 +4130,7 @@ function renderEditor() {
   const note = activeNote();
   clearDocImageSelection();
   if (!note) return;
+  const editLocked = isActiveNoteEditLocked(note);
   const transferMode = isTransferAssistant(note);
   elements.editorCard.classList.toggle("transfer-mode", transferMode);
   if (elements.transferPanel) elements.transferPanel.hidden = !transferMode;
@@ -4120,14 +4145,16 @@ function renderEditor() {
   }
   if (note.mode !== "md") state.previewFocus = false;
 
-  elements.titleInput.value = note.title;
-  if (elements.folderInput) {
-    elements.folderInput.value = folderManagementEnabled() ? canonicalFolderName(note.folder) : INBOX_FOLDER;
-    elements.folderInput.disabled = !folderManagementEnabled();
+  if (!editLocked) {
+    elements.titleInput.value = note.title;
+    if (elements.folderInput) {
+      elements.folderInput.value = folderManagementEnabled() ? canonicalFolderName(note.folder) : INBOX_FOLDER;
+      elements.folderInput.disabled = !folderManagementEnabled();
+    }
+    elements.bodyInput.value = note.mode === "doc" ? docHtmlToText(note.body) : note.body;
+    if (elements.docInput) elements.docInput.innerHTML = note.mode === "doc" ? sanitizeDocHtml(note.body || "<p></p>") : "";
+    resetDocHistory(note);
   }
-  elements.bodyInput.value = note.mode === "doc" ? docHtmlToText(note.body) : note.body;
-  if (elements.docInput) elements.docInput.innerHTML = note.mode === "doc" ? sanitizeDocHtml(note.body || "<p></p>") : "";
-  resetDocHistory(note);
 
   if (elements.pinButton) {
     elements.pinButton.classList.toggle("active", note.pinned);
@@ -5263,6 +5290,9 @@ function switchToNote(nextId, { keepMobileSidebar = false } = {}) {
   state.activeId = nextId;
   saveNotes();
   renderAll();
+  if (getSyncToken() && !hasDirtyNotes()) {
+    syncCloudInBackground({ silent: true, pullOnly: true, forcePull: true, noteId: nextId, reason: "switch-note" });
+  }
   if (!keepMobileSidebar) closeMobileSidebar();
   if (!isMobileLayout()) elements.bodyInput.focus();
 }
