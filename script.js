@@ -1001,8 +1001,9 @@ const YOUDAO_RAIL_WIDTH_MIN = 168;
 const YOUDAO_RAIL_WIDTH_MAX = 286;
 const YOUDAO_LIST_WIDTH_MIN = 260;
 const YOUDAO_LIST_WIDTH_MAX = 480;
-const SYNC_POLL_INTERVAL = 3000;
-const SYNC_PUSH_DELAY = 500;
+const CLOUD_SYNC_POLL_INTERVAL = 1000;
+const TRANSFER_POLL_INTERVAL = 3000;
+const SYNC_PUSH_DELAY = 250;
 const SYNC_REQUEST_TIMEOUT = 12000;
 const CRDT_STATE_VERSION = "2";
 const CRDT_SYNC_REPAIR_VERSION = "remote-merge-1";
@@ -1719,7 +1720,12 @@ function bindEvents() {
   });
   window.addEventListener("focus", () => {
     if (document.visibilityState !== "hidden") {
-      syncCloudInBackground({ silent: true, pullOnly: true, reason: "focus" });
+      syncCloudInBackground({
+        silent: true,
+        pullOnly: true,
+        forcePull: shouldForceCrdtPull(),
+        reason: "focus"
+      });
       if (isTransferAssistant(activeNote())) {
         void refreshTransferPanel({ silent: true });
       }
@@ -1727,7 +1733,12 @@ function bindEvents() {
   });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-      syncCloudInBackground({ silent: true, pullOnly: true, reason: "visible" });
+      syncCloudInBackground({
+        silent: true,
+        pullOnly: true,
+        forcePull: shouldForceCrdtPull(),
+        reason: "visible"
+      });
       if (isTransferAssistant(activeNote())) {
         void refreshTransferPanel({ silent: true });
       }
@@ -2261,7 +2272,7 @@ function startTransferPolling() {
       return;
     }
     void refreshTransferPanel({ silent: true });
-  }, SYNC_POLL_INTERVAL);
+  }, TRANSFER_POLL_INTERVAL);
 }
 
 function stopTransferPolling() {
@@ -3564,6 +3575,10 @@ function looksLikeMarkdown(body) {
     || /(^|\n)\s*[-*]\s+\[[ xX]\]\s+/.test(body)
     || /(^|\n)```/.test(body)
     || /(^|\n)\|.+\|/.test(body);
+}
+
+function shouldForceCrdtPull() {
+  return !hasDirtyNotes() && !state.noteInputComposing && !state.saveTimer && !state.savePendingNoteId;
 }
 
 function saveNotes() {
@@ -6175,12 +6190,17 @@ function startCloudSync(options = {}) {
   }
   state.syncStartupTimer = window.setTimeout(() => {
     state.syncStartupTimer = null;
-    syncCloudInBackground({ silent: true, reason: "startup" });
+    syncCloudInBackground({
+      silent: true,
+      pullOnly: true,
+      forcePull: shouldForceCrdtPull(),
+      reason: "startup"
+    });
   }, options.immediate ? 0 : 120);
   state.syncPollTimer = window.setInterval(() => {
     if (document.visibilityState === "hidden" || navigator.onLine === false) return;
     syncCloudInBackground({ silent: true, pullOnly: true, reason: "poll" });
-  }, SYNC_POLL_INTERVAL);
+  }, CLOUD_SYNC_POLL_INTERVAL);
   renderSyncMeta();
 }
 
