@@ -5243,11 +5243,18 @@ function renderNoteCloudActions(note = activeNote()) {
     if (button) button.hidden = !automaticVisible;
   });
 
-  const disabled = state.syncInFlight || (!manualVisible && !automaticVisible);
-  if (elements.saveNoteButton) elements.saveNoteButton.disabled = disabled;
-  if (elements.syncNoteButton) elements.syncNoteButton.disabled = disabled;
-  if (elements.pushNoteButton) elements.pushNoteButton.disabled = disabled;
-  if (elements.pullNoteButton) elements.pullNoteButton.disabled = disabled;
+  const manualDisabled = state.syncInFlight || !manualVisible;
+  const automaticDisabled = !automaticVisible;
+  if (elements.saveNoteButton) elements.saveNoteButton.disabled = manualDisabled;
+  if (elements.syncNoteButton) elements.syncNoteButton.disabled = manualDisabled;
+  if (elements.pushNoteButton) {
+    elements.pushNoteButton.disabled = automaticDisabled;
+    elements.pushNoteButton.setAttribute("aria-busy", String(automaticVisible && state.syncInFlight && state.syncAction === "pushing"));
+  }
+  if (elements.pullNoteButton) {
+    elements.pullNoteButton.disabled = automaticDisabled;
+    elements.pullNoteButton.setAttribute("aria-busy", String(automaticVisible && state.syncInFlight && state.syncAction === "pulling"));
+  }
 }
 
 function updateNoteListSyncIndicators(syncMeta = readSyncMeta()) {
@@ -6109,10 +6116,6 @@ async function pullCurrentNoteLatest() {
     showSyncMessage("请先填写同步 Token。");
     showToast(t("syncStatusOffline"));
     renderSyncMeta();
-    return false;
-  }
-  if (state.syncInFlight) {
-    showToast(t("syncBusy"));
     return false;
   }
   if (currentNoteHasUnsyncedChanges(note) && !window.confirm(t("pullNoteLatestConfirm"))) return false;
