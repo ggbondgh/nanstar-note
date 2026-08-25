@@ -1365,6 +1365,9 @@ function init() {
   renderAll();
   setSaveStatus("已保存本地");
   hydrateAppUpdatePanel();
+  if (getSyncToken()) {
+    syncCloudInBackground({ silent: true, pullOnly: true, forcePull: true, reason: "page-load" });
+  }
 }
 
 function bindEvents() {
@@ -6838,7 +6841,7 @@ async function syncCloud(options = {}) {
 
     const now = Date.now();
     clearSyncPending(remoteUpdatedAt, {
-      ...cloudSnapshotMetaPatch(cloudSnapshotNotes(remotePayload), cloudSnapshotFolders(remotePayload)),
+      ...cloudSnapshotMetaPatch(syncableNotes(), storedFolders()),
       lastPullAt: pulled ? now : readSyncMeta().lastPullAt || 0,
       lastCheckedAt: now
     });
@@ -6847,7 +6850,7 @@ async function syncCloud(options = {}) {
     if (forcePull) {
       const message = t("syncRefreshedAt").replace("{time}", formatTime(now));
       showSyncMessage(message);
-      showToast(message);
+      if (!silent) showToast(message);
     } else if (pulled) {
       const message = t("syncPulledAt").replace("{time}", formatTime(now));
       showSyncMessage(message);
