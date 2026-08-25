@@ -6167,6 +6167,7 @@ async function saveNoteToCloud(noteId) {
       pending: dirtyNoteIds().length > 0,
       dirtyNoteIds: dirtyNoteIds(),
       lastError: "",
+      connectionState: "online",
       remoteUpdatedAt,
       lastSyncedAt: now,
       lastPushAt: now,
@@ -6244,6 +6245,7 @@ async function syncCurrentNoteFromCloud() {
       pending: dirtyNoteIds().length > 0,
       dirtyNoteIds: dirtyNoteIds(),
       lastError: "",
+      connectionState: "online",
       remoteUpdatedAt: Number(remotePayload.updatedAt) || now,
       lastSyncedAt: now,
       lastPullAt: now,
@@ -6303,6 +6305,7 @@ function clearSyncPending(remoteUpdatedAt = Date.now(), patch = {}, syncedSnapsh
     pending: state.dirtyNoteIds.size > 0 || (NOTE_SYNC_ENGINE === "crdt" && state.crdtPendingUpdates.length > 0),
     dirtyNoteIds: dirtyNoteIds(),
     lastError: "",
+    connectionState: "online",
     remoteUpdatedAt: Number(remoteUpdatedAt) || now,
     lastSyncedAt: now,
     ...patch
