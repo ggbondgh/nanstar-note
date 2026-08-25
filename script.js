@@ -1366,7 +1366,7 @@ function init() {
   setSaveStatus("已保存本地");
   hydrateAppUpdatePanel();
   if (getSyncToken()) {
-    syncCloudInBackground({ silent: true, pullOnly: true, forcePull: true, reason: "page-load" });
+    syncCloudInBackground({ manual: true, silent: true, pullOnly: true, forcePull: true, reason: "page-load" });
   }
 }
 
@@ -1721,6 +1721,7 @@ function bindEvents() {
       writeSyncMeta({ connectionState: "checking", lastError: "" });
       startCloudSync({ immediate: true });
     } else {
+      if (getSyncToken()) writeSyncMeta({ connectionState: "online", lastError: "" });
       renderSyncMeta();
     }
     if (isTransferAssistant(activeNote())) {
@@ -1741,6 +1742,9 @@ function bindEvents() {
           forcePull: shouldForceCrdtPull(),
           reason: "focus"
         });
+      } else if (getSyncToken() && navigator.onLine !== false) {
+        writeSyncMeta({ connectionState: "online", lastError: "" });
+        renderSyncMeta();
       }
       if (isTransferAssistant(activeNote())) {
         void refreshTransferPanel({ silent: true });
@@ -1756,6 +1760,9 @@ function bindEvents() {
           forcePull: shouldForceCrdtPull(),
           reason: "visible"
         });
+      } else if (getSyncToken() && navigator.onLine !== false) {
+        writeSyncMeta({ connectionState: "online", lastError: "" });
+        renderSyncMeta();
       }
       if (isTransferAssistant(activeNote())) {
         void refreshTransferPanel({ silent: true });
@@ -5218,7 +5225,11 @@ function renderNoteList() {
 
 function noteListSyncIndicatorState(note, syncMeta = readSyncMeta()) {
   const status = noteCloudStatus(note, syncMeta);
-  const syncClass = status.status === "synced" ? "synced" : "dirty";
+  const syncClass = status.status === "synced"
+    ? "synced"
+    : status.status === "dirty" || status.status === "saving"
+      ? "dirty"
+      : "offline";
   const syncLabel = status.label || (syncClass === "synced" ? t("syncStatusSynced") : t("syncStatusDirty"));
   return { syncClass, syncLabel };
 }
