@@ -3697,7 +3697,10 @@ function prepareCurrentNoteForSync(options = {}) {
     if (changed) markNoteDirty(noteId);
   }
 
-  if (options.forcePush && !hasDirtyNotes()) markAllNotesDirty();
+  if (options.forcePush && !hasDirtyNotes()) {
+    if (options.noteId) markNoteDirty(options.noteId);
+    else markAllNotesDirty();
+  }
   saveNotes();
 
   if (hasDirtyNotes() && getSyncToken()) {
@@ -5248,7 +5251,7 @@ function renderNoteCloudActions(note = activeNote()) {
     if (button) button.hidden = !automaticVisible;
   });
 
-  const manualDisabled = state.syncInFlight || !manualVisible;
+  const manualDisabled = !manualVisible;
   const automaticDisabled = !automaticVisible;
   if (elements.saveNoteButton) elements.saveNoteButton.disabled = manualDisabled;
   if (elements.syncNoteButton) elements.syncNoteButton.disabled = manualDisabled;
@@ -6622,6 +6625,11 @@ async function syncCrdtCloud(options = {}) {
         resetCrdtFromUpdates(updates, {
           preserveLockedActiveNote: !allowActiveNoteReplace
         });
+        if (forcePull) {
+          state.dirtyNoteIds.clear();
+          state.crdtPendingUpdates = [];
+          writeCrdtPendingUpdates();
+        }
       } else {
         state.crdtApplying = true;
         updates.forEach((item) => {
@@ -6682,7 +6690,9 @@ async function syncCrdtCloud(options = {}) {
         localStorage.setItem(storageKeys.crdtUpdateId, String(postedLatestId));
       }
       writeCrdtPendingUpdates();
+      writeKnownCloudSnapshot(syncableNotes(), storedFolders());
       clearSyncPending(Number(result.updatedAt) || Date.now(), {
+        ...cloudSnapshotMetaPatch(syncableNotes(), storedFolders()),
         lastPushAt: Date.now(),
         lastPullAt: pulled ? Date.now() : readSyncMeta().lastPullAt || 0,
         lastSuccessAt: Date.now(),
@@ -6699,7 +6709,14 @@ async function syncCrdtCloud(options = {}) {
       } catch {}
       pushed = true;
     } else if (forcePull || pulled) {
+      if (forcePull) {
+        state.dirtyNoteIds.clear();
+        state.crdtPendingUpdates = [];
+        writeCrdtPendingUpdates();
+      }
+      writeKnownCloudSnapshot(syncableNotes(), storedFolders());
       clearSyncPending(Date.now(), {
+        ...cloudSnapshotMetaPatch(syncableNotes(), storedFolders()),
         lastPullAt: Date.now(),
         lastCheckedAt: Date.now(),
         lastSuccessAt: Date.now(),
