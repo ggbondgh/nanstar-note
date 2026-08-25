@@ -670,7 +670,6 @@ input::placeholder, textarea::placeholder { color: #9aa5b6; }
 .title-input { width: 100%; min-width: 0; height: 36px; flex: 1 1 auto; font-size: 20px; font-weight: 760; font-family: var(--font-ui); }
 .note-mode-switch { display: inline-flex; flex: 0 0 auto; justify-content: flex-end; }
 .note-cloud-actions { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; }
-.auto-note-action { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .note-cloud-actions .note-sync-indicator { margin-right: 2px; }
 .note-flags { display: flex; gap: 8px; }
 .flag-button, .mode-button { display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; font-weight: 700; }

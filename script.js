@@ -205,7 +205,7 @@ const i18n = {
     txtOutlineEmpty: "TXT 模式不显示目录",
     noHeadings: "暂无标题",
     cloudAuto: "实时同步",
-    cloudReady: "实时同步已连接",
+    cloudReady: "云同步已连接",
     localMode: "本地模式",
     local: "本地",
     cloudUnsynced: "云端未同步",
@@ -229,7 +229,7 @@ const i18n = {
     syncVerifying: "已上传，正在校验云端...",
     syncVerifiedAt: "已同步并校验 {time}",
     syncTimeout: "云端响应超时，已保留本地内容",
-    syncOfflineEditing: "离线编辑，联网后自动同步",
+    syncOfflineEditing: "离线编辑，内容已保存在本地",
     syncConnecting: "正在连接云端...",
     syncVerifyFailed: "云端校验未通过，已保留待同步",
     syncDiagnostics: "待同步 {dirty} · 最近校验 {time}",
@@ -328,9 +328,9 @@ const i18n = {
     layoutTwo: "两栏视图",
     layoutOne: "内容视图",
     installPromptUnavailable: "当前浏览器暂未提供桌面安装入口。",
-    syncCopy: "实时同步会自动上传和拉取云端更新；网络暂时不可用时，内容仍会保存在本地。",
+    syncCopy: "手动同步模式：点击保存上传当前笔记，点击同步从云端拉取当前笔记。",
     syncToken: "同步 Token",
-    autoSync: "实时同步：自动上传和拉取",
+    autoSync: "手动同步：点击保存才上传，点击同步才从云端覆盖",
     pushCloud: "上传待同步内容",
     pullCloud: "从云端恢复",
     clearToken: "清除 Token",
@@ -548,7 +548,7 @@ const i18n = {
     txtOutlineEmpty: "No outline in TXT mode",
     noHeadings: "No headings",
     cloudAuto: "Realtime sync",
-    cloudReady: "Realtime sync connected",
+    cloudReady: "Cloud sync connected",
     localMode: "Local mode",
     local: "Local",
     cloudUnsynced: "Cloud not synced",
@@ -572,7 +572,7 @@ const i18n = {
     syncVerifying: "Uploaded, verifying cloud...",
     syncVerifiedAt: "Synced and verified {time}",
     syncTimeout: "Cloud response timed out; local content was kept",
-    syncOfflineEditing: "Offline editing, will sync when connected",
+    syncOfflineEditing: "Offline editing, content is kept locally",
     syncConnecting: "Connecting to cloud...",
     syncVerifyFailed: "Cloud verification failed; kept pending sync",
     syncDiagnostics: "Dirty notes {dirty} · last verify {time}",
@@ -671,9 +671,9 @@ const i18n = {
     layoutTwo: "Two Columns",
     layoutOne: "Content Only",
     installPromptUnavailable: "The desktop install prompt is not available in this browser yet.",
-    syncCopy: "Realtime sync automatically pushes and pulls cloud updates. Your content stays local while the network is unavailable.",
+    syncCopy: "Manual sync mode: click Save to upload this note, and Sync to pull this note from the cloud.",
     syncToken: "Sync Token",
-    autoSync: "Realtime sync: push and pull automatically",
+    autoSync: "Manual sync: Save uploads, Sync pulls from the cloud",
     pushCloud: "Upload pending changes",
     pullCloud: "Restore from cloud",
     clearToken: "Clear Token",
@@ -1341,9 +1341,8 @@ function init() {
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   restoreDirtyNotes();
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
-  const hasSyncToken = Boolean(elements.syncTokenInput.value.trim());
-  localStorage.setItem(storageKeys.autoSync, hasSyncToken ? "1" : "0");
-  elements.autoSyncToggle.checked = hasSyncToken;
+  localStorage.setItem(storageKeys.autoSync, "0");
+  elements.autoSyncToggle.checked = false;
   elements.autoSyncToggle.disabled = true;
   migrateFolderState();
   prepareCrdtStorage();
@@ -1365,7 +1364,6 @@ function init() {
   ensureActiveNote();
   renderAll();
   setSaveStatus("已保存本地");
-  startCloudSync();
   hydrateAppUpdatePanel();
 }
 
@@ -1716,9 +1714,12 @@ function bindEvents() {
     else stopCloudSync();
   });
   window.addEventListener("online", () => {
-    writeSyncMeta({ connectionState: "checking", lastError: "" });
-    renderSyncMeta();
-    startCloudSync({ immediate: true });
+    if (elements.autoSyncToggle.checked) {
+      writeSyncMeta({ connectionState: "checking", lastError: "" });
+      startCloudSync({ immediate: true });
+    } else {
+      renderSyncMeta();
+    }
     if (isTransferAssistant(activeNote())) {
       void refreshTransferPanel({ silent: true });
     }
@@ -1730,12 +1731,14 @@ function bindEvents() {
   });
   window.addEventListener("focus", () => {
     if (document.visibilityState !== "hidden") {
-      syncCloudInBackground({
-        silent: true,
-        pullOnly: true,
-        forcePull: shouldForceCrdtPull(),
-        reason: "focus"
-      });
+      if (elements.autoSyncToggle.checked) {
+        syncCloudInBackground({
+          silent: true,
+          pullOnly: true,
+          forcePull: shouldForceCrdtPull(),
+          reason: "focus"
+        });
+      }
       if (isTransferAssistant(activeNote())) {
         void refreshTransferPanel({ silent: true });
       }
@@ -1743,12 +1746,14 @@ function bindEvents() {
   });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-      syncCloudInBackground({
-        silent: true,
-        pullOnly: true,
-        forcePull: shouldForceCrdtPull(),
-        reason: "visible"
-      });
+      if (elements.autoSyncToggle.checked) {
+        syncCloudInBackground({
+          silent: true,
+          pullOnly: true,
+          forcePull: shouldForceCrdtPull(),
+          reason: "visible"
+        });
+      }
       if (isTransferAssistant(activeNote())) {
         void refreshTransferPanel({ silent: true });
       }
@@ -5381,7 +5386,7 @@ function switchToNote(nextId, { keepMobileSidebar = false } = {}) {
   state.activeId = nextId;
   saveNotes();
   renderAll();
-  if (getSyncToken() && !hasDirtyNotes()) {
+  if (elements.autoSyncToggle.checked && getSyncToken() && !hasDirtyNotes()) {
     syncCloudInBackground({ silent: true, pullOnly: true, forcePull: true, noteId: nextId, reason: "switch-note" });
   }
   if (!keepMobileSidebar) closeMobileSidebar();
@@ -6975,10 +6980,9 @@ function handleSyncTokenInput() {
 
   stopCloudSync();
   localStorage.setItem(storageKeys.syncToken, token);
-  localStorage.setItem(storageKeys.autoSync, "1");
-  elements.autoSyncToggle.checked = true;
+  localStorage.setItem(storageKeys.autoSync, "0");
+  elements.autoSyncToggle.checked = false;
   refreshSyncAccessUi();
-  startCloudSync({ immediate: true });
 
   state.syncTokenTimer = window.setTimeout(async () => {
     state.syncTokenTimer = null;
