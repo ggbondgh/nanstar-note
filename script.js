@@ -6426,14 +6426,27 @@ async function postCrdtUpdates(token, updates, options = {}) {
 async function putCloudState(token, snapshot = {}) {
   const notes = Array.isArray(snapshot.notes) ? snapshot.notes : syncableNotes();
   const folders = Array.isArray(snapshot.folders) ? snapshot.folders : storedFolders();
-  const response = await fetchWithTimeout(apiUrl("/api/notes"), {
-    method: "PUT",
-    cache: "no-store",
-    headers: cloudHeaders(token, true),
-    body: JSON.stringify({ notes, folders, updatedAt: Date.now() })
-  });
-  if (!response.ok) throw new Error(await response.text());
-  return response.json();
+  try {
+    const response = await fetchWithTimeout(apiUrl("/api/notes"), {
+      method: "PUT",
+      cache: "no-store",
+      headers: cloudHeaders(token, true),
+      body: JSON.stringify({ notes, folders, updatedAt: Date.now() })
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  } catch (error) {
+    try {
+      const remotePayload = await fetchCloudState(token);
+      if (snapshotSignature(notes, folders) === cloudSnapshotSignature(remotePayload)) {
+        return {
+          ok: true,
+          updatedAt: Number(remotePayload.updatedAt) || Date.now()
+        };
+      }
+    } catch {}
+    throw error;
+  }
 }
 
 function replaceNotesFromCloud(notes, options = {}) {
@@ -6976,7 +6989,7 @@ function showSyncMessage(message) {
 function cloudErrorText(error) {
   const text = String(error?.message || error || "未知错误");
   if (error?.name === "AbortError" || text.includes("aborted")) return t("syncTimeout");
-  if (text.includes("Failed to fetch")) return "接口不可用。Cloudflare Pages Functions 配好后才能使用。";
+  if (text.includes("Failed to fetch")) return "网络连接中断，未收到云端响应。";
   if (text.includes("Missing D1")) return "Cloudflare D1 还没有绑定 NANSTAR_NOTES_DB。";
   if (text.includes("Missing NOTE_SYNC_TOKEN")) return "Cloudflare 环境变量 NOTE_SYNC_TOKEN 还没有配置。";
   if (text.includes("Unauthorized")) return "Token 不正确。";
