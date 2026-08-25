@@ -1013,7 +1013,7 @@ const SYNC_PUSH_DELAY = 250;
 const SYNC_REQUEST_TIMEOUT = 12000;
 const CRDT_STATE_VERSION = "2";
 const CRDT_SYNC_REPAIR_VERSION = "remote-merge-1";
-const NOTE_SYNC_ENGINE = "crdt";
+const NOTE_SYNC_ENGINE = "snapshot";
 const DOC_DEFAULT_TEXT_COLOR = "#111827";
 const DOC_DEFAULT_HIGHLIGHT_COLOR = "#fef3c7";
 const DOC_HISTORY_LIMIT = 40;
@@ -1345,10 +1345,14 @@ function init() {
   elements.autoSyncToggle.checked = false;
   elements.autoSyncToggle.disabled = true;
   migrateFolderState();
-  prepareCrdtStorage();
-  repairCrdtSyncCursorOnce();
+  if (NOTE_SYNC_ENGINE === "crdt") {
+    prepareCrdtStorage();
+    repairCrdtSyncCursorOnce();
+  } else {
+    clearLegacyCrdtSyncState();
+  }
   saveNotes();
-  initCrdtFromState();
+  if (NOTE_SYNC_ENGINE === "crdt") initCrdtFromState();
   applyLanguage(state.language, true);
   applySidebarWidth(readSidebarWidth());
   applyYoudaoRailWidth(readYoudaoRailWidth());
@@ -6165,36 +6169,14 @@ async function saveNoteToCloud(noteId) {
 
   try {
     const localNote = normalizeNote(note);
-    const localSignature = notesSignature([localNote]);
     const remotePayload = await fetchCloudState(token);
     const nextNotes = cloudSnapshotNotes(remotePayload)
       .filter((item) => !isTransferAssistant(item) && !isFolderRegistry(item) && item.id !== localNote.id);
     nextNotes.push(localNote);
     const nextFolders = mergeFolderLists(cloudSnapshotFolders(remotePayload), storedFolders(), [localNote.folder]);
     const pushResult = await putCloudState(token, { notes: withSystemNotes(nextNotes), folders: nextFolders });
-    let remoteUpdatedAt = Number(pushResult.updatedAt) || Date.now();
-    showSyncMessage(t("syncVerifying"));
-
-    const verifyPayload = await fetchCloudState(token);
-    remoteUpdatedAt = Number(verifyPayload.updatedAt) || remoteUpdatedAt;
-    const remoteNote = cloudSnapshotNotes(verifyPayload).find((item) => item.id === localNote.id);
     const now = Date.now();
-    if (!remoteNote || notesSignature([remoteNote]) !== localSignature) {
-      const message = t("syncVerifyFailed");
-      writeSyncMeta({
-        pending: true,
-        dirtyNoteIds: dirtyNoteIds(),
-        lastError: message,
-        remoteUpdatedAt,
-        lastCheckedAt: now,
-        lastVerifyAt: now
-      });
-      renderSyncMeta();
-      renderLists();
-      showSyncMessage(message);
-      showToast(message);
-      return false;
-    }
+    const remoteUpdatedAt = Number(pushResult.updatedAt) || now;
 
     clearNotePendingState(localNote.id);
     localStorage.setItem(storageKeys.lastSyncAt, String(now));
@@ -6206,10 +6188,9 @@ async function saveNoteToCloud(noteId) {
       remoteUpdatedAt,
       lastSyncedAt: now,
       lastPushAt: now,
-      lastVerifiedAt: now,
       lastCheckedAt: now
     });
-    setSaveStatus(t("syncVerifiedAt").replace("{time}", formatTime(now)));
+    setSaveStatus(t("syncPushedAt").replace("{time}", formatTime(now)));
     const message = t("noteSavedToCloud").replace("{time}", formatTime(now));
     showSyncMessage(message);
     showToast(message);
@@ -6335,8 +6316,9 @@ function clearSyncPending(remoteUpdatedAt = Date.now(), patch = {}, syncedSnapsh
   localStorage.setItem(storageKeys.lastSyncAt, String(now));
   if (syncedSnapshots) clearSyncedDirtyNotes(syncedSnapshots);
   else if (NOTE_SYNC_ENGINE !== "crdt") clearDirtyNotes();
+  if (NOTE_SYNC_ENGINE !== "crdt") clearLegacyCrdtSyncState();
   writeSyncMeta({
-    pending: state.dirtyNoteIds.size > 0 || state.crdtPendingUpdates.length > 0,
+    pending: state.dirtyNoteIds.size > 0 || (NOTE_SYNC_ENGINE === "crdt" && state.crdtPendingUpdates.length > 0),
     dirtyNoteIds: dirtyNoteIds(),
     lastError: "",
     remoteUpdatedAt: Number(remoteUpdatedAt) || now,
@@ -6846,40 +6828,18 @@ async function syncCloud(options = {}) {
 
   try {
     if (shouldPush) {
-      const localSignature = snapshotSignature(syncableNotes(), storedFolders());
       const pushResult = await putCloudState(token);
-      let remoteUpdatedAt = Number(pushResult.updatedAt) || Date.now();
-      if (!silent) showSyncMessage(t("syncVerifying"));
-      writeSyncMeta({ lastError: "", lastVerifyStartedAt: Date.now() });
-      const verifyPayload = await fetchCloudState(token);
-      remoteUpdatedAt = Number(verifyPayload.updatedAt) || remoteUpdatedAt;
-      const remoteSignature = cloudSnapshotSignature(verifyPayload);
       const now = Date.now();
-      if (remoteSignature !== localSignature) {
-        const message = t("syncVerifyFailed");
-        writeSyncMeta({
-          pending: true,
-          dirtyNoteIds: dirtyNoteIds(),
-          lastError: message,
-          remoteUpdatedAt,
-          lastCheckedAt: now,
-          lastVerifyAt: now
-        });
-        renderSyncMeta();
-        showSyncMessage(message);
-        if (!silent) showToast(message);
-        return false;
-      }
+      const remoteUpdatedAt = Number(pushResult.updatedAt) || now;
 
       clearSyncPending(remoteUpdatedAt, {
         ...cloudSnapshotMetaPatch(syncableNotes(), storedFolders()),
         lastPushAt: now,
-        lastVerifiedAt: now,
         lastCheckedAt: now
       });
       renderSyncMeta();
       renderLists();
-      const message = t("syncVerifiedAt").replace("{time}", formatTime(now));
+      const message = t("syncPushedAt").replace("{time}", formatTime(now));
       showSyncMessage(message);
       if (!silent) showToast(message);
       return true;
