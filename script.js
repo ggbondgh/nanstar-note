@@ -243,7 +243,6 @@ const i18n = {
     syncNote: "同步",
     pushNoteNow: "立即上传",
     pullNoteLatest: "拉取最新",
-    pullNoteLatestConfirm: "本地还有未上传的修改，拉取最新会覆盖这些修改。确定继续吗？",
     saveAll: "上传待同步内容",
     syncAll: "从云端恢复",
     noteSavedToCloud: "当前笔记已保存到云端 {time}",
@@ -252,7 +251,6 @@ const i18n = {
     syncStatusSynced: "已和云端一致",
     syncStatusDirty: "本地未保存到云端",
     syncStatusOffline: "未连接云同步",
-    syncForcePullConfirm: "将用云端版本刷新本地内容，可能覆盖尚未同步的修改。确定继续吗？",
     transferAssistantTitle: "文件传输助手",
     transferAssistantBody: "",
     transferAssistantExcerpt: "跨设备临时传文件",
@@ -586,7 +584,6 @@ const i18n = {
     syncNote: "Sync",
     pushNoteNow: "Upload now",
     pullNoteLatest: "Pull latest",
-    pullNoteLatestConfirm: "There are unsynced local changes. Pulling the latest version will overwrite them. Continue?",
     saveAll: "Upload pending changes",
     syncAll: "Restore from cloud",
     noteSavedToCloud: "Current note saved to cloud {time}",
@@ -595,7 +592,6 @@ const i18n = {
     syncStatusSynced: "Same as cloud",
     syncStatusDirty: "Local changes not saved to cloud",
     syncStatusOffline: "Cloud sync is not connected",
-    syncForcePullConfirm: "This will refresh local content from the cloud and may overwrite unsynced changes. Continue?",
     transferAssistantTitle: "File Transfer",
     transferAssistantBody: "",
     transferAssistantExcerpt: "Temporary cross-device files",
@@ -1705,9 +1701,9 @@ function bindEvents() {
   elements.pullNoteButton?.addEventListener("click", () => pullCurrentNoteLatest());
   elements.saveAllButton?.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "save-all" }));
   elements.pushCloudButton.addEventListener("click", () => syncCloud({ manual: true, forcePush: true, reason: "save-all" }));
-  elements.pullCloudButton.addEventListener("click", confirmForcePullCloud);
+  elements.pullCloudButton.addEventListener("click", forcePullCloud);
   elements.syncRefreshButton?.addEventListener("click", () => {
-    confirmForcePullCloud();
+    void forcePullCloud();
   });
   elements.logoutCloudButton.addEventListener("click", clearSyncToken);
   elements.syncTokenInput.addEventListener("input", handleSyncTokenInput);
@@ -6090,11 +6086,6 @@ async function forcePullCloud() {
   return syncCloud({ manual: true, pullOnly: true, forcePull: true, reason: "force-pull" });
 }
 
-function confirmForcePullCloud() {
-  if (!window.confirm(t("syncForcePullConfirm"))) return;
-  void forcePullCloud();
-}
-
 async function saveCurrentNoteToCloud() {
   const noteId = state.activeId;
   if (!prepareCurrentNoteForSync({ noteId })) {
@@ -6105,16 +6096,6 @@ async function saveCurrentNoteToCloud() {
     return syncCloud({ manual: true, forcePush: true, noteId, reason: "save-note" });
   }
   return saveNoteToCloud(noteId);
-}
-
-function currentNoteHasUnsyncedChanges(note = activeNote()) {
-  if (!note) return false;
-  if (state.savePendingNoteId === note.id || isDirtyNoteId(note.id)) return true;
-
-  const meta = readSyncMeta();
-  const knownSignature = meta.cloudNoteSignatures?.[note.id] || "";
-  if (knownSignature) return notesSignature([note]) !== knownSignature;
-  return NOTE_SYNC_ENGINE === "crdt" && state.crdtPendingUpdates.length > 0;
 }
 
 async function pushCurrentNoteNow() {
@@ -6130,8 +6111,6 @@ async function pullCurrentNoteLatest() {
     renderSyncMeta();
     return false;
   }
-  if (currentNoteHasUnsyncedChanges(note) && !window.confirm(t("pullNoteLatestConfirm"))) return false;
-
   if (NOTE_SYNC_ENGINE === "crdt") {
     return syncCloud({
       manual: true,
