@@ -1003,8 +1003,9 @@ const YOUDAO_RAIL_WIDTH_MIN = 168;
 const YOUDAO_RAIL_WIDTH_MAX = 286;
 const YOUDAO_LIST_WIDTH_MIN = 260;
 const YOUDAO_LIST_WIDTH_MAX = 480;
-const CLOUD_SYNC_POLL_INTERVAL = 1000;
-const TRANSFER_POLL_INTERVAL = 3000;
+// Keep idle polling light so open tabs do not burn through Cloudflare's daily function quota.
+const CLOUD_SYNC_POLL_INTERVAL = 30000;
+const TRANSFER_POLL_INTERVAL = 30000;
 const SYNC_PUSH_DELAY = 250;
 const SYNC_REQUEST_TIMEOUT = 12000;
 const CRDT_STATE_VERSION = "2";
