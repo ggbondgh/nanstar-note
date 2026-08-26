@@ -1011,6 +1011,7 @@ const SYNC_REQUEST_TIMEOUT = 12000;
 const CRDT_STATE_VERSION = "2";
 const CRDT_SYNC_REPAIR_VERSION = "remote-merge-1";
 const NOTE_SYNC_ENGINE = "snapshot";
+const NOTE_SYNC_MODE = "manual";
 const DOC_DEFAULT_TEXT_COLOR = "#111827";
 const DOC_DEFAULT_HIGHLIGHT_COLOR = "#fef3c7";
 const DOC_HISTORY_LIMIT = 40;
@@ -1338,9 +1339,9 @@ function init() {
   state.activeId = localStorage.getItem(storageKeys.activeNote) || state.notes[0]?.id || null;
   restoreDirtyNotes();
   elements.syncTokenInput.value = localStorage.getItem(storageKeys.syncToken) || "";
-  localStorage.setItem(storageKeys.autoSync, "0");
-  elements.autoSyncToggle.checked = false;
-  elements.autoSyncToggle.disabled = true;
+  if (!cloudAutoSyncAvailable()) localStorage.setItem(storageKeys.autoSync, "0");
+  elements.autoSyncToggle.checked = cloudAutoSyncAvailable() && localStorage.getItem(storageKeys.autoSync) === "1";
+  elements.autoSyncToggle.disabled = !cloudAutoSyncAvailable();
   migrateFolderState();
   if (NOTE_SYNC_ENGINE === "crdt") {
     prepareCrdtStorage();
@@ -1712,13 +1713,20 @@ function bindEvents() {
   elements.logoutCloudButton.addEventListener("click", clearSyncToken);
   elements.syncTokenInput.addEventListener("input", handleSyncTokenInput);
   elements.autoSyncToggle.addEventListener("change", () => {
+    if (!cloudAutoSyncAvailable()) {
+      localStorage.setItem(storageKeys.autoSync, "0");
+      elements.autoSyncToggle.checked = false;
+      stopCloudSync();
+      renderSyncMeta();
+      return;
+    }
     localStorage.setItem(storageKeys.autoSync, elements.autoSyncToggle.checked ? "1" : "0");
     renderSyncMeta();
     if (elements.autoSyncToggle.checked) startCloudSync({ immediate: true });
     else stopCloudSync();
   });
   window.addEventListener("online", () => {
-    if (elements.autoSyncToggle.checked) {
+    if (cloudAutoSyncActive()) {
       writeSyncMeta({ connectionState: "checking", lastError: "" });
       startCloudSync({ immediate: true });
     } else {
@@ -1736,7 +1744,7 @@ function bindEvents() {
   });
   window.addEventListener("focus", () => {
     if (document.visibilityState !== "hidden") {
-      if (elements.autoSyncToggle.checked) {
+      if (cloudAutoSyncActive()) {
         syncCloudInBackground({
           silent: true,
           pullOnly: true,
@@ -1754,7 +1762,7 @@ function bindEvents() {
   });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-      if (elements.autoSyncToggle.checked) {
+      if (cloudAutoSyncActive()) {
         syncCloudInBackground({
           silent: true,
           pullOnly: true,
@@ -4105,7 +4113,7 @@ function clearSyncedDirtyNotes(snapshots) {
 
 function scheduleAutoSync() {
   clearTimeout(state.autoSyncTimer);
-  if (NOTE_SYNC_ENGINE !== "crdt" || !getSyncToken() || !elements.autoSyncToggle.checked) return;
+  if (!cloudAutoSyncActive()) return;
   state.autoSyncTimer = window.setTimeout(() => {
     state.autoSyncTimer = null;
     syncCloudInBackground({ silent: true, reason: "local-change" });
@@ -4118,6 +4126,14 @@ function syncCloudInBackground(options = {}) {
       console.error("Background sync failed", error);
     });
   }, 0);
+}
+
+function cloudAutoSyncAvailable() {
+  return NOTE_SYNC_MODE === "auto" && NOTE_SYNC_ENGINE === "crdt";
+}
+
+function cloudAutoSyncActive() {
+  return Boolean(cloudAutoSyncAvailable() && getSyncToken() && elements.autoSyncToggle?.checked);
 }
 
 function queueSyncRequest(options = {}) {
@@ -5236,7 +5252,7 @@ function noteListSyncIndicatorState(note, syncMeta = readSyncMeta()) {
 }
 
 function showPerNoteSyncIndicators() {
-  return NOTE_SYNC_ENGINE !== "crdt" || !elements.autoSyncToggle?.checked;
+  return !cloudAutoSyncActive();
 }
 
 function showManualNoteCloudActions(note = activeNote()) {
@@ -5248,9 +5264,7 @@ function showAutomaticNoteCloudActions(note = activeNote()) {
     note
       && !isTransferAssistant(note)
       && !isFolderRegistry(note)
-      && NOTE_SYNC_ENGINE === "crdt"
-      && getSyncToken()
-      && elements.autoSyncToggle?.checked
+      && cloudAutoSyncActive()
   );
 }
 
@@ -5404,7 +5418,7 @@ function switchToNote(nextId, { keepMobileSidebar = false } = {}) {
   state.activeId = nextId;
   saveNotes();
   renderAll();
-  if (elements.autoSyncToggle.checked && getSyncToken() && !hasDirtyNotes()) {
+  if (cloudAutoSyncActive() && !hasDirtyNotes()) {
     syncCloudInBackground({ silent: true, pullOnly: true, forcePull: true, noteId: nextId, reason: "switch-note" });
   }
   if (!keepMobileSidebar) closeMobileSidebar();
@@ -5418,7 +5432,7 @@ async function syncCurrentNoteNow() {
 function renderSyncMeta() {
   const token = getSyncToken();
   const lastSync = localStorage.getItem(storageKeys.lastSyncAt);
-  const auto = elements.autoSyncToggle.checked;
+  const auto = cloudAutoSyncActive();
   document.body.classList.toggle("realtime-sync-mode", Boolean(token) && auto);
   const syncMeta = readSyncMeta();
   const connectionState = syncMeta.connectionState || (navigator.onLine === false ? "offline" : "online");
@@ -6326,7 +6340,7 @@ function clearSyncPending(remoteUpdatedAt = Date.now(), patch = {}, syncedSnapsh
 
 function startCloudSync(options = {}) {
   stopCloudSync();
-  if (NOTE_SYNC_ENGINE !== "crdt" || !getSyncToken() || !elements.autoSyncToggle.checked) {
+  if (!cloudAutoSyncActive()) {
     renderSyncMeta();
     return;
   }
@@ -6561,7 +6575,7 @@ async function syncCrdtCloud(options = {}) {
     renderSyncMeta();
     return false;
   }
-  if (!manual && !elements.autoSyncToggle.checked) return;
+  if (!manual && !cloudAutoSyncActive()) return;
   if (state.syncInFlight) {
     queueSyncRequest(options);
     return false;
@@ -6792,7 +6806,7 @@ async function syncCloud(options = {}) {
     renderSyncMeta();
     return false;
   }
-  if (!manual && !elements.autoSyncToggle.checked) return false;
+  if (!manual && !cloudAutoSyncActive()) return false;
   if (state.syncInFlight) {
     queueSyncRequest(options);
     return false;
