@@ -1012,6 +1012,7 @@ const CRDT_STATE_VERSION = "2";
 const CRDT_SYNC_REPAIR_VERSION = "remote-merge-1";
 const NOTE_SYNC_ENGINE = "snapshot";
 const NOTE_SYNC_MODE = "manual";
+const TRANSFER_POLLING_ENABLED = false;
 const DOC_DEFAULT_TEXT_COLOR = "#111827";
 const DOC_DEFAULT_HIGHLIGHT_COLOR = "#fef3c7";
 const DOC_HISTORY_LIMIT = 40;
@@ -2295,6 +2296,10 @@ function renderTransferPanel() {
 }
 
 function startTransferPolling() {
+  if (!TRANSFER_POLLING_ENABLED) {
+    stopTransferPolling();
+    return;
+  }
   if (state.transferPollTimer || !transferEnabled()) return;
   state.transferPollTimer = window.setInterval(() => {
     if (
