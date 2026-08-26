@@ -2818,9 +2818,13 @@ async function fetchTransferJson(url, options = {}) {
   });
   const contentType = response.headers.get("content-type") || "";
   const text = await response.text();
-  if (!response.ok) throw new Error(text);
-  if (!contentType.includes("application/json")) throw new Error("Not found");
+  if (!response.ok) throw new Error(looksLikeHtmlResponse(text) ? "Not found" : text);
+  if (!contentType.includes("application/json")) throw new Error(looksLikeHtmlResponse(text) ? "Not found" : "Not found");
   return text ? JSON.parse(text) : {};
+}
+
+function looksLikeHtmlResponse(text) {
+  return /^\s*</.test(String(text || ""));
 }
 
 function fetchTransferBlob(url, onProgress) {
@@ -2950,6 +2954,7 @@ function transferErrorText(error) {
   if (text.includes("Too many files")) return t("transferCountLimit").replace("{count}", String(transferLimits().maxFiles));
   if (text.includes("Total file size")) return t("transferTotalLimit").replace("{size}", formatBytes(transferLimits().maxTotalBytes));
   if (text.includes("File is too large")) return t("transferTooLarge").replace("{size}", formatBytes(transferLimits().maxFileBytes));
+  if (looksLikeHtmlResponse(text)) return t("transferApiUnavailable");
   if (text.includes("Failed to fetch") || text.includes("Not found")) return t("transferApiUnavailable");
   if (text.includes("clipboard")) return t("transferClipboardDenied");
   return `${t("transferFailed")}：${text.slice(0, 120)}`;
@@ -2966,6 +2971,7 @@ function transferTextErrorText(error) {
   if (text.includes("Missing NOTE_SYNC_TOKEN")) return cloudErrorText(new Error("Missing NOTE_SYNC_TOKEN"));
   if (text.includes("Unauthorized")) return t("transferBadToken");
   if (text.includes("Text is too large")) return t("transferTextTooLarge").replace("{size}", formatBytes(transferTextLimits().maxTextBytes));
+  if (looksLikeHtmlResponse(text)) return t("transferTextApiUnavailable");
   if (text.includes("Failed to fetch") || text.includes("Not found")) return t("transferTextApiUnavailable");
   return `${t("transferTextFailed")}：${text.slice(0, 120)}`;
 }
@@ -6126,10 +6132,7 @@ async function saveCurrentNoteToCloud() {
     showToast(t("inputComposing"));
     return false;
   }
-  if (NOTE_SYNC_ENGINE === "crdt") {
-    return syncCloud({ manual: true, forcePush: true, noteId, reason: "save-note" });
-  }
-  return saveNoteToCloud(noteId);
+  return syncCloud({ manual: true, forcePush: true, noteId, reason: "save-note" });
 }
 
 async function pushCurrentNoteNow() {
@@ -6156,73 +6159,6 @@ async function pullCurrentNoteLatest() {
     });
   }
   return syncCurrentNoteFromCloud();
-}
-
-async function saveNoteToCloud(noteId) {
-  const token = getSyncToken();
-  const note = state.notes.find((item) => item.id === noteId && !isDeletedNote(item));
-  if (!token) {
-    showSyncMessage("请先填写同步 Token。");
-    showToast(t("syncStatusOffline"));
-    renderSyncMeta();
-    return false;
-  }
-  if (!note || isTransferAssistant(note) || isFolderRegistry(note)) return false;
-  if (state.syncInFlight) {
-    showToast(t("syncBusy"));
-    return false;
-  }
-
-  clearTimeout(state.autoSyncTimer);
-  localStorage.setItem(storageKeys.syncToken, token);
-  state.syncInFlight = true;
-  state.syncAction = "pushing";
-  renderSyncMeta();
-  showSyncMessage(t("syncPushing"));
-
-  try {
-    const localNote = normalizeNote(note);
-    const remotePayload = await fetchCloudState(token);
-    const nextNotes = cloudSnapshotNotes(remotePayload)
-      .filter((item) => !isTransferAssistant(item) && !isFolderRegistry(item) && item.id !== localNote.id);
-    nextNotes.push(localNote);
-    const nextFolders = mergeFolderLists(cloudSnapshotFolders(remotePayload), storedFolders(), [localNote.folder]);
-    const pushResult = await putCloudState(token, { notes: withSystemNotes(nextNotes), folders: nextFolders });
-    const now = Date.now();
-    const remoteUpdatedAt = Number(pushResult.updatedAt) || now;
-
-    clearNotePendingState(localNote.id);
-    localStorage.setItem(storageKeys.lastSyncAt, String(now));
-    writeKnownCloudNote(localNote, {
-      cloudFoldersSignature: foldersSignature(nextFolders),
-      pending: dirtyNoteIds().length > 0,
-      dirtyNoteIds: dirtyNoteIds(),
-      lastError: "",
-      connectionState: "online",
-      remoteUpdatedAt,
-      lastSyncedAt: now,
-      lastPushAt: now,
-      lastCheckedAt: now
-    });
-    setSaveStatus(t("syncPushedAt").replace("{time}", formatTime(now)));
-    const message = t("noteSavedToCloud").replace("{time}", formatTime(now));
-    showSyncMessage(message);
-    showToast(message);
-    renderAll();
-    return true;
-  } catch (error) {
-    const message = `${t("syncFailed")}：${cloudErrorText(error)}`;
-    writeSyncMeta({ pending: true, dirtyNoteIds: dirtyNoteIds(), lastError: message });
-    renderSyncMeta();
-    renderLists();
-    showSyncMessage(message);
-    showToast(message);
-    return false;
-  } finally {
-    state.syncInFlight = false;
-    state.syncAction = "";
-    renderSyncMeta();
-  }
 }
 
 async function syncCurrentNoteFromCloud() {
