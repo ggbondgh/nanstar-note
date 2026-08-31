@@ -1368,9 +1368,6 @@ function init() {
   renderAll();
   setSaveStatus("已保存本地");
   hydrateAppUpdatePanel();
-  if (getSyncToken()) {
-    syncCloudInBackground({ manual: true, silent: true, pullOnly: true, forcePull: true, reason: "page-load" });
-  }
 }
 
 function bindEvents() {
