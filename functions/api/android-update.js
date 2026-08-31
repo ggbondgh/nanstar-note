@@ -7,7 +7,8 @@ export async function onRequestOptions() {
   return new Response(null, { headers: corsHeaders() });
 }
 
-export async function onRequestGet() {
+export async function onRequestGet({ request }) {
+  logRequest("android-update:get", request);
   const manifest = await fetchUpdateManifest();
   if (manifest?.versionCode) {
     return json(manifest);
@@ -88,6 +89,21 @@ function corsHeaders() {
   return {
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET, OPTIONS",
-    "access-control-allow-headers": "content-type"
+    "access-control-allow-headers": "content-type, x-client-id, x-client-session-id, x-client-source, x-client-page, x-client-purpose"
   };
+}
+
+function logRequest(route, request) {
+  const headers = request.headers;
+  console.log(`[${route}]`, JSON.stringify({
+    method: request.method,
+    clientId: headers.get("x-client-id") || "",
+    clientSessionId: headers.get("x-client-session-id") || "",
+    clientSource: headers.get("x-client-source") || "",
+    clientPage: headers.get("x-client-page") || "",
+    clientPurpose: headers.get("x-client-purpose") || "",
+    ip: headers.get("cf-connecting-ip") || "",
+    userAgent: headers.get("user-agent") || "",
+    referer: headers.get("referer") || ""
+  }));
 }

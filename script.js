@@ -18,7 +18,9 @@ const storageKeys = {
   youdaoPreviousLayout: "nanstar-note-youdao-previous-layout",
   sidebarCollapsed: "nanstar-note-sidebar-collapsed",
   folderSectionCollapsed: "nanstar-note-folder-section-collapsed",
-  language: "nanstar-note-language"
+  language: "nanstar-note-language",
+  clientId: "nanstar-note-client-id",
+  clientSessionId: "nanstar-note-client-session-id"
 };
 
 const i18n = {
@@ -1119,6 +1121,36 @@ function apiUrl(path) {
   const cleaned = raw.replace(/^\.\//, "");
   const normalized = cleaned.startsWith("/") ? cleaned : `/${cleaned}`;
   return nativeRuntime() ? `${CLOUD_API_ORIGIN}${normalized}` : `.${normalized}`;
+}
+
+function clientTraceSource() {
+  if (nativeRuntime()) return "native";
+  if (window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone) return "pwa";
+  return "web";
+}
+
+function getStableStorageId(key, prefix, storage) {
+  try {
+    let value = storage.getItem(key);
+    if (!value) {
+      value = `${prefix}-${crypto.randomUUID()}`;
+      storage.setItem(key, value);
+    }
+    return value;
+  } catch {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+}
+
+function clientTraceHeaders(purpose = "") {
+  const headers = {
+    "x-client-id": getStableStorageId(storageKeys.clientId, "client", localStorage),
+    "x-client-session-id": getStableStorageId(storageKeys.clientSessionId, "session", sessionStorage),
+    "x-client-source": clientTraceSource(),
+    "x-client-page": `${window.location.pathname || "/"}${window.location.search || ""}`
+  };
+  if (purpose) headers["x-client-purpose"] = purpose;
+  return headers;
 }
 
 function folderManagementEnabled() {
@@ -2810,6 +2842,7 @@ async function fetchTransferJson(url, options = {}) {
     cache: "no-store",
     headers: {
       ...(options.headers || {}),
+      ...clientTraceHeaders(String(url || "").includes("clipboard") ? "transfer-text" : String(url || "").includes("files") ? "transfer-files" : "transfer"),
       authorization: `Bearer ${getSyncToken()}`
     }
   });
@@ -2830,6 +2863,9 @@ function fetchTransferBlob(url, onProgress) {
     xhr.open("GET", apiUrl(url), true);
     xhr.responseType = "blob";
     xhr.setRequestHeader("authorization", `Bearer ${getSyncToken()}`);
+    Object.entries(clientTraceHeaders(String(url || "").includes("files") ? "transfer-files" : "transfer")).forEach(([key, value]) => {
+      xhr.setRequestHeader(key, value);
+    });
     xhr.onprogress = (event) => {
       if (!onProgress) return;
       const total = event.lengthComputable ? Number(event.total) || 0 : 0;
@@ -2859,6 +2895,9 @@ function uploadTransferFileWithProgress(file, onProgress) {
     xhr.open("POST", apiUrl("./api/files"), true);
     xhr.responseType = "text";
     xhr.setRequestHeader("authorization", `Bearer ${getSyncToken()}`);
+    Object.entries(clientTraceHeaders("transfer-files")).forEach(([key, value]) => {
+      xhr.setRequestHeader(key, value);
+    });
     xhr.setRequestHeader("content-type", file.type || "application/octet-stream");
     xhr.setRequestHeader("x-file-name", encodeURIComponent(file.name || "file"));
     xhr.setRequestHeader("x-file-size", String(file.size || 0));
@@ -3065,7 +3104,10 @@ async function fetchAndroidUpdateInfo() {
   if (manifestInfo?.versionCode) candidates.push(manifestInfo);
 
   try {
-    const response = await fetchWithTimeout(freshUrl(apiUrl("/api/android-update")), { cache: "no-store" });
+    const response = await fetchWithTimeout(freshUrl(apiUrl("/api/android-update")), {
+      cache: "no-store",
+      headers: clientTraceHeaders("android-update")
+    });
     if (response.ok) {
       const info = normalizeAndroidUpdateInfo(await response.json());
       if (info.versionCode) candidates.push(info);
@@ -6308,8 +6350,11 @@ function stopCloudSync() {
   }
 }
 
-function cloudHeaders(token, includeBody = false) {
-  const headers = { authorization: `Bearer ${token}` };
+function cloudHeaders(token, includeBody = false, purpose = "notes-sync") {
+  const headers = {
+    authorization: `Bearer ${token}`,
+    ...clientTraceHeaders(purpose)
+  };
   if (includeBody) headers["content-type"] = "application/json";
   return headers;
 }
@@ -6327,7 +6372,7 @@ async function fetchWithTimeout(resource, options = {}, timeout = SYNC_REQUEST_T
 async function fetchCloudState(token) {
   const response = await fetchWithTimeout(apiUrl(`/api/notes?t=${Date.now()}`), {
     cache: "no-store",
-    headers: cloudHeaders(token)
+    headers: cloudHeaders(token, false, "notes-pull")
   });
   if (!response.ok) throw new Error(await response.text());
   return response.json();
@@ -6336,7 +6381,7 @@ async function fetchCloudState(token) {
 async function fetchCrdtState(token, since = 0) {
   const response = await fetchWithTimeout(apiUrl(`/api/notes?crdt=1&since=${Number(since) || 0}&t=${Date.now()}`), {
     cache: "no-store",
-    headers: cloudHeaders(token)
+    headers: cloudHeaders(token, false, "notes-pull")
   });
   if (!response.ok) throw new Error(await response.text());
   return response.json();
@@ -6369,7 +6414,7 @@ async function postCrdtUpdates(token, updates, options = {}) {
   const response = await fetchWithTimeout(apiUrl("/api/notes"), {
     method: "POST",
     cache: "no-store",
-    headers: cloudHeaders(token, true),
+    headers: cloudHeaders(token, true, "notes-push"),
     body: JSON.stringify({ updates, seed: Boolean(options.seed) })
   });
   if (!response.ok) throw new Error(await response.text());
@@ -6383,7 +6428,7 @@ async function putCloudState(token, snapshot = {}) {
     const response = await fetchWithTimeout(apiUrl("/api/notes"), {
       method: "PUT",
       cache: "no-store",
-      headers: cloudHeaders(token, true),
+      headers: cloudHeaders(token, true, "notes-push"),
       body: JSON.stringify({ notes, folders, updatedAt: Date.now() })
     });
     if (!response.ok) throw new Error(await response.text());

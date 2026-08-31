@@ -15,6 +15,7 @@ export async function onRequestOptions() {
 }
 
 export async function onRequestGet({ env, request }) {
+  logRequest("clipboard:get", request);
   const auth = authorize(env, request);
   if (auth) return auth;
 
@@ -36,6 +37,7 @@ export async function onRequestGet({ env, request }) {
 }
 
 export async function onRequestPost({ env, request }) {
+  logRequest("clipboard:post", request);
   const auth = authorize(env, request);
   if (auth) return auth;
 
@@ -78,6 +80,7 @@ export async function onRequestPost({ env, request }) {
 }
 
 export async function onRequestDelete({ env, request }) {
+  logRequest("clipboard:delete", request);
   const auth = authorize(env, request);
   if (auth) return auth;
 
@@ -161,6 +164,21 @@ function corsHeaders() {
   return {
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
-    "access-control-allow-headers": "content-type, authorization"
+    "access-control-allow-headers": "content-type, authorization, x-client-id, x-client-session-id, x-client-source, x-client-page, x-client-purpose"
   };
+}
+
+function logRequest(route, request) {
+  const headers = request.headers;
+  console.log(`[${route}]`, JSON.stringify({
+    method: request.method,
+    clientId: headers.get("x-client-id") || "",
+    clientSessionId: headers.get("x-client-session-id") || "",
+    clientSource: headers.get("x-client-source") || "",
+    clientPage: headers.get("x-client-page") || "",
+    clientPurpose: headers.get("x-client-purpose") || "",
+    ip: headers.get("cf-connecting-ip") || "",
+    userAgent: headers.get("user-agent") || "",
+    referer: headers.get("referer") || ""
+  }));
 }
